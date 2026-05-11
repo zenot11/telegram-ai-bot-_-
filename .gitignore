@@ -2,7 +2,7 @@
 auth_mock
 bot_logic
 main_mock
-telegram_bot
+/archive/cpp_telegram_module/telegram_bot
 
 .env
 *.log
@@ -10,3 +10,9 @@ telegram_bot
 .vscode/
 build/
 cmake-build-*/
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+telegram_bot/storage/user_data.json

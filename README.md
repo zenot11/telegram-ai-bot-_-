@@ -1,27 +1,95 @@
-# Telegram Module
+# Аиша — Telegram-бот для абитуриентов
 
-C++ Telegram bot module using libcurl.
+MVP Telegram-бота на Python + aiogram 3. Бот помогает подобрать вуз по региону,
+баллам ЕГЭ, направлению и типу обучения, а также даёт мягкую психологическую
+поддержку без диагнозов и медицинских советов.
 
-Implements:
-- long polling via Telegram Bot API
-- command parsing
-- basic bot logic
+Старый C++ Telegram-модуль перенесён в `archive/cpp_telegram_module/`.
 
-## Build
+## Установка
 
 ```bash
-make
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-Run:
-export TELEGRAM_BOT_TOKEN=your_token_here
-./telegram_bot
+## Настройка `.env`
 
-Structure:
+```bash
+cp .env.example .env
+```
 
-main.cpp — entry point
+Заполните `.env`:
 
-TelegramClient.* — Telegram API interaction
+```env
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+OPENAI_API_KEY=your_openai_api_key_here
+BACKEND_BASE_URL=http://localhost:8000
+```
 
-BotLogicClient.* — bot logic
+`OPENAI_API_KEY` можно оставить пустым для первого запуска. В этом случае бот
+покажет обычные результаты без AI-объяснения.
 
-CommandParser.* — command parsing
+Настоящий `.env` не должен попадать в GitHub.
+
+## Запуск backend-заглушки
+
+В первом терминале:
+
+```bash
+source .venv/bin/activate
+python -m backend_stub.main
+```
+
+Проверка:
+
+```bash
+curl "http://localhost:8000/api/universities?region=Адыгея&score=230&direction=IT&type=budget"
+```
+
+## Запуск Telegram-бота
+
+Во втором терминале:
+
+```bash
+source .venv/bin/activate
+python -m telegram_bot.main
+```
+
+## Команды бота
+
+- `/start` — запуск бота
+- `/menu` — главное меню
+- `/help` — помощь
+- `/reset` — сброс введённых данных
+- `/support` — психологическая поддержка
+- `/search` — подбор вузов
+
+## Главное меню
+
+- Подобрать вуз
+- Мои баллы
+- Направления
+- Регионы
+- Психологическая поддержка
+- Помощь
+
+## Как работает подбор
+
+1. Пользователь вводит `/search` или нажимает «Подобрать вуз».
+2. Бот спрашивает регион.
+3. Бот спрашивает суммарные баллы ЕГЭ.
+4. Бот проверяет корректность баллов.
+5. Бот спрашивает направление.
+6. Бот спрашивает тип обучения: бюджет или платное.
+7. Бот отправляет запрос в backend-заглушку.
+8. Backend возвращает список вузов из `backend_stub/data/universities.json`.
+9. Бот показывает 3–5 карточек.
+10. Если задан `OPENAI_API_KEY`, бот добавляет короткое AI-объяснение.
+
+## Безопасность
+
+Если пользователь пишет про самоповреждение, суицидальные мысли или опасность
+для себя, бот отвечает фиксированным кризисным текстом с рекомендацией обратиться
+к взрослому рядом или позвонить 112.
