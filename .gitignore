@@ -1,0 +1,12 @@
+*.o
+auth_mock
+bot_logic
+main_mock
+telegram_bot
+
+.env
+*.log
+.DS_Store
+.vscode/
+build/
+cmake-build-*/
