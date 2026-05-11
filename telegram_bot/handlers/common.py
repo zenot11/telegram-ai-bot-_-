@@ -3,7 +3,7 @@ from aiogram.types import Message
 
 from telegram_bot.keyboards.menu import main_menu_keyboard
 from telegram_bot.keyboards.search import support_keyboard
-from telegram_bot.services.ai import ai_service
+from telegram_bot.services.ai import ai_service, generate_support_reply
 from telegram_bot.services.safety import (
     CRISIS_RESPONSE,
     is_crisis_message,
@@ -23,11 +23,12 @@ async def fallback(message: Message) -> None:
         return
 
     if is_support_message(text):
-        await message.answer(
+        fallback = (
             "Похоже, ты сильно вымотался. Давай сделаем задачу меньше: сейчас не выбираем "
-            "всю жизнь, а выбираем 3 подходящих варианта для поступления.",
-            reply_markup=support_keyboard(),
+            "всю жизнь, а выбираем один следующий шаг."
         )
+        answer = await generate_support_reply(text, fallback)
+        await message.answer(answer, reply_markup=support_keyboard())
         return
 
     ai_answer = await ai_service.answer_free_question(text)

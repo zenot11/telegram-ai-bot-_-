@@ -12,9 +12,12 @@ def education_type_keyboard() -> ReplyKeyboardMarkup:
 def support_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Подобрать 3 варианта")],
-            [KeyboardButton(text="Сделать короткий план")],
-            [KeyboardButton(text="Вернуться позже")],
+            [KeyboardButton(text="Мне тревожно")],
+            [KeyboardButton(text="Я не знаю, куда поступать")],
+            [KeyboardButton(text="Я боюсь не поступить")],
+            [KeyboardButton(text="На меня давят родители")],
+            [KeyboardButton(text="Составить короткий план")],
+            [KeyboardButton(text="Вернуться в меню")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Выбери следующий шаг",

@@ -1,10 +1,11 @@
 from aiogram import F, Router
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from telegram_bot.keyboards.menu import main_menu_keyboard
 from telegram_bot.keyboards.search import support_keyboard
+from telegram_bot.services.ai import generate_support_reply
 
 
 router = Router()
@@ -15,27 +16,67 @@ router = Router()
 async def support_entry(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(
-        "Похоже, поступление может давить и перегружать. Давай сделаем задачу меньше: "
-        "сейчас не выбираем всю жизнь, а выбираем один следующий шаг.",
+        "Я рядом. Поступление правда может давить: баллы, выбор, ожидания родителей, страх ошибиться.\n"
+        "Выбери, что ближе к твоей ситуации:",
         reply_markup=support_keyboard(),
     )
 
 
-@router.message(F.text == "Сделать короткий план")
+@router.message(StateFilter(None), F.text == "Мне тревожно")
+async def anxiety(message: Message) -> None:
+    fallback = (
+        "Похоже, тревоги сейчас много. Давай не будем решать всё сразу. "
+        "Сначала выберем один маленький следующий шаг: например, посмотреть 3 варианта вузов "
+        "или спокойно записать свои баллы."
+    )
+    await _answer_support(message, "Пользователю тревожно из-за поступления.", fallback)
+
+
+@router.message(StateFilter(None), F.text == "Я не знаю, куда поступать")
+async def unsure_direction(message: Message) -> None:
+    fallback = (
+        "Это нормально — не знать точный ответ сразу. Можно начать не с «профессии на всю жизнь», "
+        "а с того, какие предметы тебе даются легче и что тебе хотя бы немного интересно."
+    )
+    await _answer_support(message, "Пользователь не знает, куда поступать.", fallback)
+
+
+@router.message(StateFilter(None), F.text == "Я боюсь не поступить")
+async def fear_not_admitted(message: Message) -> None:
+    fallback = (
+        "Страх не поступить понятен. Но сейчас полезнее не пугать себя худшим вариантом, "
+        "а собрать несколько запасных маршрутов: бюджет, платное, другой регион, похожее направление."
+    )
+    await _answer_support(message, "Пользователь боится не поступить.", fallback)
+
+
+@router.message(StateFilter(None), F.text == "На меня давят родители")
+async def parents_pressure(message: Message) -> None:
+    fallback = (
+        "Когда давят ожидания, выбирать сложнее. Попробуй отделить два вопроса: "
+        "чего хотят от тебя другие и какие варианты реально подходят тебе по баллам, интересам и возможностям."
+    )
+    await _answer_support(message, "На пользователя давят родители или ожидания семьи.", fallback)
+
+
+@router.message(StateFilter(None), F.text.in_({"Составить короткий план", "Сделать короткий план"}))
 async def short_plan(message: Message) -> None:
     await message.answer(
         "Короткий план:\n"
-        "1. Выбери 1 регион, с которого начнём.\n"
-        "2. Введи текущие баллы ЕГЭ.\n"
-        "3. Выбери одно направление, даже если пока не уверен.\n"
-        "4. Получи 3–5 вариантов и сравни их спокойно.",
+        "1. Записать свои баллы.\n"
+        "2. Выбрать 1-2 региона.\n"
+        "3. Выбрать 2-3 направления.\n"
+        "4. Найти минимум 3 варианта вузов.\n"
+        "5. Отдельно оставить запасной вариант.",
         reply_markup=support_keyboard(),
     )
 
 
-@router.message(F.text == "Вернуться позже")
-async def come_back_later(message: Message) -> None:
-    await message.answer(
-        "Хорошо. Можно вернуться к подбору, когда будет больше сил.",
-        reply_markup=main_menu_keyboard(),
-    )
+@router.message(StateFilter(None), F.text.in_({"Вернуться в меню", "Вернуться позже"}))
+async def back_to_menu(message: Message) -> None:
+    await message.answer("Главное меню. Выбери, с чего начнём:", reply_markup=main_menu_keyboard())
+
+
+async def _answer_support(message: Message, situation: str, fallback: str) -> None:
+    answer = await generate_support_reply(situation, fallback)
+    await message.answer(answer, reply_markup=support_keyboard())

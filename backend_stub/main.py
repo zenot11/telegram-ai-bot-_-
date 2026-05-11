@@ -11,6 +11,16 @@ load_dotenv()
 
 DATA_PATH = Path(__file__).resolve().parent / "data" / "universities.json"
 
+DIRECTION_SYNONYMS = {
+    "IT": ("it", "айти", "информатика", "программирование", "информационные", "данные"),
+    "психология": ("психолог", "психология"),
+    "медицина": ("медицина", "мед", "лечебное", "врач"),
+    "экономика": ("экономика", "эконом", "бизнес", "финансы", "менеджмент"),
+    "педагогика": ("педагогика", "педагог", "учитель", "образование"),
+    "юриспруденция": ("юриспруденция", "юрист", "право", "законы"),
+    "инженерия": ("инженерия", "инженер", "техника", "машиностроение", "строительство"),
+}
+
 
 def load_universities() -> list[dict[str, Any]]:
     return json.loads(DATA_PATH.read_text(encoding="utf-8"))
@@ -40,7 +50,23 @@ def direction_matches(item: dict[str, Any], direction: str) -> bool:
         " ".join(item.get("directions") or []),
     ]
     haystack = normalize(" ".join(values))
-    return requested in haystack or any(part in haystack for part in requested.split())
+
+    requested_direction = canonical_direction(requested)
+    item_direction = canonical_direction(haystack)
+    if requested_direction and item_direction and requested_direction == item_direction:
+        return True
+
+    return requested in haystack or any(part and part in haystack for part in requested.split())
+
+
+def canonical_direction(text: str) -> str | None:
+    normalized = normalize(text)
+    for direction, synonyms in DIRECTION_SYNONYMS.items():
+        if normalized == normalize(direction):
+            return direction
+        if any(synonym in normalized for synonym in synonyms):
+            return direction
+    return None
 
 
 async def health(_: web.Request) -> web.Response:
@@ -56,6 +82,7 @@ async def universities(request: web.Request) -> web.Response:
         limit = int(request.query.get("limit", "5"))
     except ValueError:
         limit = 5
+    limit = max(1, min(limit, 20))
 
     try:
         score = int(request.query.get("score", "0"))
@@ -64,7 +91,7 @@ async def universities(request: web.Request) -> web.Response:
 
     rows = load_universities()
 
-    strict = [
+    results = [
         item
         for item in rows
         if normalize(item.get("region", "")) == normalize(region)
@@ -72,18 +99,7 @@ async def universities(request: web.Request) -> web.Response:
         and normalize(item.get("type", "")) == education_type
         and direction_matches(item, direction)
     ]
-
-    if strict:
-        return web.json_response(strict[:limit], dumps=_json_dumps)
-
-    relaxed = [
-        item
-        for item in rows
-        if normalize(item.get("region", "")) == normalize(region)
-        and int(item.get("min_score", 0)) <= score
-        and normalize(item.get("type", "")) == education_type
-    ]
-    return web.json_response(relaxed[:limit], dumps=_json_dumps)
+    return web.json_response(results[:limit], dumps=_json_dumps)
 
 
 def _json_dumps(data: Any) -> str:

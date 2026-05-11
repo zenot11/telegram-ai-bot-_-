@@ -26,9 +26,9 @@ HELP_TEXT = (
 async def cmd_start(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(
-        "Привет! Я Аиша. Помогу подобрать вуз по региону, баллам, направлению "
-        "и типу обучения. Если из-за поступления тревожно, я помогу разложить "
-        "задачу на маленькие шаги.",
+        "Привет! Я Аиша — помощник абитуриента.\n"
+        "Я помогу спокойно подобрать варианты вузов по региону, баллам, направлению и типу обучения.\n"
+        "А если из-за поступления тревожно или сложно выбрать — помогу разложить задачу на маленькие шаги.",
         reply_markup=main_menu_keyboard(),
     )
 
@@ -42,5 +42,5 @@ async def cmd_help(message: Message) -> None:
 async def cmd_reset(message: Message, state: FSMContext) -> None:
     await state.clear()
     if message.from_user:
-        user_storage.reset_user(message.from_user.id)
+        user_storage.reset_profile(message.from_user.id)
     await message.answer("Данные сброшены. Можно начать заново.", reply_markup=main_menu_keyboard())

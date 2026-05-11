@@ -17,7 +17,10 @@ class AIService:
             self.client = AsyncOpenAI(api_key=settings.openai_api_key)
         self.model = settings.openai_model
 
-    async def explain_universities(
+    def is_ai_available(self) -> bool:
+        return self.client is not None
+
+    async def explain_results(
         self,
         profile: dict[str, Any],
         universities: list[dict[str, Any]],
@@ -26,13 +29,35 @@ class AIService:
             return None
 
         prompt = (
-            "Пользователь подбирает вуз. Объясни найденные варианты простым языком, "
-            "без обещаний поступления. Дай короткий план из 3 шагов. "
+            "Пользователь подбирает вуз. Начни ответ с фразы «Как это можно понять:». "
+            "Объясни найденные варианты простым языком, без обещаний поступления. "
+            "Дай короткий план из 3 шагов. "
             "Не ставь диагнозы, не давай медицинские советы и не дави на пользователя.\n\n"
             f"Профиль: {json.dumps(profile, ensure_ascii=False)}\n"
             f"Варианты: {json.dumps(universities[:5], ensure_ascii=False)}"
         )
         return await self._ask(prompt, max_tokens=500)
+
+    async def explain_universities(
+        self,
+        profile: dict[str, Any],
+        universities: list[dict[str, Any]],
+    ) -> str | None:
+        return await self.explain_results(profile, universities)
+
+    async def generate_support_reply(self, situation: str, fallback: str) -> str:
+        if not self.client:
+            return fallback
+
+        prompt = (
+            "Сформулируй короткий мягкий ответ для абитуриента по ситуации. "
+            "Ответ должен быть по-русски, без диагнозов, медицинских советов, давления, "
+            "шуток над тревогой и обещаний поступления. В конце предложи один маленький шаг.\n\n"
+            f"Ситуация: {situation}\n"
+            f"Базовый смысл ответа: {fallback}"
+        )
+        answer = await self._ask(prompt, max_tokens=300)
+        return answer or fallback
 
     async def answer_free_question(self, text: str) -> str | None:
         if not self.client or not text.strip():
@@ -58,6 +83,9 @@ class AIService:
                         "role": "system",
                         "content": (
                             "Ты Аиша, спокойный и полезный помощник для абитуриентов. "
+                            "Отвечай мягко, спокойно и по-русски. "
+                            "Не ставь диагнозы. Не давай медицинские советы. "
+                            "Не обещай поступление. Не дави на пользователя. "
                             "Если в сообщении есть риск самоповреждения, суицида или опасности для себя, "
                             f"ответь только этим текстом: {CRISIS_RESPONSE}"
                         ),
@@ -75,3 +103,15 @@ class AIService:
 
 
 ai_service = AIService()
+
+
+def is_ai_available() -> bool:
+    return ai_service.is_ai_available()
+
+
+async def explain_results(profile: dict[str, Any], universities: list[dict[str, Any]]) -> str | None:
+    return await ai_service.explain_results(profile, universities)
+
+
+async def generate_support_reply(situation: str, fallback: str) -> str:
+    return await ai_service.generate_support_reply(situation, fallback)

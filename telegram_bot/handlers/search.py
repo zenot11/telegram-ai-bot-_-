@@ -8,12 +8,14 @@ from aiogram.types import Message
 from telegram_bot.config import settings
 from telegram_bot.keyboards.menu import main_menu_keyboard
 from telegram_bot.keyboards.search import education_type_keyboard
-from telegram_bot.services.ai import ai_service
+from telegram_bot.services.ai import explain_results
 from telegram_bot.services.api import UniversityAPIError, fetch_universities
 from telegram_bot.services.safety import CRISIS_RESPONSE, is_crisis_message
 from telegram_bot.services.validation import (
     education_type_label,
+    normalize_direction,
     normalize_education_type,
+    normalize_region,
     parse_score,
 )
 from telegram_bot.states.search_states import SearchStates
@@ -28,7 +30,8 @@ router = Router()
 async def start_search(message: Message, state: FSMContext) -> None:
     await state.set_state(SearchStates.region)
     await message.answer(
-        "С какого региона начнём? Напиши регион, например: Адыгея, Москва или Краснодарский край."
+        "С какого региона начнём?\n"
+        "Напиши регион, например: Адыгея, Москва или Краснодарский край."
     )
 
 
@@ -40,11 +43,12 @@ async def search_region(message: Message, state: FSMContext) -> None:
         await message.answer(CRISIS_RESPONSE, reply_markup=main_menu_keyboard())
         return
 
-    if not text:
+    if len(text) < 2:
         await message.answer("Напиши регион текстом, например: Адыгея.")
         return
 
-    await state.update_data(region=text)
+    region = normalize_region(text)
+    await state.update_data(region=region)
     await state.set_state(SearchStates.score)
     await message.answer("Теперь введи суммарные баллы ЕГЭ числом, например: 230.")
 
@@ -79,7 +83,8 @@ async def search_direction(message: Message, state: FSMContext) -> None:
         await message.answer("Напиши направление текстом, например: IT.")
         return
 
-    await state.update_data(direction=text)
+    direction = normalize_direction(text)
+    await state.update_data(direction=direction)
     await state.set_state(SearchStates.education_type)
     await message.answer("Какой тип обучения рассматриваешь?", reply_markup=education_type_keyboard())
 
@@ -94,7 +99,7 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
 
     education_type = normalize_education_type(text)
     if not education_type:
-        await message.answer("Выбери «Бюджет» или «Платное».", reply_markup=education_type_keyboard())
+        await message.answer("Выбери тип обучения: бюджет или платное.", reply_markup=education_type_keyboard())
         return
 
     data = await state.get_data()
@@ -132,8 +137,11 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
 
     if not results:
         await message.answer(
-            "По этим параметрам в тестовой базе ничего не нашлось. Попробуй другой регион, "
-            "направление или тип обучения.",
+            "Я не нашла точных вариантов по этим параметрам. Можно попробовать:\n"
+            "— изменить регион;\n"
+            "— выбрать другое направление;\n"
+            "— рассмотреть платное обучение;\n"
+            "— снизить фильтр по баллам, если это тестовые данные.",
             reply_markup=main_menu_keyboard(),
         )
         return
@@ -145,11 +153,13 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
         f"Баллы: {profile['score']}\n"
         f"Направление: {escape(profile['direction'])}\n"
         f"Тип: {education_type_label(profile['education_type'])}\n\n"
-        f"{cards}",
+        f"{cards}\n\n"
+        "Это тестовый подбор MVP. Для финальной версии данные должны приходить "
+        "из настоящей базы вузов или backend API.",
         reply_markup=main_menu_keyboard(),
     )
 
-    explanation = await ai_service.explain_universities(profile, results)
+    explanation = await explain_results(profile, results)
     if explanation:
         await message.answer(explanation, reply_markup=main_menu_keyboard())
 
@@ -157,17 +167,18 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
 def _format_university_card(index: int, item: dict) -> str:
     subjects = ", ".join(item.get("subjects") or []) or "не указаны"
     price = item.get("price")
-    price_line = ""
-    if price:
-        price_line = f"\nСтоимость: {int(price):,} руб./год".replace(",", " ")
+    if price is None:
+        price_text = "не указана"
+    else:
+        price_text = f"{int(price):,} руб./год".replace(",", " ")
 
     return (
-        f"<b>{index}. {escape(str(item.get('university', 'Вуз')))}</b>\n"
+        f"🎓 <b>{index}. {escape(str(item.get('university', 'Вуз')))}</b>\n"
         f"Город: {escape(str(item.get('city', 'не указан')))}\n"
         f"Программа: {escape(str(item.get('program', 'не указана')))}\n"
         f"Предметы: {escape(subjects)}\n"
         f"Мин. балл: {escape(str(item.get('min_score', 'не указан')))}\n"
-        f"Тип: {escape(str(item.get('type', 'не указан')))}"
-        f"{price_line}\n"
+        f"Тип: {escape(str(item.get('type', 'не указан')))}\n"
+        f"Стоимость: {escape(price_text)}\n"
         f"Сайт: {escape(str(item.get('url', 'не указан')))}"
     )
