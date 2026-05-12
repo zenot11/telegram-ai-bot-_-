@@ -1,5 +1,7 @@
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
+MAX_SAVE_BUTTONS = 5
+
 
 def education_type_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
@@ -12,11 +14,11 @@ def education_type_keyboard() -> ReplyKeyboardMarkup:
 def search_results_keyboard(results_count: int) -> ReplyKeyboardMarkup:
     save_buttons = [
         KeyboardButton(text=f"Сохранить {index}")
-        for index in range(1, min(results_count, 3) + 1)
+        for index in range(1, min(results_count, MAX_SAVE_BUTTONS) + 1)
     ]
     rows = []
     if save_buttons:
-        rows.append(save_buttons)
+        rows.extend(_chunk_buttons(save_buttons, 3))
     rows.extend(
         [
             [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Сравнить вузы")],
@@ -30,6 +32,10 @@ def search_results_keyboard(results_count: int) -> ReplyKeyboardMarkup:
         resize_keyboard=True,
         input_field_placeholder="Можно сохранить вариант",
     )
+
+
+def _chunk_buttons(buttons: list[KeyboardButton], size: int) -> list[list[KeyboardButton]]:
+    return [buttons[index:index + size] for index in range(0, len(buttons), size)]
 
 
 def no_results_keyboard() -> ReplyKeyboardMarkup:

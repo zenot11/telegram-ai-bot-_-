@@ -1,5 +1,7 @@
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
+MAX_FAVORITE_ACTION_BUTTONS = 5
+
 
 def main_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
@@ -36,12 +38,12 @@ def favorites_keyboard() -> ReplyKeyboardMarkup:
 def favorites_keyboard_for_count(items_count: int) -> ReplyKeyboardMarkup:
     delete_buttons = [
         KeyboardButton(text=f"Удалить {index}")
-        for index in range(1, min(items_count, 3) + 1)
+        for index in range(1, min(items_count, MAX_FAVORITE_ACTION_BUTTONS) + 1)
     ]
 
     keyboard = []
     if delete_buttons:
-        keyboard.append(delete_buttons)
+        keyboard.extend(_chunk_buttons(delete_buttons, 3))
     keyboard.extend(
         [
             [KeyboardButton(text="Очистить избранное")],
@@ -55,6 +57,10 @@ def favorites_keyboard_for_count(items_count: int) -> ReplyKeyboardMarkup:
         resize_keyboard=True,
         input_field_placeholder="Выбери действие",
     )
+
+
+def _chunk_buttons(buttons: list[KeyboardButton], size: int) -> list[list[KeyboardButton]]:
+    return [buttons[index:index + size] for index in range(0, len(buttons), size)]
 
 
 def empty_favorites_keyboard() -> ReplyKeyboardMarkup:

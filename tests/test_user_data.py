@@ -32,6 +32,17 @@ def second_university() -> dict:
     }
 
 
+def university_with_number(number: int) -> dict:
+    return {
+        "university": f"Вуз {number}",
+        "city": "Майкоп",
+        "program": f"Программа {number}",
+        "min_score": 170 + number,
+        "type": "бюджет",
+        "url": f"https://example{number}.ru",
+    }
+
+
 def test_new_user_has_empty_profile(tmp_path) -> None:
     storage = UserDataStorage(str(tmp_path / "user_data.json"))
 
@@ -116,6 +127,22 @@ def test_clear_favorites_after_remove(tmp_path) -> None:
     storage.clear_favorites(123)
 
     assert storage.get_favorites(123) == []
+
+
+def test_remove_fourth_and_fifth_favorite(tmp_path) -> None:
+    storage = UserDataStorage(str(tmp_path / "user_data.json"))
+
+    for index in range(1, 6):
+        storage.add_favorite(123, university_with_number(index))
+
+    removed_fourth = storage.remove_favorite(123, 3)
+    removed_fifth_after_shift = storage.remove_favorite(123, 3)
+
+    assert removed_fourth is not None
+    assert removed_fourth["university"] == "Вуз 4"
+    assert removed_fifth_after_shift is not None
+    assert removed_fifth_after_shift["university"] == "Вуз 5"
+    assert len(storage.get_favorites(123)) == 3
 
 
 def test_reset_profile_clears_profile_and_favorites(tmp_path) -> None:

@@ -65,15 +65,11 @@ def visible_recommendations(groups: dict[str, list[dict[str, Any]]]) -> list[dic
 
 
 def format_recommendation_summary(groups: dict[str, list[dict[str, Any]]]) -> str:
-    safe_count = len(groups.get(CATEGORY_SAFE, []))
-    realistic_count = len(groups.get(CATEGORY_REALISTIC, []))
-    ambitious_count = len(groups.get(CATEGORY_AMBITIOUS, []))
-
     return (
         "Я разделила варианты по уровню уверенности:\n"
-        f"🟢 Безопасные — есть заметный запас по баллам. Найдено: {safe_count}.\n"
-        f"🟡 Реалистичные — проходной балл близко к твоему. Найдено: {realistic_count}.\n"
-        f"🔴 Амбициозные — немного не хватает, но можно рассматривать как цель. Найдено: {ambitious_count}.\n\n"
+        "🟢 Безопасные — есть заметный запас по баллам.\n"
+        "🟡 Реалистичные — баллы близки к проходному уровню.\n"
+        "🔴 Амбициозные — немного не хватает, но можно рассматривать как цель.\n\n"
         "Это не гарантия поступления, а демонстрационная оценка для MVP."
     )
 

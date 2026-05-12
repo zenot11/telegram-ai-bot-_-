@@ -83,7 +83,7 @@ async def favorites(message: Message, state: FSMContext) -> None:
     items = user_storage.get_favorites(message.from_user.id)
     if not items:
         await message.answer(
-            "Пока избранных вузов нет. После подбора нажми «Сохранить 1», «Сохранить 2» или «Сохранить 3».",
+            "Пока избранных вузов нет. После подбора нажми «Сохранить N» рядом с понравившимся вариантом.",
             reply_markup=empty_favorites_keyboard(),
         )
         return
@@ -112,18 +112,20 @@ async def remove_favorite(message: Message, state: FSMContext) -> None:
         index = int(text.split()[-1]) - 1
     except (ValueError, IndexError):
         favorites_count = len(user_storage.get_favorites(message.from_user.id))
-        await message.answer("Не нашла такой номер в избранном.", reply_markup=favorites_keyboard_for_count(favorites_count))
+        await message.answer("Не нашла такой номер в избранном.", reply_markup=_favorites_reply_keyboard(favorites_count))
         return
 
     removed = user_storage.remove_favorite(message.from_user.id, index)
     if not removed:
         favorites_count = len(user_storage.get_favorites(message.from_user.id))
-        await message.answer("Не нашла такой номер в избранном.", reply_markup=favorites_keyboard_for_count(favorites_count))
+        await message.answer("Не нашла такой номер в избранном.", reply_markup=_favorites_reply_keyboard(favorites_count))
         return
 
     remaining_count = len(user_storage.get_favorites(message.from_user.id))
-    reply_markup = favorites_keyboard_for_count(remaining_count) if remaining_count else empty_favorites_keyboard()
-    suffix = "" if remaining_count else "\n\nВ избранном больше нет вузов."
+    reply_markup = _favorites_reply_keyboard(remaining_count)
+    suffix = "" if remaining_count else (
+        "\n\nПока избранных вузов нет. После подбора нажми «Сохранить N» рядом с понравившимся вариантом."
+    )
 
     await message.answer(
         f"Удалил из избранного: {escape(str(removed.get('university', 'Вуз')))} — "
@@ -167,20 +169,36 @@ async def categories_explanation(message: Message, state: FSMContext) -> None:
 
 
 def _format_favorite_card(index: int, item: dict) -> str:
-    return (
+    lines = [
         f"⭐ <b>{index}. {escape(str(item.get('university', 'Вуз')))}</b>\n"
-        f"Город: {escape(str(item.get('city', 'не указан')))}\n"
-        f"Программа: {escape(str(item.get('program', 'не указана')))}\n"
-        f"Мин. балл: {escape(str(item.get('min_score', 'не указан')))}\n"
-        f"Тип: {escape(str(item.get('type', 'не указан')))}\n"
-        f"Сайт: {escape(str(item.get('url', 'не указан')))}"
-    )
+        f"Город: {escape(_text_value(item.get('city')))}\n"
+        f"Программа: {escape(_text_value(item.get('program')))}\n"
+        f"Мин. балл: {escape(_text_value(item.get('min_score')))}\n"
+        f"Тип: {escape(_text_value(item.get('type')))}"
+    ]
+    if item.get("study_form"):
+        lines.append(f"Форма: {escape(str(item['study_form']))}")
+    if item.get("duration"):
+        lines.append(f"Срок: {escape(str(item['duration']))}")
+    if item.get("url"):
+        lines.append(f"Сайт: {escape(str(item['url']))}")
+    return "\n".join(lines)
 
 
 def _value(value: object) -> str:
     if value is None or value == "":
         return "не указано"
     return escape(str(value))
+
+
+def _text_value(value: object) -> str:
+    if value is None or value == "":
+        return "не указано"
+    return str(value)
+
+
+def _favorites_reply_keyboard(items_count: int):
+    return favorites_keyboard_for_count(items_count) if items_count else empty_favorites_keyboard()
 
 
 def _plural(count: int, one: str, few: str, many: str) -> str:

@@ -134,8 +134,13 @@ async def _show_compare_options(
     await state.set_state(CompareStates.choosing_items)
     await state.update_data(compare_source=source)
     source_title = "последних результатов" if source == "last_results" else "избранных вузов"
+    scope_hint = (
+        " Можно сравнить первые 3 варианта из текущей выдачи."
+        if len(items) > 3
+        else ""
+    )
     await message.answer(
-        f"Выбери, какие варианты из {source_title} сравнить. Сейчас доступно: {len(items)}.",
+        f"Выбери, какие варианты из {source_title} сравнить. Сейчас доступно: {len(items)}.{scope_hint}",
         reply_markup=compare_options_keyboard(len(items)),
     )
 

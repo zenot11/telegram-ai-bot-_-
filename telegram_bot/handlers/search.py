@@ -148,11 +148,12 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
 
     if not display_results:
         await message.answer(
-            "По этим параметрам я не нашла подходящих вариантов в демонстрационной базе. Можно попробовать:\n"
-            "— выбрать соседний регион;\n"
-            "— снизить уровень риска;\n"
-            "— посмотреть платное обучение;\n"
-            "— выбрать близкое направление.",
+            "Пока не нашла подходящих вариантов по этим параметрам.\n\n"
+            "Можно попробовать:\n"
+            "- выбрать соседний регион;\n"
+            "- рассмотреть платное обучение;\n"
+            "- изменить направление;\n"
+            "- проверить баллы.",
             reply_markup=no_results_keyboard(),
         )
         return
@@ -190,17 +191,17 @@ async def save_result_to_favorites(message: Message) -> None:
 
     text = message.text or ""
     try:
-        index = int(text.split()[-1]) - 1
+        result_number = int(text.split()[-1])
     except (ValueError, IndexError):
         await message.answer("Такого варианта сейчас нет. Попробуй выбрать другой номер.")
         return
 
     last_results = user_storage.get_last_results(message.from_user.id)
-    if index < 0 or index >= len(last_results):
+    item = _get_result_by_number(last_results, result_number)
+    if item is None:
         await message.answer("Такого варианта сейчас нет. Попробуй выбрать другой номер.")
         return
 
-    item = last_results[index]
     added = user_storage.add_favorite(message.from_user.id, item)
     if not added:
         await message.answer("Этот вариант уже есть в избранном.", reply_markup=search_results_keyboard(len(last_results)))
@@ -221,12 +222,10 @@ def _format_university_card(index: int, item: dict, user_score: int) -> str:
         f"Город: {escape(str(item.get('city', 'не указан')))}",
         f"Программа: {escape(str(item.get('program', 'не указана')))}",
         f"Категория: {escape(get_recommendation_label(category))}",
-        f"Предметы: {escape(subjects)}",
         f"Мин. балл: {escape(str(item.get('min_score', 'не указан')))}",
         f"Твои баллы: {user_score}",
         escape(format_score_delta(user_score, item)),
         f"Тип: {escape(str(item.get('type', 'не указан')))}",
-        f"Стоимость: {escape(_format_price(item.get('price')))}",
     ]
 
     if item.get("study_form"):
@@ -234,9 +233,15 @@ def _format_university_card(index: int, item: dict, user_score: int) -> str:
     if item.get("duration"):
         lines.append(f"Срок: {escape(str(item['duration']))}")
 
+    lines.append(f"Стоимость: {escape(_format_price(item.get('price')))}")
+    lines.append(f"Предметы: {escape(subjects)}")
+
+    if item.get("url"):
+        lines.append(f"Сайт: {escape(str(item['url']))}")
+
     lines.extend(
         [
-            f"Сайт: {escape(str(item.get('url', 'не указан')))}",
+            "",
             f"Пометка: {escape(str(item.get('note') or 'демонстрационные данные MVP'))}",
         ]
     )
@@ -252,3 +257,10 @@ def _format_price(price: object) -> str:
     if isinstance(price, str) and price.strip().isdigit():
         return f"{int(price):,} руб./год".replace(",", " ")
     return str(price)
+
+
+def _get_result_by_number(results: list[dict], result_number: int) -> dict | None:
+    index = result_number - 1
+    if index < 0 or index >= len(results):
+        return None
+    return results[index]
