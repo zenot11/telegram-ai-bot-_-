@@ -6,7 +6,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from telegram_bot.handlers.start import HELP_TEXT
-from telegram_bot.keyboards.menu import favorites_keyboard, main_menu_keyboard, profile_keyboard
+from telegram_bot.keyboards.menu import (
+    empty_favorites_keyboard,
+    favorites_keyboard_for_count,
+    main_menu_keyboard,
+    profile_keyboard,
+)
 from telegram_bot.services.validation import (
     AVAILABLE_DIRECTIONS,
     AVAILABLE_REGIONS,
@@ -47,7 +52,7 @@ async def my_profile(message: Message, state: FSMContext) -> None:
         return
 
     text = (
-        "Мой профиль:\n"
+        "<b>Мой профиль</b>\n\n"
         f"Telegram ID: {summary['telegram_id']}\n"
         f"Регион: {_value(summary.get('region'))}\n"
         f"Баллы: {_value(summary.get('score'))}\n"
@@ -77,13 +82,13 @@ async def favorites(message: Message, state: FSMContext) -> None:
     items = user_storage.get_favorites(message.from_user.id)
     if not items:
         await message.answer(
-            "В избранном пока пусто. Сначала пройди подбор вузов и сохрани понравившийся вариант.",
-            reply_markup=profile_keyboard(),
+            "Пока избранных вузов нет. После подбора нажми «Сохранить 1», «Сохранить 2» или «Сохранить 3».",
+            reply_markup=empty_favorites_keyboard(),
         )
         return
 
     cards = "\n\n".join(_format_favorite_card(index, item) for index, item in enumerate(items, start=1))
-    await message.answer(cards, reply_markup=favorites_keyboard())
+    await message.answer(cards, reply_markup=favorites_keyboard_for_count(len(items)))
 
 
 @router.message(F.text == "Очистить избранное")
@@ -91,7 +96,40 @@ async def clear_favorites(message: Message, state: FSMContext) -> None:
     await state.clear()
     if message.from_user:
         user_storage.clear_favorites(message.from_user.id)
-    await message.answer("Избранное очищено.", reply_markup=favorites_keyboard())
+    await message.answer("Избранное очищено.", reply_markup=empty_favorites_keyboard())
+
+
+@router.message(F.text.regexp(r"^Удалить\s+\d+$"))
+async def remove_favorite(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    if not message.from_user:
+        await message.answer("Не удалось определить пользователя.", reply_markup=main_menu_keyboard())
+        return
+
+    text = message.text or ""
+    try:
+        index = int(text.split()[-1]) - 1
+    except (ValueError, IndexError):
+        favorites_count = len(user_storage.get_favorites(message.from_user.id))
+        await message.answer("Не нашла такой номер в избранном.", reply_markup=favorites_keyboard_for_count(favorites_count))
+        return
+
+    removed = user_storage.remove_favorite(message.from_user.id, index)
+    if not removed:
+        favorites_count = len(user_storage.get_favorites(message.from_user.id))
+        await message.answer("Не нашла такой номер в избранном.", reply_markup=favorites_keyboard_for_count(favorites_count))
+        return
+
+    remaining_count = len(user_storage.get_favorites(message.from_user.id))
+    reply_markup = favorites_keyboard_for_count(remaining_count) if remaining_count else empty_favorites_keyboard()
+    suffix = "" if remaining_count else "\n\nВ избранном больше нет вузов."
+
+    await message.answer(
+        f"Удалил из избранного: {escape(str(removed.get('university', 'Вуз')))} — "
+        f"{escape(str(removed.get('program', 'программа')))}"
+        f"{suffix}",
+        reply_markup=reply_markup,
+    )
 
 
 @router.message(F.text == "Направления")

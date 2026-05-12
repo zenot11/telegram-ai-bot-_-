@@ -8,7 +8,12 @@ def compare_universities(items: list[dict[str, Any]]) -> dict[str, Any]:
         "items": selected,
         "safe_option": get_min_score_safe_option(selected),
         "ambitious_option": get_max_score_ambitious_option(selected),
-        "cheapest_paid_option": get_cheapest_paid_option(selected),
+        "cheapest_option": get_cheapest_option(selected),
+        "cheapest_paid_option": get_cheapest_option(selected),
+        "budget_options": sum(1 for item in selected if _is_budget(item)),
+        "paid_options": sum(1 for item in selected if _is_paid(item)),
+        "common_subjects": get_common_subjects(selected),
+        "unique_subjects": get_unique_subjects(selected),
         "has_enough_items": len(selected) >= 2,
     }
 
@@ -27,11 +32,12 @@ def format_comparison(items: list[dict[str, Any]]) -> str:
     conclusion = _format_conclusion(comparison)
 
     return (
-        "Сравнение вузов:\n\n"
+        "<b>Сравнение вузов</b>\n\n"
         f"{cards}\n\n"
-        "Вывод:\n"
+        "<b>Вывод:</b>\n"
         f"{conclusion}\n"
-        "- Данные демонстрационные, для финального решения нужно сверить их с официальным сайтом вуза."
+        "\nВажно: Данные демонстрационные для MVP. "
+        "Для финальной версии нужно подключить настоящую базу вузов или backend API."
     )
 
 
@@ -49,11 +55,34 @@ def get_max_score_ambitious_option(items: list[dict[str, Any]]) -> dict[str, Any
     return max(scored, key=lambda item: _score(item) or 0)
 
 
-def get_cheapest_paid_option(items: list[dict[str, Any]]) -> dict[str, Any] | None:
-    paid = [item for item in items if _price(item) is not None]
-    if not paid:
+def get_cheapest_option(items: list[dict[str, Any]]) -> dict[str, Any] | None:
+    priced = [item for item in items if _price(item) is not None]
+    if not priced:
         return None
-    return min(paid, key=lambda item: _price(item) or 0)
+    return min(priced, key=lambda item: _price(item) or 0)
+
+
+def get_cheapest_paid_option(items: list[dict[str, Any]]) -> dict[str, Any] | None:
+    return get_cheapest_option(items)
+
+
+def get_common_subjects(items: list[dict[str, Any]]) -> list[str]:
+    subject_sets = [_subject_set(item) for item in items]
+    subject_sets = [subjects for subjects in subject_sets if subjects]
+    if len(subject_sets) < 2:
+        return []
+    return sorted(set.intersection(*subject_sets))
+
+
+def get_unique_subjects(items: list[dict[str, Any]]) -> list[str]:
+    subject_sets = [_subject_set(item) for item in items]
+    subject_sets = [subjects for subjects in subject_sets if subjects]
+    if len(subject_sets) < 2:
+        return []
+
+    common = set(get_common_subjects(items))
+    all_subjects = set.union(*subject_sets)
+    return sorted(all_subjects - common)
 
 
 def _format_item(index: int, item: dict[str, Any]) -> str:
@@ -61,14 +90,12 @@ def _format_item(index: int, item: dict[str, Any]) -> str:
     subjects_text = ", ".join(subjects) if isinstance(subjects, list) and subjects else "не указаны"
 
     return (
-        f"<b>{index}. {escape(_text(item.get('university'), 'Вуз не указан'))}</b>\n"
+        f"<b>{index}. {escape(_title_short(item))}</b>\n"
         f"Город: {escape(_text(item.get('city')))}\n"
-        f"Программа: {escape(_text(item.get('program')))}\n"
-        f"Направление: {escape(_text(item.get('direction')))}\n"
-        f"Предметы: {escape(subjects_text)}\n"
         f"Мин. балл: {escape(_text(item.get('min_score')))}\n"
         f"Тип: {escape(_text(item.get('type')))}\n"
         f"Стоимость: {escape(_format_price(item.get('price')))}\n"
+        f"Предметы: {escape(subjects_text)}\n"
         f"Сайт: {escape(_text(item.get('url')))}"
     )
 
@@ -78,21 +105,39 @@ def _format_conclusion(comparison: dict[str, Any]) -> str:
 
     safe = comparison.get("safe_option")
     if safe:
-        lines.append(f"- Самый безопасный по баллам вариант: {_title(safe)}.")
+        lines.append(f"Самый безопасный вариант по баллам: {escape(_title_short(safe))}, потому что минимальный балл ниже.")
     else:
-        lines.append("- Самый безопасный по баллам вариант определить нельзя: минимальные баллы не указаны.")
+        lines.append("Самый безопасный вариант по баллам определить нельзя: минимальные баллы не указаны.")
 
     ambitious = comparison.get("ambitious_option")
     if ambitious:
-        lines.append(f"- Самый амбициозный по баллам вариант: {_title(ambitious)}.")
+        lines.append(f"Более амбициозный вариант: {escape(_title_short(ambitious))}, потому что минимальный балл выше.")
     else:
-        lines.append("- Самый амбициозный вариант определить нельзя: минимальные баллы не указаны.")
+        lines.append("Более амбициозный вариант определить нельзя: минимальные баллы не указаны.")
 
-    cheapest = comparison.get("cheapest_paid_option")
+    budget_count = comparison.get("budget_options", 0)
+    paid_count = comparison.get("paid_options", 0)
+    lines.append(f"По типу обучения: бюджетных вариантов — {budget_count}, платных — {paid_count}.")
+
+    cheapest = comparison.get("cheapest_option")
     if cheapest:
-        lines.append(f"- Самый дешёвый платный вариант среди выбранных: {_title(cheapest)}.")
+        lines.append(f"По стоимости: самый дешёвый вариант среди выбранных — {escape(_title_short(cheapest))}.")
+    elif comparison.get("budget_options") == len(comparison.get("items", [])):
+        lines.append("По стоимости: все выбранные варианты бюджетные, стоимость не указана.")
+    else:
+        lines.append("По стоимости: недостаточно данных для сравнения.")
 
-    lines.append("- Если нужен более безопасный вариант, лучше смотреть вуз с меньшим минимальным баллом.")
+    common_subjects = comparison.get("common_subjects") or []
+    unique_subjects = comparison.get("unique_subjects") or []
+    if common_subjects:
+        lines.append(f"Общие предметы: {escape(', '.join(common_subjects))}.")
+        if unique_subjects:
+            lines.append(f"Отличающиеся предметы: {escape(', '.join(unique_subjects))}.")
+    elif unique_subjects:
+        lines.append("Общих предметов не видно по тестовым данным.")
+    else:
+        lines.append("Предметы не указаны или данных недостаточно для сравнения.")
+
     return "\n".join(lines)
 
 
@@ -112,6 +157,21 @@ def _price(item: dict[str, Any]) -> int | None:
     if isinstance(value, str) and value.isdigit():
         return int(value)
     return None
+
+
+def _is_budget(item: dict[str, Any]) -> bool:
+    return str(item.get("type", "")).strip().lower() in {"бюджет", "budget"}
+
+
+def _is_paid(item: dict[str, Any]) -> bool:
+    return str(item.get("type", "")).strip().lower() in {"платное", "paid"}
+
+
+def _subject_set(item: dict[str, Any]) -> set[str]:
+    subjects = item.get("subjects")
+    if not isinstance(subjects, list):
+        return set()
+    return {str(subject).strip().lower() for subject in subjects if str(subject).strip()}
 
 
 def _format_price(value: Any) -> str:
@@ -134,3 +194,9 @@ def _title(item: dict[str, Any]) -> str:
     program = _text(item.get("program"), "программа не указана")
     score = _text(item.get("min_score"))
     return f"{university} — {program} (мин. балл: {score})"
+
+
+def _title_short(item: dict[str, Any]) -> str:
+    university = _text(item.get("university"), "Вуз")
+    program = _text(item.get("program"), "программа не указана")
+    return f"{university} — {program}"

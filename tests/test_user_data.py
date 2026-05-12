@@ -21,6 +21,17 @@ def sample_university() -> dict:
     }
 
 
+def second_university() -> dict:
+    return {
+        "university": "МГТУ",
+        "city": "Майкоп",
+        "program": "Информационные системы и технологии",
+        "min_score": 172,
+        "type": "бюджет",
+        "url": "https://mkgtu.ru",
+    }
+
+
 def test_new_user_has_empty_profile(tmp_path) -> None:
     storage = UserDataStorage(str(tmp_path / "user_data.json"))
 
@@ -66,6 +77,42 @@ def test_clear_favorites(tmp_path) -> None:
     storage = UserDataStorage(str(tmp_path / "user_data.json"))
 
     storage.add_favorite(123, sample_university())
+    storage.clear_favorites(123)
+
+    assert storage.get_favorites(123) == []
+
+
+def test_remove_favorite_removes_selected_item(tmp_path) -> None:
+    storage = UserDataStorage(str(tmp_path / "user_data.json"))
+
+    storage.add_favorite(123, sample_university())
+    storage.add_favorite(123, second_university())
+
+    removed = storage.remove_favorite(123, 0)
+
+    assert removed is not None
+    assert removed["university"] == "АГУ"
+    favorites = storage.get_favorites(123)
+    assert len(favorites) == 1
+    assert favorites[0]["university"] == "МГТУ"
+
+
+def test_remove_favorite_ignores_invalid_index(tmp_path) -> None:
+    storage = UserDataStorage(str(tmp_path / "user_data.json"))
+
+    storage.add_favorite(123, sample_university())
+
+    assert storage.remove_favorite(123, 10) is None
+    assert storage.remove_favorite(123, -1) is None
+    assert len(storage.get_favorites(123)) == 1
+
+
+def test_clear_favorites_after_remove(tmp_path) -> None:
+    storage = UserDataStorage(str(tmp_path / "user_data.json"))
+
+    storage.add_favorite(123, sample_university())
+    storage.add_favorite(123, second_university())
+    storage.remove_favorite(123, 0)
     storage.clear_favorites(123)
 
     assert storage.get_favorites(123) == []

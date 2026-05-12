@@ -33,12 +33,20 @@ def test_safe_option_has_lower_min_score() -> None:
     items = [university("АГУ", 185), university("МГТУ", 172)]
 
     assert get_min_score_safe_option(items)["university"] == "МГТУ"
+    assert compare_universities(items)["safe_option"]["university"] == "МГТУ"
 
 
 def test_ambitious_option_has_higher_min_score() -> None:
     items = [university("АГУ", 185), university("МГТУ", 172)]
 
     assert get_max_score_ambitious_option(items)["university"] == "АГУ"
+    assert compare_universities(items)["ambitious_option"]["university"] == "АГУ"
+
+
+def test_cheapest_option_for_paid_universities() -> None:
+    items = [university("Вуз 1", 190, price=220000), university("Вуз 2", 180, price=140000)]
+
+    assert compare_universities(items)["cheapest_option"]["university"] == "Вуз 2"
 
 
 def test_formatted_text_contains_university_names() -> None:
@@ -64,6 +72,13 @@ def test_missing_price_is_rendered_as_not_specified() -> None:
     text = format_comparison([university("АГУ", 185), university("МГТУ", 172)])
 
     assert "Стоимость: не указана" in text
+
+
+def test_common_subjects_are_rendered() -> None:
+    text = format_comparison([university("АГУ", 185), university("МГТУ", 172)])
+
+    assert "Общие предметы" in text
+    assert "математика" in text
 
 
 def test_single_university_explains_need_for_two_options() -> None:

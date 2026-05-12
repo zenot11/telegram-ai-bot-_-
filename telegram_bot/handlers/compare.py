@@ -3,7 +3,12 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from telegram_bot.keyboards.compare import compare_options_keyboard, compare_source_keyboard
+from telegram_bot.keyboards.compare import (
+    compare_options_keyboard,
+    compare_source_keyboard,
+    empty_compare_keyboard,
+    not_enough_favorites_keyboard,
+)
 from telegram_bot.keyboards.menu import main_menu_keyboard
 from telegram_bot.services.ai import explain_comparison
 from telegram_bot.services.compare import format_comparison
@@ -30,8 +35,8 @@ async def start_compare(message: Message, state: FSMContext) -> None:
 
     if not has_last_results and not has_favorites:
         await message.answer(
-            "Пока нечего сравнивать. Сначала пройди подбор вузов или сохрани варианты в избранное.",
-            reply_markup=main_menu_keyboard(),
+            "Пока нечего сравнивать. Сначала пройди подбор вузов или добавь варианты в избранное.",
+            reply_markup=empty_compare_keyboard(),
         )
         return
 
@@ -111,11 +116,18 @@ async def _show_compare_options(
 ) -> None:
     if len(items) < 2:
         await state.clear()
-        await message.answer(
-            "Для сравнения нужно минимум два варианта. "
-            "Пройди подбор ещё раз или сохрани несколько вузов в избранное.",
-            reply_markup=main_menu_keyboard(),
-        )
+        if source == "favorites":
+            await message.answer(
+                "Для сравнения нужно минимум два избранных вуза. "
+                "Сначала сохрани несколько вариантов после подбора.",
+                reply_markup=not_enough_favorites_keyboard(),
+            )
+        else:
+            await message.answer(
+                "Для сравнения нужно минимум два варианта. "
+                "Пройди подбор ещё раз или сохрани несколько вузов в избранное.",
+                reply_markup=empty_compare_keyboard(),
+            )
         return
 
     await state.set_state(CompareStates.choosing_items)

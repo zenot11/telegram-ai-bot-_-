@@ -1,6 +1,29 @@
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
 
+def empty_compare_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Подобрать вуз")],
+            [KeyboardButton(text="Вернуться в меню")],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Сначала подбери вузы",
+    )
+
+
+def not_enough_favorites_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Подобрать вуз")],
+            [KeyboardButton(text="Избранные вузы")],
+            [KeyboardButton(text="Вернуться в меню")],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Сохрани минимум два варианта",
+    )
+
+
 def compare_source_keyboard(has_last_results: bool, has_favorites: bool) -> ReplyKeyboardMarkup:
     rows = []
     if has_last_results:
