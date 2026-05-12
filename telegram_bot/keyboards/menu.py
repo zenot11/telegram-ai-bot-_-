@@ -4,8 +4,8 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 def main_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Мой профиль")],
-            [KeyboardButton(text="Избранные вузы")],
+            [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Сравнить вузы")],
+            [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Мой профиль")],
             [KeyboardButton(text="Направления"), KeyboardButton(text="Регионы")],
             [KeyboardButton(text="Психологическая поддержка")],
             [KeyboardButton(text="Помощь")],
@@ -31,6 +31,7 @@ def favorites_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="Очистить избранное")],
+            [KeyboardButton(text="Сравнить вузы")],
             [KeyboardButton(text="Подобрать ещё")],
             [KeyboardButton(text="Вернуться в меню")],
         ],

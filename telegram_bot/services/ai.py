@@ -90,6 +90,20 @@ class AIService:
         )
         return await self._ask(user_prompt, max_tokens=300)
 
+    async def explain_comparison(self, items: list[dict[str, Any]]) -> str | None:
+        if not self.client or not items:
+            return None
+
+        user_prompt = (
+            "Коротко поясни сравнение вузов для абитуриента. "
+            "Объясни простым языком, какой вариант выглядит безопаснее по минимальному баллу, "
+            "какой амбициознее, и на что обратить внимание. "
+            "Не обещай поступление, не давай гарантий, не дави на пользователя. "
+            "Обязательно скажи, что данные демонстрационные и их нужно сверить с официальными сайтами вузов.\n\n"
+            f"Варианты для сравнения: {json.dumps(items[:3], ensure_ascii=False)}"
+        )
+        return await self._ask(user_prompt, max_tokens=320)
+
     async def answer_free_question(self, text: str) -> str | None:
         if is_crisis_message(text):
             return CRISIS_RESPONSE
@@ -140,3 +154,7 @@ async def explain_results(profile: dict[str, Any], results: list[dict[str, Any]]
 
 async def generate_support_reply(user_text: str, situation: str | None = None) -> str | None:
     return await ai_service.generate_support_reply(user_text, situation)
+
+
+async def explain_comparison(items: list[dict[str, Any]]) -> str | None:
+    return await ai_service.explain_comparison(items)
