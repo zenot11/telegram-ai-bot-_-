@@ -17,6 +17,8 @@ def university(name: str, min_score: int | None, price: int | None = None) -> di
         "type": "бюджет" if price is None else "платное",
         "price": price,
         "url": "https://example.ru",
+        "study_form": "очная",
+        "duration": "4 года",
     }
 
 
@@ -81,6 +83,13 @@ def test_missing_price_is_rendered_as_not_specified() -> None:
     text = format_comparison([university("АГУ", 185), university("МГТУ", 172)])
 
     assert "Стоимость: не указана" in text
+
+
+def test_study_form_and_duration_are_rendered() -> None:
+    text = format_comparison([university("АГУ", 185), university("МГТУ", 172)])
+
+    assert "Форма: очная" in text
+    assert "Срок: 4 года" in text
 
 
 def test_common_subjects_are_rendered() -> None:

@@ -20,7 +20,10 @@ DIRECTION_SYNONYMS = {
     "экономика": ("экономика", "эконом", "бизнес", "финансы", "менеджмент"),
     "педагогика": ("педагогика", "педагог", "учитель", "образование"),
     "юриспруденция": ("юриспруденция", "юрист", "право", "законы"),
-    "инженерия": ("инженерия", "инженер", "техника", "машиностроение", "строительство"),
+    "инженерия": ("инженерия", "инженер", "техника", "машиностроение"),
+    "дизайн": ("дизайн", "графика", "визуальные"),
+    "строительство": ("строительство", "архитектура", "строительный"),
+    "туризм": ("туризм", "гостиницы", "гостиничное", "сервис"),
 }
 
 
@@ -29,14 +32,14 @@ def load_universities() -> list[dict[str, Any]]:
 
 
 def normalize(text: str) -> str:
-    return text.strip().lower().replace("ё", "е")
+    return " ".join(text.strip().lower().replace("ё", "е").split())
 
 
 def normalize_type(value: str) -> str:
     normalized = normalize(value)
-    if normalized in {"budget", "бюджет"} or "бюдж" in normalized:
+    if normalized in {"budget", "бюджет", "бюджетное"} or "бюдж" in normalized:
         return "бюджет"
-    if normalized in {"paid", "платное", "платно", "контракт"} or "плат" in normalized:
+    if normalized in {"paid", "платное", "платно", "контракт", "контрактное"} or "плат" in normalized:
         return "платное"
     return normalized
 

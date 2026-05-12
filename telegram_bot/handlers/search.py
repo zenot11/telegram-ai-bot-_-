@@ -7,7 +7,7 @@ from aiogram.types import Message
 
 from telegram_bot.config import settings
 from telegram_bot.keyboards.menu import main_menu_keyboard
-from telegram_bot.keyboards.search import education_type_keyboard, search_results_keyboard
+from telegram_bot.keyboards.search import education_type_keyboard, no_results_keyboard, search_results_keyboard
 from telegram_bot.services.ai import explain_recommendation_groups, explain_results
 from telegram_bot.services.api import UniversityAPIError, fetch_universities
 from telegram_bot.services.recommendation import (
@@ -148,12 +148,12 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
 
     if not display_results:
         await message.answer(
-            "Я не нашла точных вариантов по этим параметрам. Можно попробовать:\n"
-            "— изменить регион;\n"
-            "— выбрать другое направление;\n"
-            "— рассмотреть платное обучение;\n"
-            "— снизить фильтр по баллам, если это тестовые данные.",
-            reply_markup=main_menu_keyboard(),
+            "По этим параметрам я не нашла подходящих вариантов в демонстрационной базе. Можно попробовать:\n"
+            "— выбрать соседний регион;\n"
+            "— снизить уровень риска;\n"
+            "— посмотреть платное обучение;\n"
+            "— выбрать близкое направление.",
+            reply_markup=no_results_keyboard(),
         )
         return
 
@@ -215,24 +215,40 @@ async def save_result_to_favorites(message: Message) -> None:
 
 def _format_university_card(index: int, item: dict, user_score: int) -> str:
     subjects = ", ".join(item.get("subjects") or []) or "не указаны"
-    price = item.get("price")
-    if price is None:
-        price_text = "не указана"
-    else:
-        price_text = f"{int(price):,} руб./год".replace(",", " ")
-
     category = classify_university(user_score, item)
+    lines = [
+        f"🎓 <b>{index}. {escape(str(item.get('university', 'Вуз')))}</b>",
+        f"Город: {escape(str(item.get('city', 'не указан')))}",
+        f"Программа: {escape(str(item.get('program', 'не указана')))}",
+        f"Категория: {escape(get_recommendation_label(category))}",
+        f"Предметы: {escape(subjects)}",
+        f"Мин. балл: {escape(str(item.get('min_score', 'не указан')))}",
+        f"Твои баллы: {user_score}",
+        escape(format_score_delta(user_score, item)),
+        f"Тип: {escape(str(item.get('type', 'не указан')))}",
+        f"Стоимость: {escape(_format_price(item.get('price')))}",
+    ]
 
-    return (
-        f"🎓 <b>{index}. {escape(str(item.get('university', 'Вуз')))}</b>\n"
-        f"Город: {escape(str(item.get('city', 'не указан')))}\n"
-        f"Программа: {escape(str(item.get('program', 'не указана')))}\n"
-        f"Категория: {escape(get_recommendation_label(category))}\n"
-        f"Предметы: {escape(subjects)}\n"
-        f"Мин. балл: {escape(str(item.get('min_score', 'не указан')))}\n"
-        f"Твои баллы: {user_score}\n"
-        f"{escape(format_score_delta(user_score, item))}\n"
-        f"Тип: {escape(str(item.get('type', 'не указан')))}\n"
-        f"Стоимость: {escape(price_text)}\n"
-        f"Сайт: {escape(str(item.get('url', 'не указан')))}"
+    if item.get("study_form"):
+        lines.append(f"Форма: {escape(str(item['study_form']))}")
+    if item.get("duration"):
+        lines.append(f"Срок: {escape(str(item['duration']))}")
+
+    lines.extend(
+        [
+            f"Сайт: {escape(str(item.get('url', 'не указан')))}",
+            f"Пометка: {escape(str(item.get('note') or 'демонстрационные данные MVP'))}",
+        ]
     )
+
+    return "\n".join(lines)
+
+
+def _format_price(price: object) -> str:
+    if price is None or price == "":
+        return "не указана"
+    if isinstance(price, int):
+        return f"{price:,} руб./год".replace(",", " ")
+    if isinstance(price, str) and price.strip().isdigit():
+        return f"{int(price):,} руб./год".replace(",", " ")
+    return str(price)

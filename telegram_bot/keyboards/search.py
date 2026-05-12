@@ -32,6 +32,18 @@ def search_results_keyboard(results_count: int) -> ReplyKeyboardMarkup:
     )
 
 
+def no_results_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Новый подбор")],
+            [KeyboardButton(text="Регионы"), KeyboardButton(text="Направления")],
+            [KeyboardButton(text="Вернуться в меню")],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Попробуй изменить запрос",
+    )
+
+
 def support_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[

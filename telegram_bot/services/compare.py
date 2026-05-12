@@ -151,6 +151,8 @@ def _format_item(index: int, item: dict[str, Any], user_score: int | None) -> st
         f"{score_lines}"
         f"Тип: {escape(_text(item.get('type')))}\n"
         f"Стоимость: {escape(_format_price(item.get('price')))}\n"
+        f"Форма: {escape(_text(item.get('study_form')))}\n"
+        f"Срок: {escape(_text(item.get('duration')))}\n"
         f"Предметы: {escape(subjects_text)}\n"
         f"Сайт: {escape(_text(item.get('url')))}"
     )

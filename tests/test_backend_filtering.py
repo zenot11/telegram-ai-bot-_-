@@ -67,15 +67,45 @@ def test_informatics_direction_finds_it() -> None:
     assert all(item["direction"] == "IT" for item in results)
 
 
+def test_lawyer_direction_finds_law_programs() -> None:
+    results = filter_universities(load_universities(), "Москва", 260, "юрист", "контракт")
+
+    assert results
+    assert all(item["direction"] == "юриспруденция" for item in results)
+    assert all(item["type"] == "платное" for item in results)
+
+
+def test_med_direction_finds_medicine_programs() -> None:
+    results = filter_universities(load_universities(), "Татарстан", 250, "мед", "бюджет")
+
+    assert results
+    assert all(item["direction"] == "медицина" for item in results)
+
+
 def test_budget_type_normalization() -> None:
     assert normalize_type("Бюджет") == "бюджет"
+    assert normalize_type("бюджетное") == "бюджет"
     assert normalize_type("budget") == "бюджет"
+
+
+def test_paid_type_normalization() -> None:
+    assert normalize_type("Платное") == "платное"
+    assert normalize_type("контракт") == "платное"
+    assert normalize_type("paid") == "платное"
 
 
 def test_limit_restricts_results_count() -> None:
     results = filter_universities(load_universities(), "Адыгея", 230, "IT", "Бюджет", limit=2)
 
     assert len(results) <= 2
+
+
+def test_search_does_not_return_unavailable_programs() -> None:
+    score = 220
+    results = filter_universities(load_universities(), "Крым", score, "туризм", "бюджет")
+
+    assert results
+    assert all(item["min_score"] <= score + AMBITIOUS_SCORE_MARGIN for item in results)
 
 
 def test_unknown_region_returns_empty_list() -> None:
