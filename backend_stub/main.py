@@ -69,6 +69,28 @@ def canonical_direction(text: str) -> str | None:
     return None
 
 
+def filter_universities(
+    rows: list[dict[str, Any]],
+    region: str,
+    score: int,
+    direction: str,
+    education_type: str,
+    limit: int = 5,
+) -> list[dict[str, Any]]:
+    normalized_type = normalize_type(education_type)
+    safe_limit = max(1, min(limit, 20))
+
+    results = [
+        item
+        for item in rows
+        if normalize(item.get("region", "")) == normalize(region)
+        and int(item.get("min_score", 0)) <= score
+        and normalize(item.get("type", "")) == normalized_type
+        and direction_matches(item, direction)
+    ]
+    return results[:safe_limit]
+
+
 async def health(_: web.Request) -> web.Response:
     return web.Response(text="ok")
 
@@ -89,16 +111,7 @@ async def universities(request: web.Request) -> web.Response:
     except ValueError:
         return web.json_response({"error": "score must be an integer"}, status=400)
 
-    rows = load_universities()
-
-    results = [
-        item
-        for item in rows
-        if normalize(item.get("region", "")) == normalize(region)
-        and int(item.get("min_score", 0)) <= score
-        and normalize(item.get("type", "")) == education_type
-        and direction_matches(item, direction)
-    ]
+    results = filter_universities(load_universities(), region, score, direction, education_type, limit)
     return web.json_response(results[:limit], dumps=_json_dumps)
 
 
