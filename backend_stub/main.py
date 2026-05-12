@@ -6,6 +6,8 @@ from typing import Any
 from aiohttp import web
 from dotenv import load_dotenv
 
+from telegram_bot.services.recommendation import AMBITIOUS_SCORE_MARGIN
+
 
 load_dotenv()
 
@@ -84,11 +86,21 @@ def filter_universities(
         item
         for item in rows
         if normalize(item.get("region", "")) == normalize(region)
-        and int(item.get("min_score", 0)) <= score
+        and _min_score(item) is not None
+        and (_min_score(item) or 0) <= score + AMBITIOUS_SCORE_MARGIN
         and normalize(item.get("type", "")) == normalized_type
         and direction_matches(item, direction)
     ]
     return results[:safe_limit]
+
+
+def _min_score(item: dict[str, Any]) -> int | None:
+    value = item.get("min_score")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    return None
 
 
 async def health(_: web.Request) -> web.Response:

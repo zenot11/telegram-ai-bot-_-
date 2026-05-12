@@ -8,8 +8,16 @@ from aiogram.types import Message
 from telegram_bot.config import settings
 from telegram_bot.keyboards.menu import main_menu_keyboard
 from telegram_bot.keyboards.search import education_type_keyboard, search_results_keyboard
-from telegram_bot.services.ai import explain_results
+from telegram_bot.services.ai import explain_recommendation_groups, explain_results
 from telegram_bot.services.api import UniversityAPIError, fetch_universities
+from telegram_bot.services.recommendation import (
+    classify_university,
+    format_recommendation_summary,
+    format_score_delta,
+    get_recommendation_label,
+    group_universities_by_recommendation,
+    visible_recommendations,
+)
 from telegram_bot.services.safety import CRISIS_RESPONSE, is_crisis_message
 from telegram_bot.services.validation import (
     education_type_label,
@@ -130,12 +138,15 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
         )
         return
 
+    groups = group_universities_by_recommendation(profile["score"], results)
+    display_results = visible_recommendations(groups)
+
     if message.from_user:
-        user_storage.save_search(message.from_user.id, profile, results)
+        user_storage.save_search(message.from_user.id, profile, display_results)
 
     await state.clear()
 
-    if not results:
+    if not display_results:
         await message.answer(
             "Я не нашла точных вариантов по этим параметрам. Можно попробовать:\n"
             "— изменить регион;\n"
@@ -146,7 +157,11 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
         )
         return
 
-    cards = "\n\n".join(_format_university_card(i, item) for i, item in enumerate(results, start=1))
+    cards = "\n\n".join(
+        _format_university_card(i, item, profile["score"])
+        for i, item in enumerate(display_results, start=1)
+    )
+    summary = format_recommendation_summary(groups)
     await message.answer(
         f"Нашла варианты по запросу:\n"
         f"Регион: {escape(profile['region'])}\n"
@@ -154,14 +169,17 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
         f"Направление: {escape(profile['direction'])}\n"
         f"Тип: {education_type_label(profile['education_type'])}\n\n"
         f"{cards}\n\n"
+        f"{summary}\n\n"
         "Это тестовый подбор MVP. Для финальной версии данные должны приходить "
         "из настоящей базы вузов или backend API.",
-        reply_markup=search_results_keyboard(len(results)),
+        reply_markup=search_results_keyboard(len(display_results)),
     )
 
-    explanation = await explain_results(profile, results)
+    explanation = await explain_recommendation_groups(profile, groups)
+    if not explanation:
+        explanation = await explain_results(profile, display_results)
     if explanation:
-        await message.answer(explanation, reply_markup=search_results_keyboard(len(results)))
+        await message.answer(explanation, reply_markup=search_results_keyboard(len(display_results)))
 
 
 @router.message(F.text.regexp(r"^Сохранить\s+\d+$"))
@@ -195,7 +213,7 @@ async def save_result_to_favorites(message: Message) -> None:
     )
 
 
-def _format_university_card(index: int, item: dict) -> str:
+def _format_university_card(index: int, item: dict, user_score: int) -> str:
     subjects = ", ".join(item.get("subjects") or []) or "не указаны"
     price = item.get("price")
     if price is None:
@@ -203,12 +221,17 @@ def _format_university_card(index: int, item: dict) -> str:
     else:
         price_text = f"{int(price):,} руб./год".replace(",", " ")
 
+    category = classify_university(user_score, item)
+
     return (
         f"🎓 <b>{index}. {escape(str(item.get('university', 'Вуз')))}</b>\n"
         f"Город: {escape(str(item.get('city', 'не указан')))}\n"
         f"Программа: {escape(str(item.get('program', 'не указана')))}\n"
+        f"Категория: {escape(get_recommendation_label(category))}\n"
         f"Предметы: {escape(subjects)}\n"
         f"Мин. балл: {escape(str(item.get('min_score', 'не указан')))}\n"
+        f"Твои баллы: {user_score}\n"
+        f"{escape(format_score_delta(user_score, item))}\n"
         f"Тип: {escape(str(item.get('type', 'не указан')))}\n"
         f"Стоимость: {escape(price_text)}\n"
         f"Сайт: {escape(str(item.get('url', 'не указан')))}"

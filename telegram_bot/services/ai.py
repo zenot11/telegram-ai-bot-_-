@@ -104,6 +104,38 @@ class AIService:
         )
         return await self._ask(user_prompt, max_tokens=320)
 
+    async def explain_recommendation_groups(
+        self,
+        profile: dict[str, Any],
+        groups: dict[str, list[dict[str, Any]]],
+    ) -> str | None:
+        if not self.client:
+            return None
+
+        safe_profile = {
+            "region": profile.get("region"),
+            "score": profile.get("score"),
+            "direction": profile.get("direction"),
+            "education_type": profile.get("education_type"),
+        }
+        group_counts = {category: len(items) for category, items in groups.items()}
+        preview = {
+            category: items[:2]
+            for category, items in groups.items()
+            if category in {"safe", "realistic", "ambitious"}
+        }
+
+        user_prompt = (
+            "Коротко объясни группировку вузов по категориям: безопасные, реалистичные, амбициозные. "
+            "Ответ должен быть 3-5 предложений, спокойным и практичным. "
+            "Не обещай поступление и не называй тестовые данные официальными. "
+            "Посоветуй начать с безопасных и реалистичных вариантов, а амбициозные оставить как цель.\n\n"
+            f"Профиль пользователя: {json.dumps(safe_profile, ensure_ascii=False)}\n"
+            f"Количество вариантов по категориям: {json.dumps(group_counts, ensure_ascii=False)}\n"
+            f"Примеры вариантов: {json.dumps(preview, ensure_ascii=False)}"
+        )
+        return await self._ask(user_prompt, max_tokens=320)
+
     async def answer_free_question(self, text: str) -> str | None:
         if is_crisis_message(text):
             return CRISIS_RESPONSE
@@ -158,3 +190,10 @@ async def generate_support_reply(user_text: str, situation: str | None = None) -
 
 async def explain_comparison(items: list[dict[str, Any]]) -> str | None:
     return await ai_service.explain_comparison(items)
+
+
+async def explain_recommendation_groups(
+    profile: dict[str, Any],
+    groups: dict[str, list[dict[str, Any]]],
+) -> str | None:
+    return await ai_service.explain_recommendation_groups(profile, groups)

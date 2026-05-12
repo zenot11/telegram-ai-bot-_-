@@ -62,6 +62,15 @@ def test_formatted_text_contains_safe_conclusion() -> None:
     assert "безопасный" in text
 
 
+def test_formatted_text_with_user_score_contains_categories() -> None:
+    text = format_comparison([university("АГУ", 185), university("МГТУ", 240)], user_score=230)
+
+    assert "Безопасный вариант" in text
+    assert "Амбициозный вариант" in text
+    assert "Запас" in text
+    assert "Не хватает" in text
+
+
 def test_formatted_text_contains_demo_warning() -> None:
     text = format_comparison([university("АГУ", 185), university("МГТУ", 172)])
 
@@ -85,3 +94,16 @@ def test_single_university_explains_need_for_two_options() -> None:
     text = format_comparison([university("АГУ", 185)])
 
     assert "минимум два варианта" in text
+
+
+def test_comparison_does_not_fail_without_min_score() -> None:
+    text = format_comparison(
+        [
+            {"university": "АГУ", "program": "Прикладная информатика"},
+            university("МГТУ", 172),
+        ],
+        user_score=230,
+    )
+
+    assert "Сравнение вузов" in text
+    assert "недостаточно данных" in text

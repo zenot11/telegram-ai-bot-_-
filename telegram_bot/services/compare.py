@@ -1,13 +1,24 @@
 from html import escape
 from typing import Any
 
+from telegram_bot.services.recommendation import (
+    classify_university,
+    format_score_delta,
+    get_min_score,
+    get_recommendation_label,
+    score_delta,
+)
 
-def compare_universities(items: list[dict[str, Any]]) -> dict[str, Any]:
+
+def compare_universities(items: list[dict[str, Any]], user_score: int | None = None) -> dict[str, Any]:
     selected = [item for item in items if isinstance(item, dict)]
     return {
         "items": selected,
+        "user_score": user_score,
         "safe_option": get_min_score_safe_option(selected),
         "ambitious_option": get_max_score_ambitious_option(selected),
+        "largest_score_margin_option": get_largest_score_margin_option(selected, user_score),
+        "closest_deficit_option": get_closest_deficit_option(selected, user_score),
         "cheapest_option": get_cheapest_option(selected),
         "cheapest_paid_option": get_cheapest_option(selected),
         "budget_options": sum(1 for item in selected if _is_budget(item)),
@@ -18,8 +29,8 @@ def compare_universities(items: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def format_comparison(items: list[dict[str, Any]]) -> str:
-    comparison = compare_universities(items)
+def format_comparison(items: list[dict[str, Any]], user_score: int | None = None) -> str:
+    comparison = compare_universities(items, user_score=user_score)
     selected = comparison["items"]
 
     if len(selected) < 2:
@@ -28,7 +39,7 @@ def format_comparison(items: list[dict[str, Any]]) -> str:
             "Пройди подбор ещё раз или сохрани несколько вузов в избранное."
         )
 
-    cards = "\n\n".join(_format_item(index, item) for index, item in enumerate(selected, start=1))
+    cards = "\n\n".join(_format_item(index, item, user_score) for index, item in enumerate(selected, start=1))
     conclusion = _format_conclusion(comparison)
 
     return (
@@ -66,6 +77,40 @@ def get_cheapest_paid_option(items: list[dict[str, Any]]) -> dict[str, Any] | No
     return get_cheapest_option(items)
 
 
+def get_largest_score_margin_option(
+    items: list[dict[str, Any]],
+    user_score: int | None,
+) -> dict[str, Any] | None:
+    if user_score is None:
+        return None
+
+    scored = [
+        item
+        for item in items
+        if score_delta(user_score, item) is not None and (score_delta(user_score, item) or 0) >= 0
+    ]
+    if not scored:
+        return None
+    return max(scored, key=lambda item: score_delta(user_score, item) or -10_000)
+
+
+def get_closest_deficit_option(
+    items: list[dict[str, Any]],
+    user_score: int | None,
+) -> dict[str, Any] | None:
+    if user_score is None:
+        return None
+
+    deficit_items = [
+        item
+        for item in items
+        if score_delta(user_score, item) is not None and (score_delta(user_score, item) or 0) < 0
+    ]
+    if not deficit_items:
+        return None
+    return max(deficit_items, key=lambda item: score_delta(user_score, item) or -10_000)
+
+
 def get_common_subjects(items: list[dict[str, Any]]) -> list[str]:
     subject_sets = [_subject_set(item) for item in items]
     subject_sets = [subjects for subjects in subject_sets if subjects]
@@ -85,14 +130,25 @@ def get_unique_subjects(items: list[dict[str, Any]]) -> list[str]:
     return sorted(all_subjects - common)
 
 
-def _format_item(index: int, item: dict[str, Any]) -> str:
+def _format_item(index: int, item: dict[str, Any], user_score: int | None) -> str:
     subjects = item.get("subjects")
     subjects_text = ", ".join(subjects) if isinstance(subjects, list) and subjects else "не указаны"
+    category_line = ""
+    score_lines = ""
+    if user_score is not None:
+        category = classify_university(user_score, item)
+        category_line = f"Категория: {escape(get_recommendation_label(category))}\n"
+        score_lines = (
+            f"Твои баллы: {user_score}\n"
+            f"{escape(format_score_delta(user_score, item))}\n"
+        )
 
     return (
         f"<b>{index}. {escape(_title_short(item))}</b>\n"
         f"Город: {escape(_text(item.get('city')))}\n"
         f"Мин. балл: {escape(_text(item.get('min_score')))}\n"
+        f"{category_line}"
+        f"{score_lines}"
         f"Тип: {escape(_text(item.get('type')))}\n"
         f"Стоимость: {escape(_format_price(item.get('price')))}\n"
         f"Предметы: {escape(subjects_text)}\n"
@@ -102,18 +158,39 @@ def _format_item(index: int, item: dict[str, Any]) -> str:
 
 def _format_conclusion(comparison: dict[str, Any]) -> str:
     lines: list[str] = []
+    user_score = comparison.get("user_score")
 
     safe = comparison.get("safe_option")
     if safe:
-        lines.append(f"Самый безопасный вариант по баллам: {escape(_title_short(safe))}, потому что минимальный балл ниже.")
+        if isinstance(user_score, int):
+            lines.append(
+                f"Более спокойный вариант: {escape(_title_short(safe))}. "
+                f"{escape(format_score_delta(user_score, safe))}."
+            )
+        else:
+            lines.append(f"Самый безопасный вариант по баллам: {escape(_title_short(safe))}, потому что минимальный балл ниже.")
     else:
         lines.append("Самый безопасный вариант по баллам определить нельзя: минимальные баллы не указаны.")
 
     ambitious = comparison.get("ambitious_option")
     if ambitious:
-        lines.append(f"Более амбициозный вариант: {escape(_title_short(ambitious))}, потому что минимальный балл выше.")
+        if isinstance(user_score, int):
+            lines.append(
+                f"Более амбициозный вариант: {escape(_title_short(ambitious))}. "
+                f"{escape(format_score_delta(user_score, ambitious))}."
+            )
+        else:
+            lines.append(f"Более амбициозный вариант: {escape(_title_short(ambitious))}, потому что минимальный балл выше.")
     else:
         lines.append("Более амбициозный вариант определить нельзя: минимальные баллы не указаны.")
+
+    if isinstance(user_score, int):
+        largest_margin = comparison.get("largest_score_margin_option")
+        closest_deficit = comparison.get("closest_deficit_option")
+        if largest_margin:
+            lines.append(f"Больше всего запас по баллам у варианта: {escape(_title_short(largest_margin))}.")
+        if closest_deficit:
+            lines.append(f"Баллов пока не хватает для варианта: {escape(_title_short(closest_deficit))}.")
 
     budget_count = comparison.get("budget_options", 0)
     paid_count = comparison.get("paid_options", 0)

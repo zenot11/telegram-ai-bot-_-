@@ -21,6 +21,7 @@ async def set_bot_commands(bot: Bot) -> None:
             BotCommand(command="support", description="Психологическая поддержка"),
             BotCommand(command="search", description="Подобрать вуз"),
             BotCommand(command="compare", description="Сравнить вузы"),
+            BotCommand(command="categories", description="Как читать категории"),
         ]
     )
 

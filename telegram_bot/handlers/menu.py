@@ -12,6 +12,7 @@ from telegram_bot.keyboards.menu import (
     main_menu_keyboard,
     profile_keyboard,
 )
+from telegram_bot.services.recommendation import format_categories_explanation
 from telegram_bot.services.validation import (
     AVAILABLE_DIRECTIONS,
     AVAILABLE_REGIONS,
@@ -156,6 +157,13 @@ async def regions(message: Message, state: FSMContext) -> None:
 async def help_button(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(HELP_TEXT, reply_markup=main_menu_keyboard())
+
+
+@router.message(Command("categories"))
+@router.message(F.text == "Как читать категории")
+async def categories_explanation(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer(format_categories_explanation(), reply_markup=main_menu_keyboard())
 
 
 def _format_favorite_card(index: int, item: dict) -> str:

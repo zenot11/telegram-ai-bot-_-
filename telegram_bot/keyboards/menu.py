@@ -7,6 +7,7 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
             [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Сравнить вузы")],
             [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Мой профиль")],
             [KeyboardButton(text="Направления"), KeyboardButton(text="Регионы")],
+            [KeyboardButton(text="Как читать категории")],
             [KeyboardButton(text="Психологическая поддержка")],
             [KeyboardButton(text="Помощь")],
         ],

@@ -93,6 +93,7 @@ async def compare_selected_items(message: Message, state: FSMContext) -> None:
     source = data.get("compare_source")
     items = _load_items(message.from_user.id, source)
     selected = _select_items(items, message.text or "")
+    user_score = _load_user_score(message.from_user.id)
 
     if len(selected) < 2:
         await message.answer(
@@ -101,7 +102,7 @@ async def compare_selected_items(message: Message, state: FSMContext) -> None:
         )
         return
 
-    await message.answer(format_comparison(selected), reply_markup=compare_options_keyboard(len(items)))
+    await message.answer(format_comparison(selected, user_score=user_score), reply_markup=compare_options_keyboard(len(items)))
 
     explanation = await explain_comparison(selected)
     if explanation:
@@ -143,6 +144,12 @@ def _load_items(telegram_id: int, source: str | None) -> list[dict]:
     if source == "favorites":
         return user_storage.get_favorites(telegram_id)
     return user_storage.get_last_results(telegram_id)
+
+
+def _load_user_score(telegram_id: int) -> int | None:
+    profile = user_storage.get_profile(telegram_id) or {}
+    score = profile.get("score")
+    return score if isinstance(score, int) else None
 
 
 def _select_items(items: list[dict], action: str) -> list[dict]:

@@ -43,6 +43,19 @@ def test_generate_support_reply_returns_none_without_key(monkeypatch) -> None:
     assert result is None
 
 
+def test_explain_recommendation_groups_returns_none_without_key(monkeypatch) -> None:
+    ai = load_ai_without_key(monkeypatch)
+
+    result = asyncio.run(
+        ai.explain_recommendation_groups(
+            {"region": "Адыгея", "score": 230, "direction": "IT", "education_type": "budget"},
+            {"safe": [], "realistic": [], "ambitious": [], "unavailable": []},
+        )
+    )
+
+    assert result is None
+
+
 def test_crisis_reply_does_not_require_openai(monkeypatch) -> None:
     ai = load_ai_without_key(monkeypatch)
 

@@ -20,6 +20,7 @@ def search_results_keyboard(results_count: int) -> ReplyKeyboardMarkup:
     rows.extend(
         [
             [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Сравнить вузы")],
+            [KeyboardButton(text="Как читать категории")],
             [KeyboardButton(text="Новый подбор"), KeyboardButton(text="Вернуться в меню")],
         ]
     )
