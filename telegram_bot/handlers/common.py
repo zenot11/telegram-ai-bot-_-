@@ -27,8 +27,8 @@ async def fallback(message: Message) -> None:
             "Похоже, ты сильно вымотался. Давай сделаем задачу меньше: сейчас не выбираем "
             "всю жизнь, а выбираем один следующий шаг."
         )
-        answer = await generate_support_reply(text, fallback)
-        await message.answer(answer, reply_markup=support_keyboard())
+        answer = await generate_support_reply(text, situation="Пользователь пишет о тревоге или усталости.")
+        await message.answer(answer or fallback, reply_markup=support_keyboard())
         return
 
     ai_answer = await ai_service.answer_free_question(text)

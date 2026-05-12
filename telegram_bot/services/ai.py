@@ -1,8 +1,9 @@
 import json
+import logging
 from typing import Any
 
 from telegram_bot.config import settings
-from telegram_bot.services.safety import CRISIS_RESPONSE
+from telegram_bot.services.safety import CRISIS_RESPONSE, is_crisis_message
 
 try:
     from openai import AsyncOpenAI
@@ -10,11 +11,28 @@ except ImportError:
     AsyncOpenAI = None
 
 
+logger = logging.getLogger(__name__)
+
+SYSTEM_PROMPT = (
+    "Ты Аиша, AI-помощник для абитуриентов. "
+    "Отвечай мягко, спокойно, по-русски и коротко. "
+    "Не ставь диагнозы. Не давай медицинские советы. "
+    "Не обещай поступление. Не дави на пользователя. "
+    "Не обесценивай тревогу и не шути над тревогой. "
+    "Не выдумывай официальные данные и не утверждай, что тестовые данные являются настоящими. "
+    "Если есть признаки самоповреждения, суицида или опасности для себя, "
+    f"верни только этот текст: {CRISIS_RESPONSE}"
+)
+
+
 class AIService:
     def __init__(self) -> None:
         self.client = None
         if settings.openai_api_key and AsyncOpenAI is not None:
             self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        elif settings.openai_api_key and AsyncOpenAI is None:
+            logger.warning("OPENAI_API_KEY is set, but openai package is not installed.")
+
         self.model = settings.openai_model
 
     def is_ai_available(self) -> bool:
@@ -23,20 +41,27 @@ class AIService:
     async def explain_results(
         self,
         profile: dict[str, Any],
-        universities: list[dict[str, Any]],
+        results: list[dict[str, Any]],
     ) -> str | None:
         if not self.client:
             return None
 
-        prompt = (
-            "Пользователь подбирает вуз. Начни ответ с фразы «Как это можно понять:». "
-            "Объясни найденные варианты простым языком, без обещаний поступления. "
-            "Дай короткий план из 3 шагов. "
-            "Не ставь диагнозы, не давай медицинские советы и не дави на пользователя.\n\n"
-            f"Профиль: {json.dumps(profile, ensure_ascii=False)}\n"
-            f"Варианты: {json.dumps(universities[:5], ensure_ascii=False)}"
+        safe_profile = {
+            "region": profile.get("region"),
+            "score": profile.get("score"),
+            "direction": profile.get("direction"),
+            "education_type": profile.get("education_type"),
+        }
+
+        user_prompt = (
+            "Коротко объясни результаты подбора вузов в стиле Аиши. "
+            "Ответ должен быть 3-6 предложений. "
+            "Объясни, что список является стартовой точкой для сравнения, а не гарантией поступления. "
+            "Предложи сравнить программы, минимальные баллы и оставить 1-2 запасных варианта.\n\n"
+            f"Профиль пользователя: {json.dumps(safe_profile, ensure_ascii=False)}\n"
+            f"Найденные варианты: {json.dumps(results[:5], ensure_ascii=False)}"
         )
-        return await self._ask(prompt, max_tokens=500)
+        return await self._ask(user_prompt, max_tokens=360)
 
     async def explain_universities(
         self,
@@ -45,33 +70,42 @@ class AIService:
     ) -> str | None:
         return await self.explain_results(profile, universities)
 
-    async def generate_support_reply(self, situation: str, fallback: str) -> str:
-        if not self.client:
-            return fallback
+    async def generate_support_reply(
+        self,
+        user_text: str,
+        situation: str | None = None,
+    ) -> str | None:
+        if is_crisis_message(user_text):
+            return CRISIS_RESPONSE
 
-        prompt = (
-            "Сформулируй короткий мягкий ответ для абитуриента по ситуации. "
-            "Ответ должен быть по-русски, без диагнозов, медицинских советов, давления, "
-            "шуток над тревогой и обещаний поступления. В конце предложи один маленький шаг.\n\n"
-            f"Ситуация: {situation}\n"
-            f"Базовый смысл ответа: {fallback}"
+        if not self.client or not user_text.strip():
+            return None
+
+        user_prompt = (
+            "Сгенерируй мягкий ответ поддержки для абитуриента. "
+            "Помоги разложить задачу на маленькие шаги. "
+            "Ответ должен быть коротким и понятным, 3-5 предложений.\n\n"
+            f"Ситуация: {situation or 'обычная тревога или неопределённость из-за поступления'}\n"
+            f"Сообщение пользователя: {user_text}"
         )
-        answer = await self._ask(prompt, max_tokens=300)
-        return answer or fallback
+        return await self._ask(user_prompt, max_tokens=300)
 
     async def answer_free_question(self, text: str) -> str | None:
+        if is_crisis_message(text):
+            return CRISIS_RESPONSE
+
         if not self.client or not text.strip():
             return None
 
-        prompt = (
+        user_prompt = (
             "Ответь как Аиша, мягкий AI-помощник для абитуриента. "
             "Помогай выбрать направление, составить короткий план поступления или снизить перегруз. "
-            "Не обещай поступление, не ставь диагнозы и не давай медицинские советы.\n\n"
+            "Ответ должен быть коротким и практичным.\n\n"
             f"Сообщение пользователя: {text}"
         )
-        return await self._ask(prompt, max_tokens=450)
+        return await self._ask(user_prompt, max_tokens=360)
 
-    async def _ask(self, prompt: str, max_tokens: int) -> str | None:
+    async def _ask(self, user_prompt: str, max_tokens: int) -> str | None:
         if not self.client:
             return None
 
@@ -79,23 +113,14 @@ class AIService:
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "Ты Аиша, спокойный и полезный помощник для абитуриентов. "
-                            "Отвечай мягко, спокойно и по-русски. "
-                            "Не ставь диагнозы. Не давай медицинские советы. "
-                            "Не обещай поступление. Не дави на пользователя. "
-                            "Если в сообщении есть риск самоповреждения, суицида или опасности для себя, "
-                            f"ответь только этим текстом: {CRISIS_RESPONSE}"
-                        ),
-                    },
-                    {"role": "user", "content": prompt},
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
                 ],
                 temperature=0.4,
                 max_tokens=max_tokens,
             )
         except Exception:
+            logger.exception("OpenAI request failed")
             return None
 
         message = response.choices[0].message.content if response.choices else None
@@ -109,9 +134,9 @@ def is_ai_available() -> bool:
     return ai_service.is_ai_available()
 
 
-async def explain_results(profile: dict[str, Any], universities: list[dict[str, Any]]) -> str | None:
-    return await ai_service.explain_results(profile, universities)
+async def explain_results(profile: dict[str, Any], results: list[dict[str, Any]]) -> str | None:
+    return await ai_service.explain_results(profile, results)
 
 
-async def generate_support_reply(situation: str, fallback: str) -> str:
-    return await ai_service.generate_support_reply(situation, fallback)
+async def generate_support_reply(user_text: str, situation: str | None = None) -> str | None:
+    return await ai_service.generate_support_reply(user_text, situation)
