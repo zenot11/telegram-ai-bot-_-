@@ -18,7 +18,8 @@ HELP_TEXT = (
     "/support — психологическая поддержка\n"
     "/reset — сброс введённых данных\n"
     "/help — помощь\n\n"
-    "Чтобы начать подбор, нажми «Подобрать вуз» или введи /search."
+    "Чтобы начать подбор, нажми «Подобрать вуз» или введи /search. "
+    "После подбора можно сохранить варианты в «Избранные вузы» и посмотреть их в «Мой профиль»."
 )
 
 
@@ -43,4 +44,4 @@ async def cmd_reset(message: Message, state: FSMContext) -> None:
     await state.clear()
     if message.from_user:
         user_storage.reset_profile(message.from_user.id)
-    await message.answer("Данные сброшены. Можно начать заново.", reply_markup=main_menu_keyboard())
+    await message.answer("Данные, последний подбор и избранное сброшены. Можно начать заново.", reply_markup=main_menu_keyboard())

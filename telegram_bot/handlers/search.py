@@ -7,7 +7,7 @@ from aiogram.types import Message
 
 from telegram_bot.config import settings
 from telegram_bot.keyboards.menu import main_menu_keyboard
-from telegram_bot.keyboards.search import education_type_keyboard
+from telegram_bot.keyboards.search import education_type_keyboard, search_results_keyboard
 from telegram_bot.services.ai import explain_results
 from telegram_bot.services.api import UniversityAPIError, fetch_universities
 from telegram_bot.services.safety import CRISIS_RESPONSE, is_crisis_message
@@ -26,7 +26,7 @@ router = Router()
 
 
 @router.message(Command("search"))
-@router.message(F.text.in_({"Подобрать вуз", "Подобрать 3 варианта"}))
+@router.message(F.text.in_({"Подобрать вуз", "Подобрать 3 варианта", "Подобрать ещё", "Новый подбор"}))
 async def start_search(message: Message, state: FSMContext) -> None:
     await state.set_state(SearchStates.region)
     await message.answer(
@@ -156,12 +156,43 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
         f"{cards}\n\n"
         "Это тестовый подбор MVP. Для финальной версии данные должны приходить "
         "из настоящей базы вузов или backend API.",
-        reply_markup=main_menu_keyboard(),
+        reply_markup=search_results_keyboard(len(results)),
     )
 
     explanation = await explain_results(profile, results)
     if explanation:
-        await message.answer(explanation, reply_markup=main_menu_keyboard())
+        await message.answer(explanation, reply_markup=search_results_keyboard(len(results)))
+
+
+@router.message(F.text.regexp(r"^Сохранить\s+\d+$"))
+async def save_result_to_favorites(message: Message) -> None:
+    if not message.from_user:
+        await message.answer("Не удалось определить пользователя.", reply_markup=main_menu_keyboard())
+        return
+
+    text = message.text or ""
+    try:
+        index = int(text.split()[-1]) - 1
+    except (ValueError, IndexError):
+        await message.answer("Такого варианта сейчас нет. Попробуй выбрать другой номер.")
+        return
+
+    last_results = user_storage.get_last_results(message.from_user.id)
+    if index < 0 or index >= len(last_results):
+        await message.answer("Такого варианта сейчас нет. Попробуй выбрать другой номер.")
+        return
+
+    item = last_results[index]
+    added = user_storage.add_favorite(message.from_user.id, item)
+    if not added:
+        await message.answer("Этот вариант уже есть в избранном.", reply_markup=search_results_keyboard(len(last_results)))
+        return
+
+    await message.answer(
+        f"Добавила в избранное: {escape(str(item.get('university', 'Вуз')))} — "
+        f"{escape(str(item.get('program', 'программа')))}.",
+        reply_markup=search_results_keyboard(len(last_results)),
+    )
 
 
 def _format_university_card(index: int, item: dict) -> str:

@@ -60,6 +60,86 @@ class UserDataStorage:
         results = profile.get("last_results", [])
         return results if isinstance(results, list) else []
 
+    def add_favorite(self, telegram_id: int, university_item: dict[str, Any]) -> bool:
+        with self._lock:
+            data = self._read_all_unlocked()
+            current = data.get(str(telegram_id), {})
+            if not isinstance(current, dict):
+                current = {}
+
+            favorites = current.get("favorites", [])
+            if not isinstance(favorites, list):
+                favorites = []
+
+            new_key = self._favorite_key(university_item)
+            if any(self._favorite_key(item) == new_key for item in favorites if isinstance(item, dict)):
+                return False
+
+            current["telegram_id"] = telegram_id
+            favorites.append(university_item)
+            current["favorites"] = favorites
+            data[str(telegram_id)] = current
+            self._write_all_unlocked(data)
+            return True
+
+    def get_favorites(self, telegram_id: int) -> list[dict[str, Any]]:
+        profile = self.get_profile(telegram_id)
+        if not profile:
+            return []
+
+        favorites = profile.get("favorites", [])
+        return [item for item in favorites if isinstance(item, dict)] if isinstance(favorites, list) else []
+
+    def clear_favorites(self, telegram_id: int) -> None:
+        with self._lock:
+            data = self._read_all_unlocked()
+            current = data.get(str(telegram_id), {})
+            if not isinstance(current, dict):
+                current = {}
+            current["telegram_id"] = telegram_id
+            current["favorites"] = []
+            data[str(telegram_id)] = current
+            self._write_all_unlocked(data)
+
+    def remove_favorite(self, telegram_id: int, index: int) -> dict[str, Any] | None:
+        with self._lock:
+            data = self._read_all_unlocked()
+            current = data.get(str(telegram_id), {})
+            if not isinstance(current, dict):
+                return None
+
+            favorites = current.get("favorites", [])
+            if not isinstance(favorites, list) or index < 0 or index >= len(favorites):
+                return None
+
+            removed = favorites.pop(index)
+            current["favorites"] = favorites
+            data[str(telegram_id)] = current
+            self._write_all_unlocked(data)
+            return removed if isinstance(removed, dict) else None
+
+    def get_profile_summary(self, telegram_id: int) -> dict[str, Any]:
+        profile = self.get_profile(telegram_id) or {}
+        last_results = profile.get("last_results", [])
+        favorites = profile.get("favorites", [])
+
+        last_results_count = len(last_results) if isinstance(last_results, list) else 0
+        favorites_count = len(favorites) if isinstance(favorites, list) else 0
+
+        return {
+            "telegram_id": telegram_id,
+            "region": profile.get("region"),
+            "score": profile.get("score"),
+            "direction": profile.get("direction"),
+            "education_type": profile.get("education_type"),
+            "last_results_count": last_results_count,
+            "favorites_count": favorites_count,
+            "is_empty": favorites_count == 0 and last_results_count == 0 and not any(
+                profile.get(key) is not None
+                for key in ("region", "score", "direction", "education_type")
+            ),
+        }
+
     def get_user(self, telegram_id: int) -> dict[str, Any] | None:
         return self.get_profile(telegram_id)
 
@@ -94,6 +174,15 @@ class UserDataStorage:
         self.path.write_text(
             json.dumps(data, ensure_ascii=False, indent=2),
             encoding="utf-8",
+        )
+
+    @staticmethod
+    def _favorite_key(item: dict[str, Any]) -> tuple[str, str, str, str]:
+        return (
+            str(item.get("university", "")).strip().lower(),
+            str(item.get("city", "")).strip().lower(),
+            str(item.get("program", "")).strip().lower(),
+            str(item.get("type", "")).strip().lower(),
         )
 
 
