@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Аиша — подбор вузов</title>
+    <link rel="stylesheet" href="/miniapp/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <div class="hero__content">
+          <p class="eyebrow">Telegram Mini App</p>
+          <h1>Аиша — подбор вузов</h1>
+          <p class="hero__text">
+            Аиша помогает подобрать варианты вузов по региону, баллам, направлению и типу обучения.
+          </p>
+        </div>
+      </section>
+
+      <section class="panel search-panel" aria-labelledby="search-title">
+        <div class="section-heading">
+          <h2 id="search-title">Подбор вариантов</h2>
+          <p>Заполни поля, и я покажу до 5 демонстрационных программ.</p>
+        </div>
+
+        <form id="search-form" class="search-form">
+          <label>
+            Регион
+            <select id="region" name="region" required>
+              <option value="Адыгея">Адыгея</option>
+              <option value="Москва">Москва</option>
+              <option value="Краснодарский край">Краснодарский край</option>
+              <option value="Санкт-Петербург">Санкт-Петербург</option>
+              <option value="Татарстан">Татарстан</option>
+              <option value="Крым">Крым</option>
+              <option value="Ростовская область">Ростовская область</option>
+              <option value="Свердловская область">Свердловская область</option>
+            </select>
+          </label>
+
+          <label>
+            Баллы ЕГЭ
+            <input id="score" name="score" inputmode="numeric" placeholder="Например, 230" required>
+          </label>
+
+          <label>
+            Направление
+            <select id="direction" name="direction" required>
+              <option value="IT">IT</option>
+              <option value="психология">психология</option>
+              <option value="медицина">медицина</option>
+              <option value="экономика">экономика</option>
+              <option value="юриспруденция">юриспруденция</option>
+              <option value="педагогика">педагогика</option>
+              <option value="дизайн">дизайн</option>
+              <option value="строительство">строительство</option>
+              <option value="туризм">туризм</option>
+            </select>
+          </label>
+
+          <fieldset>
+            <legend>Тип обучения</legend>
+            <div class="segmented">
+              <label>
+                <input type="radio" name="education-type" value="budget" checked>
+                <span>Бюджет</span>
+              </label>
+              <label>
+                <input type="radio" name="education-type" value="paid">
+                <span>Платное</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <button type="submit" class="primary-button">Подобрать варианты</button>
+        </form>
+      </section>
+
+      <section class="panel results-panel" aria-live="polite">
+        <div class="section-heading">
+          <h2>Результаты</h2>
+          <p id="status-text">Заполни форму, чтобы увидеть подходящие варианты.</p>
+        </div>
+        <div id="results" class="results-grid"></div>
+      </section>
+
+      <section class="info-grid">
+        <article class="panel">
+          <h2>Как читать категории</h2>
+          <div class="legend">
+            <p><span class="badge safe">Безопасный</span> проходной балл ниже твоего с запасом.</p>
+            <p><span class="badge realistic">Реалистичный</span> баллы близки к проходному уровню.</p>
+            <p><span class="badge ambitious">Амбициозный</span> немного не хватает, но можно рассмотреть как цель.</p>
+          </div>
+        </article>
+
+        <article class="panel important-panel">
+          <h2>Важно</h2>
+          <p>
+            Данные демонстрационные. Это не гарантия поступления. Для финальной версии нужно подключить
+            официальную базу вузов или backend API.
+          </p>
+        </article>
+      </section>
+    </main>
+
+    <script src="/miniapp/app.js"></script>
+  </body>
+</html>

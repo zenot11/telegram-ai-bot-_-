@@ -20,6 +20,7 @@
 - профиль пользователя и избранные вузы;
 - сохранение вариантов из последнего подбора в избранное;
 - сравнение вузов из последнего подбора или избранного;
+- демонстрационный Telegram Mini App с веб-формой подбора;
 - главное меню с кнопками;
 - психологическая поддержка с готовыми безопасными ответами;
 - фиксированный safety-ответ на сообщения про самоповреждение или опасность;
@@ -42,6 +43,12 @@ Telegram Bot -> OpenAI API -> мягкое объяснение/поддержк
 
 Бот не работает напрямую с базой данных. В MVP вместо настоящего backend и БД используется `backend_stub` с демонстрационным JSON-файлом.
 
+Mini App использует тот же backend endpoint:
+
+```text
+Mini App -> backend_stub/API -> JSON/данные -> Mini App
+```
+
 Демонстрационная база содержит регионы: Адыгея, Москва, Краснодарский край, Санкт-Петербург, Татарстан, Крым, Ростовская область, Свердловская область.
 
 Основные направления в MVP: IT, психология, медицина, экономика, юриспруденция, педагогика, дизайн, строительство, туризм.
@@ -61,6 +68,11 @@ telegram_bot/
 backend_stub/
   main.py                  # временный backend API
   data/universities.json   # демонстрационные данные вузов
+
+mini_app/
+  index.html               # демонстрационная Telegram Mini App страница
+  styles.css               # стили Mini App
+  app.js                   # логика формы и карточек
 
 archive/
   cpp_telegram_module/     # старый C++ Telegram-модуль
@@ -91,11 +103,14 @@ cp .env.example .env
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 OPENAI_API_KEY=your_openai_api_key_here
 BACKEND_BASE_URL=http://localhost:8000
+WEBAPP_URL=
 ```
 
 `TELEGRAM_BOT_TOKEN` обязателен для запуска бота.
 
 `OPENAI_API_KEY` можно оставить пустым. В этом случае бот покажет карточки вузов и fallback-ответы без AI-объяснений.
+
+`WEBAPP_URL` можно оставить пустым. В этом случае Mini App-кнопка не появится в меню, команда `/webapp` покажет подсказку, а обычный бот продолжит работать.
 
 Настоящий `.env` не должен попадать в GitHub.
 
@@ -130,6 +145,12 @@ python -m backend_stub.main
 
 ```bash
 curl "http://localhost:8000/api/universities?region=Адыгея&score=230&direction=IT&type=budget"
+```
+
+Локальная проверка Mini App в браузере:
+
+```text
+http://localhost:8000/miniapp
 ```
 
 ## Запуск бота
@@ -174,6 +195,33 @@ bash scripts/check_project.sh
 Ожидаемый результат: бот покажет несколько тестовых карточек вузов и подпишет, что это демонстрационный подбор MVP.
 
 Полный сценарий демонстрации для преподавателя или команды описан в [DEMO.md](DEMO.md).
+
+## Telegram Mini App
+
+В проекте есть простой демонстрационный Mini App в папке `mini_app/`. Это статическая веб-страница с формой подбора вузов, карточками результатов и объяснением категорий.
+
+Локально Mini App отдаётся через `backend_stub`:
+
+```bash
+source .venv/bin/activate
+python -m backend_stub.main
+```
+
+Затем откройте в браузере:
+
+```text
+http://localhost:8000/miniapp
+```
+
+Для подключения к Telegram нужно указать публичный HTTPS URL в `.env`:
+
+```env
+WEBAPP_URL=https://your-public-url/miniapp
+```
+
+Если `WEBAPP_URL` пустой, кнопка Mini App в меню не показывается, команда `/webapp` объясняет, что Mini App не настроен, а бот продолжает работать как раньше.
+
+Важно: `localhost` обычно не откроется внутри Telegram на телефоне. Для реального Telegram WebApp нужен публичный HTTPS адрес, например через временный туннель или деплой. Ngrok/cloudflared не являются зависимостями проекта и не настраиваются в MVP.
 
 ## Демонстрационная база вузов
 
@@ -244,6 +292,8 @@ bash scripts/check_project.sh
 - `tests/test_universities_data.py` — проверка структуры и покрытия демонстрационной базы;
 - `tests/test_search_cards.py` — проверка форматирования карточек поиска;
 - `tests/test_keyboards.py` — проверка кнопок сохранения, удаления и сравнения;
+- `tests/test_mini_app.py` — проверка файлов и безопасности Mini App;
+- `tests/test_config.py` — проверка `WEBAPP_URL` и `.env.example`;
 - `tests/test_ai_fallback.py` — проверка fallback-режима без OpenAI-ключа;
 - `tests/test_user_data.py` — проверка профиля, последнего подбора и избранного;
 - `tests/test_recommendation.py` — проверка категорий подбора;
@@ -270,7 +320,8 @@ pytest
 - `/support` — психологическая поддержка;
 - `/search` — подбор вузов;
 - `/compare` — сравнение вузов;
-- `/categories` — как читать категории подбора.
+- `/categories` — как читать категории подбора;
+- `/webapp` — открыть Mini App.
 
 ## Команды для BotFather
 
@@ -282,6 +333,7 @@ menu - главное меню
 search - подбор вузов
 compare - сравнение вузов
 categories - как читать категории
+webapp - открыть Mini App
 support - психологическая поддержка
 reset - сброс введённых данных
 help - помощь
@@ -296,6 +348,7 @@ help - помощь
 - Направления
 - Регионы
 - Как читать категории
+- Открыть Mini App, если задан WEBAPP_URL
 - Психологическая поддержка
 - Помощь
 

@@ -12,6 +12,8 @@ from telegram_bot.services.recommendation import AMBITIOUS_SCORE_MARGIN
 load_dotenv()
 
 DATA_PATH = Path(__file__).resolve().parent / "data" / "universities.json"
+MINI_APP_PATH = Path(__file__).resolve().parent.parent / "mini_app"
+MINI_APP_ASSETS = {"styles.css", "app.js"}
 
 DIRECTION_SYNONYMS = {
     "IT": ("it", "айти", "информатика", "программирование", "информационные", "данные"),
@@ -130,6 +132,17 @@ async def universities(request: web.Request) -> web.Response:
     return web.json_response(results[:limit], dumps=_json_dumps)
 
 
+async def miniapp_index(_: web.Request) -> web.FileResponse:
+    return web.FileResponse(MINI_APP_PATH / "index.html")
+
+
+async def miniapp_asset(request: web.Request) -> web.FileResponse:
+    asset = request.match_info.get("asset", "")
+    if asset not in MINI_APP_ASSETS:
+        raise web.HTTPNotFound()
+    return web.FileResponse(MINI_APP_PATH / asset)
+
+
 def _json_dumps(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False)
 
@@ -138,6 +151,9 @@ def create_app() -> web.Application:
     app = web.Application()
     app.router.add_get("/health", health)
     app.router.add_get("/api/universities", universities)
+    app.router.add_get("/miniapp", miniapp_index)
+    app.router.add_get("/miniapp/", miniapp_index)
+    app.router.add_get("/miniapp/{asset}", miniapp_asset)
     return app
 
 

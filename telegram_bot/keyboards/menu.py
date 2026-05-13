@@ -1,18 +1,28 @@
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, WebAppInfo
+
+from telegram_bot.config import settings
 
 MAX_FAVORITE_ACTION_BUTTONS = 5
 
 
 def main_menu_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Сравнить вузы")],
-            [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Мой профиль")],
-            [KeyboardButton(text="Направления"), KeyboardButton(text="Регионы")],
-            [KeyboardButton(text="Как читать категории")],
+    keyboard = [
+        [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Сравнить вузы")],
+        [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Мой профиль")],
+        [KeyboardButton(text="Направления"), KeyboardButton(text="Регионы")],
+        [KeyboardButton(text="Как читать категории")],
+    ]
+    if settings.webapp_url:
+        keyboard.append([KeyboardButton(text="Открыть Mini App", web_app=WebAppInfo(url=settings.webapp_url))])
+    keyboard.extend(
+        [
             [KeyboardButton(text="Психологическая поддержка")],
             [KeyboardButton(text="Помощь")],
-        ],
+        ]
+    )
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
         resize_keyboard=True,
         input_field_placeholder="Выбери действие",
     )
