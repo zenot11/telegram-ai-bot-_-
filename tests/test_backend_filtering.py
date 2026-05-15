@@ -10,6 +10,24 @@ def test_adygea_it_budget_returns_results() -> None:
     assert all(item["type"] == "бюджет" for item in results)
 
 
+def test_adygea_typo_it_budget_returns_results() -> None:
+    results = filter_universities(load_universities(), "Адыгеая", 230, "айти", "Бюджет")
+
+    assert results
+    assert all(item["region"] == "Адыгея" for item in results)
+    assert all(item["direction"] == "IT" for item in results)
+    assert all(item["type"] == "бюджет" for item in results)
+
+
+def test_lowercase_aliases_return_results() -> None:
+    results = filter_universities(load_universities(), "адыгея", 230, "информатика", "бюджетное")
+
+    assert results
+    assert all(item["region"] == "Адыгея" for item in results)
+    assert all(item["direction"] == "IT" for item in results)
+    assert all(item["type"] == "бюджет" for item in results)
+
+
 def test_low_score_does_not_return_programs_above_ambitious_margin() -> None:
     score = 170
     results = filter_universities(load_universities(), "Адыгея", score, "IT", "бюджет")

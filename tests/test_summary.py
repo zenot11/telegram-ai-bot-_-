@@ -4,6 +4,7 @@ from telegram_bot.services.summary import (
     format_last_search_summary,
     format_search_brief_summary,
 )
+from telegram_bot.services.validation import normalize_direction, normalize_region
 
 
 def university(name: str, min_score: int) -> dict:
@@ -83,3 +84,17 @@ def test_summary_does_not_render_none_or_null() -> None:
 
     assert "None" not in text
     assert "null" not in text
+
+
+def test_summary_uses_normalized_profile_values() -> None:
+    normalized_profile = {
+        "region": normalize_region("Адыгеая"),
+        "score": 230,
+        "direction": normalize_direction("айти"),
+        "education_type": "budget",
+    }
+
+    text = format_last_search_summary(normalized_profile, [university("АГУ", 185)], 0)
+
+    assert "Регион: Адыгея" in text
+    assert "Направление: IT" in text

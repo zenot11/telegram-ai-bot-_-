@@ -36,6 +36,13 @@ def test_parse_score_strips_spaces() -> None:
     assert error is None
 
 
+def test_parse_score_accepts_points_with_word_suffix() -> None:
+    score, error = parse_score("230 баллов")
+
+    assert score == 230
+    assert error is None
+
+
 def test_parse_score_accepts_zero() -> None:
     score, error = parse_score("0")
 

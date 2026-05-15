@@ -93,7 +93,7 @@ function validateScore(rawValue, score) {
 
 function renderResults(items, score) {
   if (!items.length) {
-    showStatus("По таким параметрам вариантов не найдено. Попробуй другой регион, направление или тип обучения.");
+    showStatus("По таким параметрам вариантов не найдено. Проверь регион, направление или тип обучения. Небольшие опечатки я стараюсь исправлять автоматически.");
     resultsNode.innerHTML = "";
     scrollToResults();
     return;
