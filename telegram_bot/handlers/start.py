@@ -64,7 +64,9 @@ async def cmd_botfather(message: Message) -> None:
 async def cmd_webapp(message: Message) -> None:
     if not settings.webapp_url:
         await message.answer(
-            "Mini App пока не настроен. Для локальной демонстрации запусти backend и укажи WEBAPP_URL в .env.",
+            "Mini App сейчас не подключён.\n"
+            "Добавь WEBAPP_URL в локальный .env и перезапусти бота. "
+            "Без Mini App бот продолжает работать в обычном режиме.",
             reply_markup=main_menu_keyboard(),
         )
         return

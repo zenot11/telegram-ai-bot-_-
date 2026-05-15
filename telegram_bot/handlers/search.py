@@ -10,15 +10,10 @@ from telegram_bot.keyboards.menu import main_menu_keyboard
 from telegram_bot.keyboards.search import education_type_keyboard, no_results_keyboard, search_results_keyboard
 from telegram_bot.services.ai import explain_recommendation_groups, explain_results
 from telegram_bot.services.api import UniversityAPIError, fetch_universities
-from telegram_bot.services.recommendation import (
-    classify_university,
-    format_recommendation_summary,
-    format_score_delta,
-    get_recommendation_label,
-    group_universities_by_recommendation,
-    visible_recommendations,
-)
+from telegram_bot.services.formatters import format_price, format_university_card
+from telegram_bot.services.recommendation import group_universities_by_recommendation, visible_recommendations
 from telegram_bot.services.safety import CRISIS_RESPONSE, is_crisis_message
+from telegram_bot.services.summary import format_search_brief_summary
 from telegram_bot.services.validation import (
     education_type_label,
     normalize_direction,
@@ -162,7 +157,7 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
         _format_university_card(i, item, profile["score"])
         for i, item in enumerate(display_results, start=1)
     )
-    summary = format_recommendation_summary(groups)
+    summary = format_search_brief_summary(display_results, profile["score"])
     await message.answer(
         f"Нашла варианты по запросу:\n"
         f"Регион: {escape(profile['region'])}\n"
@@ -171,8 +166,7 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
         f"Тип: {education_type_label(profile['education_type'])}\n\n"
         f"{cards}\n\n"
         f"{summary}\n\n"
-        "Сейчас используются демонстрационные данные. Финальную базу вузов можно подставить "
-        "перед сдачей без переписывания логики подбора.",
+        "Сейчас используются демонстрационные данные.",
         reply_markup=search_results_keyboard(len(display_results)),
     )
 
@@ -215,48 +209,11 @@ async def save_result_to_favorites(message: Message) -> None:
 
 
 def _format_university_card(index: int, item: dict, user_score: int) -> str:
-    subjects = ", ".join(item.get("subjects") or []) or "не указаны"
-    category = classify_university(user_score, item)
-    lines = [
-        f"🎓 <b>{index}. {escape(str(item.get('university', 'Вуз')))}</b>",
-        f"Город: {escape(str(item.get('city', 'не указан')))}",
-        f"Программа: {escape(str(item.get('program', 'не указана')))}",
-        f"Категория: {escape(get_recommendation_label(category))}",
-        f"Мин. балл: {escape(str(item.get('min_score', 'не указан')))}",
-        f"Твои баллы: {user_score}",
-        escape(format_score_delta(user_score, item)),
-        f"Тип: {escape(str(item.get('type', 'не указан')))}",
-    ]
-
-    if item.get("study_form"):
-        lines.append(f"Форма: {escape(str(item['study_form']))}")
-    if item.get("duration"):
-        lines.append(f"Срок: {escape(str(item['duration']))}")
-
-    lines.append(f"Стоимость: {escape(_format_price(item.get('price')))}")
-    lines.append(f"Предметы: {escape(subjects)}")
-
-    if item.get("url"):
-        lines.append(f"Сайт: {escape(str(item['url']))}")
-
-    lines.extend(
-        [
-            "",
-            f"Пометка: {escape(str(item.get('note') or 'демонстрационные данные'))}",
-        ]
-    )
-
-    return "\n".join(lines)
+    return format_university_card(index, item, user_score)
 
 
 def _format_price(price: object) -> str:
-    if price is None or price == "":
-        return "не указана"
-    if isinstance(price, int):
-        return f"{price:,} руб./год".replace(",", " ")
-    if isinstance(price, str) and price.strip().isdigit():
-        return f"{int(price):,} руб./год".replace(",", " ")
-    return str(price)
+    return format_price(price)
 
 
 def _get_result_by_number(results: list[dict], result_number: int) -> dict | None:

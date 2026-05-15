@@ -1,11 +1,9 @@
 from html import escape
 from typing import Any
 
+from telegram_bot.services.formatters import format_university_card
 from telegram_bot.services.recommendation import (
-    classify_university,
     format_score_delta,
-    get_min_score,
-    get_recommendation_label,
     score_delta,
 )
 
@@ -43,12 +41,11 @@ def format_comparison(items: list[dict[str, Any]], user_score: int | None = None
     conclusion = _format_conclusion(comparison)
 
     return (
-        "<b>Сравнение вузов</b>\n\n"
+        "<b>Сравнение вузов:</b>\n\n"
         f"{cards}\n\n"
         "<b>Вывод:</b>\n"
         f"{conclusion}\n"
-        "\nВажно: Сейчас используются демонстрационные данные. "
-        "Финальную базу вузов можно подставить перед сдачей без переписывания логики сравнения."
+        "\nВажно: данные демонстрационные, это не гарантия поступления."
     )
 
 
@@ -131,31 +128,7 @@ def get_unique_subjects(items: list[dict[str, Any]]) -> list[str]:
 
 
 def _format_item(index: int, item: dict[str, Any], user_score: int | None) -> str:
-    subjects = item.get("subjects")
-    subjects_text = ", ".join(subjects) if isinstance(subjects, list) and subjects else "не указаны"
-    category_line = ""
-    score_lines = ""
-    if user_score is not None:
-        category = classify_university(user_score, item)
-        category_line = f"Категория: {escape(get_recommendation_label(category))}\n"
-        score_lines = (
-            f"Твои баллы: {user_score}\n"
-            f"{escape(format_score_delta(user_score, item))}\n"
-        )
-
-    return (
-        f"<b>{index}. {escape(_title_short(item))}</b>\n"
-        f"Город: {escape(_text(item.get('city')))}\n"
-        f"Мин. балл: {escape(_text(item.get('min_score')))}\n"
-        f"{category_line}"
-        f"{score_lines}"
-        f"Тип: {escape(_text(item.get('type')))}\n"
-        f"Стоимость: {escape(_format_price(item.get('price')))}\n"
-        f"Форма: {escape(_text(item.get('study_form')))}\n"
-        f"Срок: {escape(_text(item.get('duration')))}\n"
-        f"Предметы: {escape(subjects_text)}\n"
-        f"Сайт: {escape(_text(item.get('url')))}"
-    )
+    return format_university_card(index, item, user_score, icon="", include_note=False)
 
 
 def _format_conclusion(comparison: dict[str, Any]) -> str:
@@ -196,7 +169,13 @@ def _format_conclusion(comparison: dict[str, Any]) -> str:
 
     budget_count = comparison.get("budget_options", 0)
     paid_count = comparison.get("paid_options", 0)
-    lines.append(f"По типу обучения: бюджетных вариантов — {budget_count}, платных — {paid_count}.")
+    items_count = len(comparison.get("items", []))
+    if budget_count == items_count:
+        lines.append("По типу обучения: все выбранные варианты бюджетные.")
+    elif paid_count == items_count:
+        lines.append("По типу обучения: все выбранные варианты платные.")
+    else:
+        lines.append(f"По типу обучения: бюджетных вариантов — {budget_count}, платных — {paid_count}.")
 
     cheapest = comparison.get("cheapest_option")
     if cheapest:

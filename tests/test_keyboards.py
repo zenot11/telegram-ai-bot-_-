@@ -16,6 +16,7 @@ def test_search_save_buttons_match_results_count() -> None:
     assert "Сохранить 2" in texts
     assert "Сохранить 3" in texts
     assert "Сохранить 4" not in texts
+    assert "Итог подбора" in texts
 
 
 def test_search_save_buttons_include_fourth_and_fifth_results() -> None:

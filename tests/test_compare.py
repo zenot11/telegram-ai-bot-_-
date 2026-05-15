@@ -67,8 +67,8 @@ def test_formatted_text_contains_safe_conclusion() -> None:
 def test_formatted_text_with_user_score_contains_categories() -> None:
     text = format_comparison([university("АГУ", 185), university("МГТУ", 240)], user_score=230)
 
-    assert "Безопасный вариант" in text
-    assert "Амбициозный вариант" in text
+    assert "безопасный вариант" in text
+    assert "амбициозный вариант" in text
     assert "Запас" in text
     assert "Не хватает" in text
 
@@ -76,8 +76,8 @@ def test_formatted_text_with_user_score_contains_categories() -> None:
 def test_formatted_text_contains_demo_warning() -> None:
     text = format_comparison([university("АГУ", 185), university("МГТУ", 172)])
 
-    assert "Сейчас используются демонстрационные данные" in text
-    assert "Финальную базу вузов можно подставить перед сдачей" in text
+    assert "данные демонстрационные" in text
+    assert "не гарантия поступления" in text
 
 
 def test_missing_price_is_rendered_as_not_specified() -> None:

@@ -24,6 +24,14 @@ def test_search_card_renders_missing_price_as_not_specified() -> None:
     assert "Форма: очная" in text
     assert "Срок: 4 года" in text
     assert "Пометка: демонстрационные данные" in text
+    assert "🎓 <b>1. АГУ — Прикладная информатика</b>" in text
+    assert "📍 Город: Майкоп" in text
+    assert "🟢 Категория: безопасный вариант" in text
+    assert "📚 Предметы: русский язык, математика, информатика" in text
+    assert "📊 Мин. балл: 185" in text
+    assert "✅ Твои баллы: 230" in text
+    assert "➕ Запас: +45" in text
+    assert "🎯 Тип: бюджет" in text
 
 
 def test_search_card_does_not_render_none_or_null_values() -> None:

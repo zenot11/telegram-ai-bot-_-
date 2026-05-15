@@ -17,6 +17,7 @@ async def set_bot_commands(bot: Bot) -> None:
             BotCommand(command="start", description="Запуск бота"),
             BotCommand(command="menu", description="Главное меню"),
             BotCommand(command="search", description="Подобрать вуз"),
+            BotCommand(command="summary", description="Итог последнего подбора"),
             BotCommand(command="compare", description="Сравнить вузы"),
             BotCommand(command="categories", description="Как читать категории"),
             BotCommand(command="support", description="Психологическая поддержка"),

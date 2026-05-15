@@ -10,8 +10,11 @@ from telegram_bot.keyboards.menu import (
     favorites_keyboard_for_count,
     main_menu_keyboard,
     profile_keyboard,
+    summary_keyboard,
 )
+from telegram_bot.services.formatters import format_university_card
 from telegram_bot.services.recommendation import format_categories_explanation
+from telegram_bot.services.summary import EMPTY_SUMMARY_TEXT, format_last_search_summary
 from telegram_bot.services.texts import HELP_TEXT
 from telegram_bot.services.validation import (
     AVAILABLE_DIRECTIONS,
@@ -65,6 +68,22 @@ async def my_profile(message: Message, state: FSMContext) -> None:
     await message.answer(text, reply_markup=profile_keyboard())
 
 
+@router.message(Command("summary"))
+@router.message(F.text == "Итог подбора")
+async def search_summary(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    if not message.from_user:
+        await message.answer("Не удалось определить пользователя.", reply_markup=main_menu_keyboard())
+        return
+
+    profile = user_storage.get_profile(message.from_user.id)
+    last_results = user_storage.get_last_results(message.from_user.id)
+    favorites_count = len(user_storage.get_favorites(message.from_user.id))
+    text = format_last_search_summary(profile, last_results, favorites_count)
+    reply_markup = summary_keyboard() if text != EMPTY_SUMMARY_TEXT else main_menu_keyboard()
+    await message.answer(text, reply_markup=reply_markup)
+
+
 @router.message(F.text == "Сбросить профиль")
 async def reset_profile_button(message: Message, state: FSMContext) -> None:
     await state.clear()
@@ -83,7 +102,8 @@ async def favorites(message: Message, state: FSMContext) -> None:
     items = user_storage.get_favorites(message.from_user.id)
     if not items:
         await message.answer(
-            "Пока избранных вузов нет. После подбора нажми «Сохранить N» рядом с понравившимся вариантом.",
+            "Избранное пока пустое.\n"
+            "Сначала пройди подбор и нажми «Сохранить 1», «Сохранить 2» и т.д.",
             reply_markup=empty_favorites_keyboard(),
         )
         return
@@ -124,7 +144,7 @@ async def remove_favorite(message: Message, state: FSMContext) -> None:
     remaining_count = len(user_storage.get_favorites(message.from_user.id))
     reply_markup = _favorites_reply_keyboard(remaining_count)
     suffix = "" if remaining_count else (
-        "\n\nПока избранных вузов нет. После подбора нажми «Сохранить N» рядом с понравившимся вариантом."
+        "\n\nИзбранное пока пустое. Сначала пройди подбор и нажми «Сохранить 1», «Сохранить 2» и т.д."
     )
 
     await message.answer(
@@ -169,20 +189,7 @@ async def categories_explanation(message: Message, state: FSMContext) -> None:
 
 
 def _format_favorite_card(index: int, item: dict) -> str:
-    lines = [
-        f"⭐ <b>{index}. {escape(str(item.get('university', 'Вуз')))}</b>\n"
-        f"Город: {escape(_text_value(item.get('city')))}\n"
-        f"Программа: {escape(_text_value(item.get('program')))}\n"
-        f"Мин. балл: {escape(_text_value(item.get('min_score')))}\n"
-        f"Тип: {escape(_text_value(item.get('type')))}"
-    ]
-    if item.get("study_form"):
-        lines.append(f"Форма: {escape(str(item['study_form']))}")
-    if item.get("duration"):
-        lines.append(f"Срок: {escape(str(item['duration']))}")
-    if item.get("url"):
-        lines.append(f"Сайт: {escape(str(item['url']))}")
-    return "\n".join(lines)
+    return format_university_card(index, item, icon="⭐", include_note=False)
 
 
 def _value(value: object) -> str:

@@ -41,6 +41,25 @@ def profile_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
+def summary_keyboard() -> ReplyKeyboardMarkup:
+    keyboard = [
+        [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Сравнить вузы")],
+    ]
+    if settings.webapp_url:
+        keyboard.append([KeyboardButton(text="Открыть Mini App", web_app=WebAppInfo(url=settings.webapp_url))])
+    keyboard.extend(
+        [
+            [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Вернуться в меню")],
+        ]
+    )
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+        input_field_placeholder="Что открыть дальше",
+    )
+
+
 def favorites_keyboard() -> ReplyKeyboardMarkup:
     return favorites_keyboard_for_count(0)
 

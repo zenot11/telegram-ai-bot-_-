@@ -35,7 +35,8 @@ async def start_compare(message: Message, state: FSMContext) -> None:
 
     if not has_last_results and not has_favorites:
         await message.answer(
-            "Пока нечего сравнивать. Сначала пройди подбор вузов или добавь варианты в избранное.",
+            "Пока нечего сравнивать.\n"
+            "Сначала пройди подбор вузов или добавь варианты в избранное.",
             reply_markup=empty_compare_keyboard(),
         )
         return
