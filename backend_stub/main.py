@@ -13,7 +13,7 @@ load_dotenv()
 
 DATA_PATH = Path(__file__).resolve().parent / "data" / "universities.json"
 MINI_APP_PATH = Path(__file__).resolve().parent.parent / "mini_app"
-MINI_APP_ASSETS = {"styles.css", "app.js"}
+MINI_APP_ASSETS = {"styles.css", "app.js", "favicon.svg"}
 
 DIRECTION_SYNONYMS = {
     "IT": ("it", "айти", "информатика", "программирование", "информационные", "данные"),
@@ -143,6 +143,10 @@ async def miniapp_asset(request: web.Request) -> web.FileResponse:
     return web.FileResponse(MINI_APP_PATH / asset)
 
 
+async def favicon(_: web.Request) -> web.FileResponse:
+    return web.FileResponse(MINI_APP_PATH / "favicon.svg")
+
+
 def _json_dumps(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False)
 
@@ -154,6 +158,7 @@ def create_app() -> web.Application:
     app.router.add_get("/miniapp", miniapp_index)
     app.router.add_get("/miniapp/", miniapp_index)
     app.router.add_get("/miniapp/{asset}", miniapp_asset)
+    app.router.add_get("/favicon.ico", favicon)
     return app
 
 

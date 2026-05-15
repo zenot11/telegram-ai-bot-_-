@@ -5,7 +5,6 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from telegram_bot.handlers.start import HELP_TEXT
 from telegram_bot.keyboards.menu import (
     empty_favorites_keyboard,
     favorites_keyboard_for_count,
@@ -13,6 +12,7 @@ from telegram_bot.keyboards.menu import (
     profile_keyboard,
 )
 from telegram_bot.services.recommendation import format_categories_explanation
+from telegram_bot.services.texts import HELP_TEXT
 from telegram_bot.services.validation import (
     AVAILABLE_DIRECTIONS,
     AVAILABLE_REGIONS,
@@ -139,7 +139,7 @@ async def remove_favorite(message: Message, state: FSMContext) -> None:
 async def directions(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(
-        "Сейчас в MVP доступны тестовые направления. Можешь использовать одно из них в подборе:\n"
+        "Сейчас в демонстрационной базе доступны направления. Можешь использовать одно из них в подборе:\n"
         + "\n".join(f"- {direction}" for direction in AVAILABLE_DIRECTIONS),
         reply_markup=main_menu_keyboard(),
     )
@@ -149,7 +149,7 @@ async def directions(message: Message, state: FSMContext) -> None:
 async def regions(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(
-        "Сейчас в MVP доступны тестовые регионы. Для проверки лучше использовать:\n"
+        "Сейчас в демонстрационной базе доступны регионы. Для проверки можно использовать:\n"
         + "\n".join(f"- {region}" for region in AVAILABLE_REGIONS),
         reply_markup=main_menu_keyboard(),
     )

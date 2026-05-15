@@ -5,27 +5,18 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, W
 
 from telegram_bot.config import settings
 from telegram_bot.keyboards.menu import main_menu_keyboard
+from telegram_bot.services.texts import (
+    ABOUT_TEXT,
+    BOTFATHER_TEXT,
+    DEMO_TEXT,
+    HELP_TEXT,
+    NEXT_TEXT,
+    PRIVACY_TEXT,
+)
 from telegram_bot.storage.user_data import user_storage
 
 
 router = Router()
-
-HELP_TEXT = (
-    "Я Аиша, AI-помощник для абитуриентов.\n\n"
-    "Команды:\n"
-    "/start — запуск бота\n"
-    "/menu — главное меню\n"
-    "/search — подбор вузов\n"
-    "/compare — сравнение вузов\n"
-    "/categories — как читать категории подбора\n"
-    "/webapp — открыть Mini App\n"
-    "/support — психологическая поддержка\n"
-    "/reset — сброс введённых данных\n"
-    "/help — помощь\n\n"
-    "Чтобы начать подбор, нажми «Подобрать вуз» или введи /search. "
-    "После подбора можно сохранить варианты в «Избранные вузы», сравнить их через /compare "
-    "и посмотреть данные в «Мой профиль». Категории подбора можно посмотреть через /categories."
-)
 
 
 @router.message(CommandStart())
@@ -42,6 +33,31 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
 @router.message(Command("help"))
 async def cmd_help(message: Message) -> None:
     await message.answer(HELP_TEXT, reply_markup=main_menu_keyboard())
+
+
+@router.message(Command("about"))
+async def cmd_about(message: Message) -> None:
+    await message.answer(ABOUT_TEXT, reply_markup=main_menu_keyboard())
+
+
+@router.message(Command("demo"))
+async def cmd_demo(message: Message) -> None:
+    await message.answer(DEMO_TEXT, reply_markup=main_menu_keyboard())
+
+
+@router.message(Command("privacy"))
+async def cmd_privacy(message: Message) -> None:
+    await message.answer(PRIVACY_TEXT, reply_markup=main_menu_keyboard())
+
+
+@router.message(Command("next"))
+async def cmd_next(message: Message) -> None:
+    await message.answer(NEXT_TEXT, reply_markup=main_menu_keyboard())
+
+
+@router.message(Command("botfather"))
+async def cmd_botfather(message: Message) -> None:
+    await message.answer(BOTFATHER_TEXT, reply_markup=main_menu_keyboard())
 
 
 @router.message(Command("webapp"))

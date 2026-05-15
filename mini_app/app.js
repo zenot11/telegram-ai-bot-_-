@@ -95,7 +95,7 @@ function renderResults(items, score) {
     return;
   }
 
-  showStatus(`Нашла вариантов: ${items.length}. Данные демонстрационные.`);
+  showStatus(`Нашла вариантов: ${items.length}. Сейчас используются демонстрационные данные.`);
   resultsNode.innerHTML = items.map((item, index) => renderCard(item, score, index + 1)).join("");
 }
 
@@ -124,7 +124,7 @@ function renderCard(item, score, index) {
         ${item.study_form ? `<div><b>Форма:</b> ${escapeHtml(item.study_form)}</div>` : ""}
         ${item.duration ? `<div><b>Срок:</b> ${escapeHtml(item.duration)}</div>` : ""}
         ${item.url ? `<div><b>Сайт:</b> <a class="site-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.url)}</a></div>` : ""}
-        <div><b>Пометка:</b> ${escapeHtml(item.note || "демонстрационные данные MVP")}</div>
+        <div><b>Пометка:</b> ${escapeHtml(item.note || "демонстрационные данные")}</div>
       </div>
     </article>
   `;

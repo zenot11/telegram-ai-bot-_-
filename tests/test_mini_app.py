@@ -12,6 +12,7 @@ def test_mini_app_files_exist() -> None:
     assert (MINI_APP_DIR / "index.html").exists()
     assert (MINI_APP_DIR / "styles.css").exists()
     assert (MINI_APP_DIR / "app.js").exists()
+    assert (MINI_APP_DIR / "favicon.svg").exists()
 
 
 def test_index_contains_aisha_and_search_form() -> None:
@@ -44,5 +45,14 @@ def test_styles_include_recommendation_categories() -> None:
 def test_index_mentions_demo_data_warning() -> None:
     html = read_mini_app_file("index.html")
 
-    assert "Данные демонстрационные" in html
-    assert "не гарантия поступления" in html
+    assert "демонстрационный прототип" in html
+    assert "будут заменены" in html
+
+
+def test_mini_app_user_texts_do_not_use_mvp_label() -> None:
+    combined = "\n".join(
+        read_mini_app_file(name)
+        for name in ("index.html", "styles.css", "app.js", "favicon.svg")
+    )
+
+    assert "MVP" not in combined

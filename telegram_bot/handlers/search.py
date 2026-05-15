@@ -171,8 +171,8 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
         f"Тип: {education_type_label(profile['education_type'])}\n\n"
         f"{cards}\n\n"
         f"{summary}\n\n"
-        "Это тестовый подбор MVP. Для финальной версии данные должны приходить "
-        "из настоящей базы вузов или backend API.",
+        "Сейчас используются демонстрационные данные. Финальную базу вузов можно подставить "
+        "перед сдачей без переписывания логики подбора.",
         reply_markup=search_results_keyboard(len(display_results)),
     )
 
@@ -242,7 +242,7 @@ def _format_university_card(index: int, item: dict, user_score: int) -> str:
     lines.extend(
         [
             "",
-            f"Пометка: {escape(str(item.get('note') or 'демонстрационные данные MVP'))}",
+            f"Пометка: {escape(str(item.get('note') or 'демонстрационные данные'))}",
         ]
     )
 

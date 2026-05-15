@@ -16,13 +16,18 @@ async def set_bot_commands(bot: Bot) -> None:
         [
             BotCommand(command="start", description="Запуск бота"),
             BotCommand(command="menu", description="Главное меню"),
-            BotCommand(command="help", description="Помощь"),
-            BotCommand(command="reset", description="Сбросить данные"),
-            BotCommand(command="support", description="Психологическая поддержка"),
             BotCommand(command="search", description="Подобрать вуз"),
             BotCommand(command="compare", description="Сравнить вузы"),
             BotCommand(command="categories", description="Как читать категории"),
+            BotCommand(command="support", description="Психологическая поддержка"),
             BotCommand(command="webapp", description="Открыть Mini App"),
+            BotCommand(command="about", description="О проекте"),
+            BotCommand(command="demo", description="Сценарий демонстрации"),
+            BotCommand(command="privacy", description="Приватность"),
+            BotCommand(command="next", description="Что подготовить перед сдачей"),
+            BotCommand(command="botfather", description="Настройки BotFather"),
+            BotCommand(command="reset", description="Сброс введённых данных"),
+            BotCommand(command="help", description="Помощь"),
         ]
     )
 

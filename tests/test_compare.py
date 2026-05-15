@@ -76,7 +76,8 @@ def test_formatted_text_with_user_score_contains_categories() -> None:
 def test_formatted_text_contains_demo_warning() -> None:
     text = format_comparison([university("АГУ", 185), university("МГТУ", 172)])
 
-    assert "Данные демонстрационные" in text
+    assert "Сейчас используются демонстрационные данные" in text
+    assert "Финальную базу вузов можно подставить перед сдачей" in text
 
 
 def test_missing_price_is_rendered_as_not_specified() -> None:

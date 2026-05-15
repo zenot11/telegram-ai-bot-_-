@@ -15,7 +15,7 @@ def test_search_card_renders_missing_price_as_not_specified() -> None:
             "url": "https://www.adygnet.ru",
             "study_form": "очная",
             "duration": "4 года",
-            "note": "Демонстрационные данные для MVP",
+            "note": "демонстрационные данные",
         },
         230,
     )
@@ -23,7 +23,7 @@ def test_search_card_renders_missing_price_as_not_specified() -> None:
     assert "Стоимость: не указана" in text
     assert "Форма: очная" in text
     assert "Срок: 4 года" in text
-    assert "Пометка: Демонстрационные данные для MVP" in text
+    assert "Пометка: демонстрационные данные" in text
 
 
 def test_search_card_does_not_render_none_or_null_values() -> None:
