@@ -1,10 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Аиша">
-  <defs>
-    <linearGradient id="aisha-gradient" x1="10" y1="8" x2="54" y2="58" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#7dd3fc"/>
-      <stop offset="1" stop-color="#34d399"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="16" fill="#101724"/>
-  <path d="M18 48 30.5 16h5L48 48h-6.5l-2.7-7.2H27.1L24.4 48H18Zm11.2-12.9h7.5L33 24.7l-3.8 10.4Z" fill="url(#aisha-gradient)"/>
+  <rect width="64" height="64" rx="14" fill="#202152"/>
+  <path d="M18 48 30.4 15.5h5.2L48 48h-6.8l-2.6-7.1H27.2L24.6 48H18Zm11.2-13h7.5L33 24.5 29.2 35Z" fill="#f3f1ec"/>
+  <path d="M22 52h22" stroke="#2e8faf" stroke-width="4" stroke-linecap="round"/>
 </svg>

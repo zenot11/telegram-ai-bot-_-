@@ -19,11 +19,15 @@ def test_index_contains_aisha_and_search_form() -> None:
     html = read_mini_app_file("index.html")
 
     assert "Аиша" in html
+    assert "Построй будущее уже сегодня" in html
+    assert "Привет, я Аиша" in html
     assert "<form" in html
     assert "Подобрать варианты" in html
     assert "region" in html
     assert "score" in html
     assert "direction" in html
+    assert "/miniapp/styles.css" in html
+    assert "/miniapp/app.js" in html
 
 
 def test_app_js_uses_backend_api_without_openai_key() -> None:
@@ -40,6 +44,16 @@ def test_styles_include_recommendation_categories() -> None:
     assert ".badge.safe" in css
     assert ".badge.realistic" in css
     assert ".badge.ambitious" in css
+
+
+def test_styles_include_light_site_layout_classes() -> None:
+    css = read_mini_app_file("styles.css")
+
+    assert ".hero-section" in css
+    assert ".assistant-card" in css
+    assert ".search-form" in css
+    assert ".result-card" in css
+    assert ".results-grid" in css
 
 
 def test_index_mentions_demo_data_warning() -> None:

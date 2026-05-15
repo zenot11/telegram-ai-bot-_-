@@ -1,6 +1,7 @@
 const form = document.querySelector("#search-form");
 const resultsNode = document.querySelector("#results");
 const statusNode = document.querySelector("#status-text");
+const resultsSection = document.querySelector("#results-section");
 
 const SAFE_MARGIN = 25;
 const AMBITIOUS_MARGIN = 20;
@@ -37,6 +38,7 @@ form.addEventListener("submit", async (event) => {
   if (validationError) {
     showStatus(validationError, true);
     resultsNode.innerHTML = "";
+    scrollToResults();
     return;
   }
 
@@ -66,6 +68,7 @@ form.addEventListener("submit", async (event) => {
     renderResults(visibleResults, score);
   } catch (error) {
     showStatus("Backend-заглушка недоступна. Запусти python -m backend_stub.main.", true);
+    scrollToResults();
   }
 });
 
@@ -92,11 +95,13 @@ function renderResults(items, score) {
   if (!items.length) {
     showStatus("По таким параметрам вариантов не найдено. Попробуй другой регион, направление или тип обучения.");
     resultsNode.innerHTML = "";
+    scrollToResults();
     return;
   }
 
   showStatus(`Нашла вариантов: ${items.length}. Сейчас используются демонстрационные данные.`);
   resultsNode.innerHTML = items.map((item, index) => renderCard(item, score, index + 1)).join("");
+  scrollToResults();
 }
 
 function renderCard(item, score, index) {
@@ -183,6 +188,10 @@ function formatValue(value) {
 function showStatus(text, isError = false) {
   statusNode.textContent = text;
   statusNode.classList.toggle("status-error", isError);
+}
+
+function scrollToResults() {
+  resultsSection?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function escapeHtml(value) {

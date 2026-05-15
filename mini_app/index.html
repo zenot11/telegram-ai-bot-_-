@@ -8,21 +8,49 @@
     <link rel="stylesheet" href="/miniapp/styles.css">
   </head>
   <body>
-    <main class="app-shell">
-      <section class="hero">
-        <div class="hero__content">
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="Аиша">
+        <span class="brand__mark">А</span>
+        <span>Аиша</span>
+      </a>
+      <nav class="nav-links" aria-label="Навигация Mini App">
+        <a href="#home">Главная</a>
+        <a href="#search">Подбор</a>
+        <a href="#categories">Категории</a>
+        <a href="#about">О проекте</a>
+      </nav>
+    </header>
+
+    <main>
+      <section id="home" class="hero-section">
+        <div class="hero-copy">
           <p class="eyebrow">Telegram Mini App</p>
-          <h1>Аиша — подбор вузов</h1>
-          <p class="hero__text">
-            Аиша помогает подобрать варианты вузов по региону, баллам, направлению и типу обучения.
+          <h1>Построй будущее уже сегодня</h1>
+          <p class="hero-text">
+            Аиша помогает подобрать вуз по региону, баллам, направлению и типу обучения.
           </p>
+          <a class="primary-button hero-button" href="#search">Начать подбор</a>
         </div>
+
+        <aside class="assistant-card" aria-label="Карточка Аиши">
+          <div class="aisha-portrait" aria-hidden="true">
+            <div class="aisha-avatar">А</div>
+          </div>
+          <div>
+            <h2>Привет, я Аиша!</h2>
+            <p>
+              Я помогу выбрать регион, сравнить варианты и понять уровень поступления.
+            </p>
+            <a class="assistant-link" href="#search">Подобрать вуз</a>
+          </div>
+        </aside>
       </section>
 
-      <section class="panel search-panel" aria-labelledby="search-title">
+      <section id="search" class="section search-section" aria-labelledby="search-title">
         <div class="section-heading">
+          <p class="eyebrow">Подбор</p>
           <h2 id="search-title">Подбор вариантов</h2>
-          <p>Заполни поля, и я покажу до 5 демонстрационных программ.</p>
+          <p>Заполни поля, и Аиша покажет до 5 демонстрационных программ.</p>
         </div>
 
         <form id="search-form" class="search-form">
@@ -78,33 +106,52 @@
         </form>
       </section>
 
-      <section class="panel results-panel" aria-live="polite">
+      <section id="results-section" class="section results-section" aria-live="polite">
         <div class="section-heading">
-          <h2>Результаты</h2>
+          <p class="eyebrow">Результаты</p>
+          <h2>Найденные варианты</h2>
           <p id="status-text">Заполни форму, чтобы увидеть подходящие варианты.</p>
         </div>
         <div id="results" class="results-grid"></div>
       </section>
 
-      <section class="info-grid">
-        <article class="panel">
-          <h2>Как читать категории</h2>
-          <div class="legend">
-            <p><span class="badge safe">Безопасный</span> проходной балл ниже твоего с запасом.</p>
-            <p><span class="badge realistic">Реалистичный</span> баллы близки к проходному уровню.</p>
-            <p><span class="badge ambitious">Амбициозный</span> немного не хватает, но можно рассмотреть как цель.</p>
-          </div>
-        </article>
+      <section id="categories" class="section info-section" aria-labelledby="categories-title">
+        <div class="section-heading">
+          <p class="eyebrow">Категории</p>
+          <h2 id="categories-title">Как читать категории</h2>
+        </div>
+        <div class="category-list">
+          <article class="category-card">
+            <span class="badge safe">Безопасный</span>
+            <p>Проходной балл ниже твоего с запасом.</p>
+          </article>
+          <article class="category-card">
+            <span class="badge realistic">Реалистичный</span>
+            <p>Баллы близки к проходному уровню.</p>
+          </article>
+          <article class="category-card">
+            <span class="badge ambitious">Амбициозный</span>
+            <p>Немного не хватает, но можно рассматривать как цель.</p>
+          </article>
+        </div>
+      </section>
 
-        <article class="panel important-panel">
-          <h2>Важно</h2>
-          <p>
-            Это демонстрационный прототип. Данные нужны для показа логики и будут заменены
-            на финальные перед сдачей. Это не гарантия поступления.
-          </p>
-        </article>
+      <section id="about" class="section about-section" aria-labelledby="about-title">
+        <div>
+          <p class="eyebrow">О проекте</p>
+          <h2 id="about-title">Аиша помогает выбирать спокойнее</h2>
+        </div>
+        <p>
+          Это демонстрационный прототип сервиса для абитуриентов. Сейчас используется
+          временная демонстрационная база. Перед сдачей данные будут заменены на финальные
+          данные вузов без переписывания основной логики.
+        </p>
       </section>
     </main>
+
+    <footer class="footer">
+      Аиша · Telegram Mini App · демонстрационный прототип
+    </footer>
 
     <script src="/miniapp/app.js"></script>
   </body>
