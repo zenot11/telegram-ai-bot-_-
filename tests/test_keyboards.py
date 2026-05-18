@@ -1,6 +1,11 @@
 from aiogram.types import ReplyKeyboardMarkup
 
-from telegram_bot.keyboards.menu import favorites_keyboard_for_count
+from telegram_bot.keyboards.menu import (
+    empty_history_keyboard,
+    favorites_keyboard_for_count,
+    history_keyboard,
+    main_menu_keyboard,
+)
 from telegram_bot.keyboards.compare import compare_options_keyboard
 from telegram_bot.keyboards.search import search_results_keyboard
 
@@ -17,6 +22,7 @@ def test_search_save_buttons_match_results_count() -> None:
     assert "Сохранить 3" in texts
     assert "Сохранить 4" not in texts
     assert "Итог подбора" in texts
+    assert "История подборов" in texts
 
 
 def test_search_save_buttons_include_fourth_and_fifth_results() -> None:
@@ -41,6 +47,28 @@ def test_favorites_delete_buttons_include_fourth_and_fifth_items() -> None:
     assert "Удалить 4" in texts
     assert "Удалить 5" in texts
     assert "Удалить 6" not in texts
+
+
+def test_main_menu_contains_search_history_button() -> None:
+    texts = keyboard_texts(main_menu_keyboard())
+
+    assert "История подборов" in texts
+
+
+def test_history_keyboard_actions() -> None:
+    texts = keyboard_texts(history_keyboard())
+
+    assert "Повторить последний подбор" in texts
+    assert "Очистить историю" in texts
+    assert "Подобрать вуз" in texts
+
+
+def test_empty_history_keyboard_is_compact() -> None:
+    texts = keyboard_texts(empty_history_keyboard())
+
+    assert "Подобрать вуз" in texts
+    assert "Вернуться в меню" in texts
+    assert "Очистить историю" not in texts
 
 
 def test_compare_buttons_do_not_promise_fourth_or_fifth_items() -> None:

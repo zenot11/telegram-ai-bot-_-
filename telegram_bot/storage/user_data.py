@@ -4,6 +4,7 @@ from threading import Lock
 from typing import Any
 
 from telegram_bot.config import settings
+from telegram_bot.services.history import HISTORY_LIMIT, build_history_entry
 
 
 class UserDataStorage:
@@ -117,6 +118,52 @@ class UserDataStorage:
             data[str(telegram_id)] = current
             self._write_all_unlocked(data)
             return removed if isinstance(removed, dict) else None
+
+    def add_search_history(
+        self,
+        telegram_id: int,
+        search_query: dict[str, Any],
+        results: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        entry = build_history_entry(search_query, results)
+        with self._lock:
+            data = self._read_all_unlocked()
+            current = data.get(str(telegram_id), {})
+            if not isinstance(current, dict):
+                current = {}
+
+            history = current.get("history", [])
+            if not isinstance(history, list):
+                history = []
+
+            current["telegram_id"] = telegram_id
+            current["history"] = [entry] + [item for item in history if isinstance(item, dict)]
+            current["history"] = current["history"][:HISTORY_LIMIT]
+            data[str(telegram_id)] = current
+            self._write_all_unlocked(data)
+            return entry
+
+    def get_search_history(self, telegram_id: int, limit: int = HISTORY_LIMIT) -> list[dict[str, Any]]:
+        profile = self.get_profile(telegram_id)
+        if not profile:
+            return []
+
+        history = profile.get("history", [])
+        if not isinstance(history, list):
+            return []
+        safe_limit = max(0, min(limit, HISTORY_LIMIT))
+        return [item for item in history if isinstance(item, dict)][:safe_limit]
+
+    def clear_search_history(self, telegram_id: int) -> None:
+        with self._lock:
+            data = self._read_all_unlocked()
+            current = data.get(str(telegram_id), {})
+            if not isinstance(current, dict):
+                current = {}
+            current["telegram_id"] = telegram_id
+            current["history"] = []
+            data[str(telegram_id)] = current
+            self._write_all_unlocked(data)
 
     def get_profile_summary(self, telegram_id: int) -> dict[str, Any]:
         profile = self.get_profile(telegram_id) or {}

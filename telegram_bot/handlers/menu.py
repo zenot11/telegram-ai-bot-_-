@@ -5,21 +5,32 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
+from telegram_bot.config import settings
 from telegram_bot.keyboards.menu import (
     empty_favorites_keyboard,
+    empty_history_keyboard,
     favorites_keyboard_for_count,
+    history_keyboard,
     main_menu_keyboard,
     profile_keyboard,
     summary_keyboard,
 )
+from telegram_bot.keyboards.search import no_results_keyboard, search_results_keyboard
+from telegram_bot.services.api import UniversityAPIError, fetch_universities
 from telegram_bot.services.formatters import format_university_card
-from telegram_bot.services.recommendation import format_categories_explanation
-from telegram_bot.services.summary import EMPTY_SUMMARY_TEXT, format_last_search_summary
+from telegram_bot.services.history import format_history_message
+from telegram_bot.services.recommendation import (
+    format_categories_explanation,
+    group_universities_by_recommendation,
+    visible_recommendations,
+)
+from telegram_bot.services.summary import EMPTY_SUMMARY_TEXT, format_last_search_summary, format_search_brief_summary
 from telegram_bot.services.texts import HELP_TEXT
 from telegram_bot.services.validation import (
     AVAILABLE_DIRECTIONS,
     AVAILABLE_REGIONS,
     education_type_label,
+    normalize_education_type,
 )
 from telegram_bot.storage.user_data import user_storage
 
@@ -84,12 +95,108 @@ async def search_summary(message: Message, state: FSMContext) -> None:
     await message.answer(text, reply_markup=reply_markup)
 
 
+@router.message(Command("history"))
+@router.message(F.text == "История подборов")
+async def search_history(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    if not message.from_user:
+        await message.answer("Не удалось определить пользователя.", reply_markup=main_menu_keyboard())
+        return
+
+    history = user_storage.get_search_history(message.from_user.id)
+    reply_markup = history_keyboard() if history else empty_history_keyboard()
+    await message.answer(format_history_message(history), reply_markup=reply_markup)
+
+
+@router.message(Command("clear_history"))
+@router.message(F.text == "Очистить историю")
+async def clear_search_history(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    if message.from_user:
+        user_storage.clear_search_history(message.from_user.id)
+    await message.answer("История подборов очищена.", reply_markup=empty_history_keyboard())
+
+
+@router.message(F.text == "Повторить последний подбор")
+async def repeat_last_search(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    if not message.from_user:
+        await message.answer("Не удалось определить пользователя.", reply_markup=main_menu_keyboard())
+        return
+
+    history = user_storage.get_search_history(message.from_user.id, limit=1)
+    if not history:
+        await message.answer(format_history_message([]), reply_markup=empty_history_keyboard())
+        return
+
+    profile = _profile_from_history_entry(message.from_user.id, history[0])
+    if not profile:
+        await message.answer(
+            "Не получилось повторить последний подбор: в истории не хватает данных. "
+            "Лучше запусти новый подбор через /search.",
+            reply_markup=empty_history_keyboard(),
+        )
+        return
+
+    await message.answer("Повторяю последний подбор...")
+
+    try:
+        results = await fetch_universities(
+            base_url=settings.backend_base_url,
+            region=profile["region"],
+            score=profile["score"],
+            direction=profile["direction"],
+            education_type=profile["education_type"],
+            limit=5,
+        )
+    except UniversityAPIError:
+        await message.answer(
+            "Сейчас не получилось повторить подбор. Проверь, что backend-заглушка запущена.",
+            reply_markup=history_keyboard(),
+        )
+        return
+
+    groups = group_universities_by_recommendation(profile["score"], results)
+    display_results = visible_recommendations(groups)
+    user_storage.save_search(message.from_user.id, profile, display_results)
+    user_storage.add_search_history(message.from_user.id, profile, display_results)
+
+    if not display_results:
+        await message.answer(
+            "Пока не нашла подходящих вариантов по этим параметрам.\n\n"
+            "Можно попробовать:\n"
+            "- выбрать соседний регион;\n"
+            "- рассмотреть платное обучение;\n"
+            "- изменить направление;\n"
+            "- проверить баллы.",
+            reply_markup=no_results_keyboard(),
+        )
+        return
+
+    cards = "\n\n".join(
+        format_university_card(index, item, profile["score"])
+        for index, item in enumerate(display_results, start=1)
+    )
+    summary = format_search_brief_summary(display_results, profile["score"])
+    await message.answer(
+        "Повторила последний подбор:\n"
+        f"Регион: {escape(profile['region'])}\n"
+        f"Баллы: {profile['score']}\n"
+        f"Направление: {escape(profile['direction'])}\n"
+        f"Тип: {education_type_label(profile['education_type'])}\n\n"
+        f"{cards}\n\n"
+        f"{summary}\n\n"
+        "Сейчас используются демонстрационные данные.",
+        reply_markup=search_results_keyboard(len(display_results)),
+    )
+
+
 @router.message(F.text == "Сбросить профиль")
 async def reset_profile_button(message: Message, state: FSMContext) -> None:
     await state.clear()
     if message.from_user:
         user_storage.reset_profile(message.from_user.id)
-    await message.answer("Профиль и избранное очищены.", reply_markup=main_menu_keyboard())
+    await message.answer("Профиль, последний подбор, история и избранное очищены.", reply_markup=main_menu_keyboard())
 
 
 @router.message(F.text == "Избранные вузы")
@@ -206,6 +313,39 @@ def _text_value(value: object) -> str:
 
 def _favorites_reply_keyboard(items_count: int):
     return favorites_keyboard_for_count(items_count) if items_count else empty_favorites_keyboard()
+
+
+def _profile_from_history_entry(telegram_id: int, entry: dict) -> dict | None:
+    region = _clean_history_value(entry.get("region"))
+    direction = _clean_history_value(entry.get("direction"))
+    score = _history_score(entry.get("score"))
+    education_type = normalize_education_type(str(entry.get("type") or ""))
+
+    if not region or not direction or score is None or not education_type:
+        return None
+
+    return {
+        "telegram_id": telegram_id,
+        "region": region,
+        "score": score,
+        "direction": direction,
+        "education_type": education_type,
+    }
+
+
+def _clean_history_value(value: object) -> str | None:
+    text = str(value or "").strip()
+    if not text or text == "не указано":
+        return None
+    return text
+
+
+def _history_score(value: object) -> int | None:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    return None
 
 
 def _plural(count: int, one: str, few: str, many: str) -> str:

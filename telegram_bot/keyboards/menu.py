@@ -9,6 +9,7 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
     keyboard = [
         [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Сравнить вузы")],
         [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Мой профиль")],
+        [KeyboardButton(text="Итог подбора"), KeyboardButton(text="История подборов")],
         [KeyboardButton(text="Направления"), KeyboardButton(text="Регионы")],
         [KeyboardButton(text="Как читать категории")],
     ]
@@ -44,6 +45,7 @@ def profile_keyboard() -> ReplyKeyboardMarkup:
 def summary_keyboard() -> ReplyKeyboardMarkup:
     keyboard = [
         [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Сравнить вузы")],
+        [KeyboardButton(text="История подборов")],
     ]
     if settings.webapp_url:
         keyboard.append([KeyboardButton(text="Открыть Mini App", web_app=WebAppInfo(url=settings.webapp_url))])
@@ -93,6 +95,29 @@ def _chunk_buttons(buttons: list[KeyboardButton], size: int) -> list[list[Keyboa
 
 
 def empty_favorites_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Подобрать вуз")],
+            [KeyboardButton(text="Вернуться в меню")],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Выбери действие",
+    )
+
+
+def history_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Повторить последний подбор")],
+            [KeyboardButton(text="Очистить историю")],
+            [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Вернуться в меню")],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Выбери действие",
+    )
+
+
+def empty_history_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="Подобрать вуз")],

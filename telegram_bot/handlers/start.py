@@ -84,4 +84,7 @@ async def cmd_reset(message: Message, state: FSMContext) -> None:
     await state.clear()
     if message.from_user:
         user_storage.reset_profile(message.from_user.id)
-    await message.answer("Данные, последний подбор и избранное сброшены. Можно начать заново.", reply_markup=main_menu_keyboard())
+    await message.answer(
+        "Данные, последний подбор, история и избранное сброшены. Можно начать заново.",
+        reply_markup=main_menu_keyboard(),
+    )

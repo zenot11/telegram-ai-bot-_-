@@ -138,6 +138,7 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
 
     if message.from_user:
         user_storage.save_search(message.from_user.id, profile, display_results)
+        user_storage.add_search_history(message.from_user.id, profile, display_results)
 
     await state.clear()
 

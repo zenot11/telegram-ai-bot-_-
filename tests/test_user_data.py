@@ -151,8 +151,10 @@ def test_reset_profile_clears_profile_and_favorites(tmp_path) -> None:
     storage.save_profile(123, sample_profile())
     storage.save_last_results(123, [sample_university()])
     storage.add_favorite(123, sample_university())
+    storage.add_search_history(123, sample_profile(), [sample_university()])
     storage.reset_profile(123)
 
     assert storage.get_profile(123) is None
     assert storage.get_last_results(123) == []
     assert storage.get_favorites(123) == []
+    assert storage.get_search_history(123) == []

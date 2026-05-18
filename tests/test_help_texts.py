@@ -5,6 +5,7 @@ def test_information_texts_are_importable_without_telegram() -> None:
     assert "демонстрационный Telegram-сервис" in TEXTS_FOR_TESTS["about"]
     assert "Демо-сценарий для защиты" in TEXTS_FOR_TESTS["demo"]
     assert "/summary" in TEXTS_FOR_TESTS["demo"]
+    assert "/history" in TEXTS_FOR_TESTS["demo"]
     assert "Приватность" in TEXTS_FOR_TESTS["privacy"]
     assert "финальную базу вузов" in TEXTS_FOR_TESTS["next"]
     assert "Команды для /setcommands" in TEXTS_FOR_TESTS["botfather"]
@@ -16,6 +17,7 @@ def test_help_text_contains_current_commands() -> None:
         "/menu",
         "/search",
         "/summary",
+        "/history",
         "/compare",
         "/categories",
         "/support",
@@ -25,6 +27,7 @@ def test_help_text_contains_current_commands() -> None:
         "/privacy",
         "/next",
         "/botfather",
+        "/clear_history",
         "/reset",
         "/help",
     ):
@@ -37,6 +40,8 @@ def test_botfather_text_contains_current_commands() -> None:
         "menu - главное меню",
         "search - подбор вузов",
         "summary - итог последнего подбора",
+        "history - история подборов",
+        "clear_history - очистить историю подборов",
         "compare - сравнение вузов",
         "categories - как читать категории",
         "support - психологическая поддержка",
