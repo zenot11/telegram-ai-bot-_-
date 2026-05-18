@@ -10,6 +10,16 @@
 
 Старый C++ Telegram-модуль сохранён как архив в `archive/cpp_telegram_module/`.
 
+## Документация
+
+- [docs/RUN.md](docs/RUN.md) - запуск проекта;
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - архитектура;
+- [docs/API.md](docs/API.md) - backend API;
+- [docs/BOTFATHER.md](docs/BOTFATHER.md) - настройка Telegram Mini App;
+- [docs/DEFENSE.md](docs/DEFENSE.md) - сценарий защиты;
+- [DEMO.md](DEMO.md) - подробная демонстрация;
+- [PROJECT_STATUS.md](PROJECT_STATUS.md) - текущее состояние проекта.
+
 ## Возможности
 
 - подбор вузов по региону, баллам, направлению и типу обучения;
@@ -82,6 +92,9 @@ archive/
 
 tests/                     # pytest-проверки
 scripts/check_project.sh   # локальная проверка проекта
+scripts/run_backend.sh     # запуск backend
+scripts/run_bot.sh         # запуск Telegram-бота
+docs/                      # расширенная документация
 ```
 
 ## Временная демонстрационная база вузов
@@ -171,6 +184,12 @@ source .venv/bin/activate
 python -m backend_stub.main
 ```
 
+Или через скрипт:
+
+```bash
+bash scripts/run_backend.sh
+```
+
 Проверка API:
 
 ```bash
@@ -184,6 +203,12 @@ curl "http://localhost:8000/api/universities?region=Адыгея&score=230&direc
 ```bash
 source .venv/bin/activate
 python -m telegram_bot.main
+```
+
+Или через скрипт:
+
+```bash
+bash scripts/run_bot.sh
 ```
 
 ## Telegram Mini App
