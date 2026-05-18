@@ -7,6 +7,8 @@ from aiogram.types import Message
 
 from telegram_bot.config import settings
 from telegram_bot.keyboards.menu import (
+    advice_keyboard,
+    empty_advice_keyboard,
     empty_favorites_keyboard,
     empty_history_keyboard,
     favorites_keyboard_for_count,
@@ -17,6 +19,7 @@ from telegram_bot.keyboards.menu import (
 )
 from telegram_bot.keyboards.search import no_results_keyboard, search_results_keyboard
 from telegram_bot.services.api import UniversityAPIError, fetch_universities
+from telegram_bot.services.advice import build_advice, has_advice_context
 from telegram_bot.services.formatters import format_university_card
 from telegram_bot.services.history import format_history_message
 from telegram_bot.services.recommendation import (
@@ -92,6 +95,22 @@ async def search_summary(message: Message, state: FSMContext) -> None:
     favorites_count = len(user_storage.get_favorites(message.from_user.id))
     text = format_last_search_summary(profile, last_results, favorites_count)
     reply_markup = summary_keyboard() if text != EMPTY_SUMMARY_TEXT else main_menu_keyboard()
+    await message.answer(text, reply_markup=reply_markup)
+
+
+@router.message(Command("advice"))
+@router.message(F.text == "Советы по подбору")
+async def search_advice(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    if not message.from_user:
+        await message.answer("Не удалось определить пользователя.", reply_markup=main_menu_keyboard())
+        return
+
+    profile = user_storage.get_profile(message.from_user.id)
+    last_results = user_storage.get_last_results(message.from_user.id)
+    favorites = user_storage.get_favorites(message.from_user.id)
+    text = build_advice(profile, last_results, favorites)
+    reply_markup = advice_keyboard(has_results=bool(last_results)) if has_advice_context(profile) else empty_advice_keyboard()
     await message.answer(text, reply_markup=reply_markup)
 
 

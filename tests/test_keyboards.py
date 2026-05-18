@@ -1,6 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup
 
 from telegram_bot.keyboards.menu import (
+    advice_keyboard,
     empty_history_keyboard,
     favorites_keyboard_for_count,
     history_keyboard,
@@ -23,6 +24,7 @@ def test_search_save_buttons_match_results_count() -> None:
     assert "Сохранить 4" not in texts
     assert "Итог подбора" in texts
     assert "История подборов" in texts
+    assert "Советы по подбору" in texts
 
 
 def test_search_save_buttons_include_fourth_and_fifth_results() -> None:
@@ -53,6 +55,7 @@ def test_main_menu_contains_search_history_button() -> None:
     texts = keyboard_texts(main_menu_keyboard())
 
     assert "История подборов" in texts
+    assert "Советы по подбору" in texts
 
 
 def test_history_keyboard_actions() -> None:
@@ -69,6 +72,24 @@ def test_empty_history_keyboard_is_compact() -> None:
     assert "Подобрать вуз" in texts
     assert "Вернуться в меню" in texts
     assert "Очистить историю" not in texts
+
+
+def test_advice_keyboard_with_results_contains_next_steps() -> None:
+    texts = keyboard_texts(advice_keyboard(has_results=True))
+
+    assert "Итог подбора" in texts
+    assert "Сравнить вузы" in texts
+    assert "Избранные вузы" in texts
+    assert "История подборов" in texts
+    assert "Подобрать заново" in texts
+
+
+def test_advice_keyboard_without_results_is_compact() -> None:
+    texts = keyboard_texts(advice_keyboard(has_results=False))
+
+    assert "Подобрать заново" in texts
+    assert "История подборов" in texts
+    assert "Сравнить вузы" not in texts
 
 
 def test_compare_buttons_do_not_promise_fourth_or_fifth_items() -> None:

@@ -29,7 +29,7 @@ router = Router()
 
 
 @router.message(Command("search"))
-@router.message(F.text.in_({"Подобрать вуз", "Подобрать 3 варианта", "Подобрать ещё", "Новый подбор"}))
+@router.message(F.text.in_({"Подобрать вуз", "Подобрать 3 варианта", "Подобрать ещё", "Новый подбор", "Подобрать заново"}))
 async def start_search(message: Message, state: FSMContext) -> None:
     await state.set_state(SearchStates.region)
     await message.answer(

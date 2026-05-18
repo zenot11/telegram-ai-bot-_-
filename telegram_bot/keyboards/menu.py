@@ -9,7 +9,8 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
     keyboard = [
         [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Сравнить вузы")],
         [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Мой профиль")],
-        [KeyboardButton(text="Итог подбора"), KeyboardButton(text="История подборов")],
+        [KeyboardButton(text="Итог подбора"), KeyboardButton(text="Советы по подбору")],
+        [KeyboardButton(text="История подборов")],
         [KeyboardButton(text="Направления"), KeyboardButton(text="Регионы")],
         [KeyboardButton(text="Как читать категории")],
     ]
@@ -45,7 +46,7 @@ def profile_keyboard() -> ReplyKeyboardMarkup:
 def summary_keyboard() -> ReplyKeyboardMarkup:
     keyboard = [
         [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Сравнить вузы")],
-        [KeyboardButton(text="История подборов")],
+        [KeyboardButton(text="Советы по подбору"), KeyboardButton(text="История подборов")],
     ]
     if settings.webapp_url:
         keyboard.append([KeyboardButton(text="Открыть Mini App", web_app=WebAppInfo(url=settings.webapp_url))])
@@ -118,6 +119,41 @@ def history_keyboard() -> ReplyKeyboardMarkup:
 
 
 def empty_history_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Подобрать вуз")],
+            [KeyboardButton(text="Вернуться в меню")],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Выбери действие",
+    )
+
+
+def advice_keyboard(has_results: bool) -> ReplyKeyboardMarkup:
+    keyboard = []
+    if has_results:
+        keyboard.extend(
+            [
+                [KeyboardButton(text="Итог подбора"), KeyboardButton(text="Сравнить вузы")],
+                [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="История подборов")],
+            ]
+        )
+    else:
+        keyboard.append([KeyboardButton(text="История подборов")])
+
+    keyboard.append([KeyboardButton(text="Подобрать заново")])
+    if settings.webapp_url:
+        keyboard.append([KeyboardButton(text="Открыть Mini App", web_app=WebAppInfo(url=settings.webapp_url))])
+    keyboard.append([KeyboardButton(text="Вернуться в меню")])
+
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+        input_field_placeholder="Что сделать дальше",
+    )
+
+
+def empty_advice_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="Подобрать вуз")],
