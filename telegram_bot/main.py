@@ -8,7 +8,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand
 
 from telegram_bot.config import settings
-from telegram_bot.handlers import common, compare, menu, search, start, support
+from telegram_bot.handlers import common, compare, filters, menu, search, start, support
 
 
 async def set_bot_commands(bot: Bot) -> None:
@@ -19,6 +19,7 @@ async def set_bot_commands(bot: Bot) -> None:
             BotCommand(command="search", description="Подобрать вуз"),
             BotCommand(command="summary", description="Итог последнего подбора"),
             BotCommand(command="advice", description="Советы по подбору"),
+            BotCommand(command="filters", description="Фильтры результатов"),
             BotCommand(command="history", description="История подборов"),
             BotCommand(command="clear_history", description="Очистить историю подборов"),
             BotCommand(command="compare", description="Сравнить вузы"),
@@ -50,6 +51,7 @@ async def main() -> None:
 
     dp.include_router(start.router)
     dp.include_router(menu.router)
+    dp.include_router(filters.router)
     dp.include_router(support.router)
     dp.include_router(search.router)
     dp.include_router(compare.router)

@@ -61,6 +61,39 @@ class UserDataStorage:
         results = profile.get("last_results", [])
         return results if isinstance(results, list) else []
 
+    def set_active_results(self, telegram_id: int, results: list[dict[str, Any]]) -> None:
+        with self._lock:
+            data = self._read_all_unlocked()
+            current = data.get(str(telegram_id), {})
+            if not isinstance(current, dict):
+                current = {}
+            current["telegram_id"] = telegram_id
+            current["active_results"] = results
+            data[str(telegram_id)] = current
+            self._write_all_unlocked(data)
+
+    def get_active_results(self, telegram_id: int) -> list[dict[str, Any]]:
+        profile = self.get_profile(telegram_id)
+        if not profile:
+            return []
+
+        results = profile.get("active_results", [])
+        return results if isinstance(results, list) else []
+
+    def has_active_results(self, telegram_id: int) -> bool:
+        profile = self.get_profile(telegram_id)
+        return isinstance(profile, dict) and isinstance(profile.get("active_results"), list)
+
+    def clear_active_results(self, telegram_id: int) -> None:
+        with self._lock:
+            data = self._read_all_unlocked()
+            current = data.get(str(telegram_id), {})
+            if not isinstance(current, dict):
+                return
+            current.pop("active_results", None)
+            data[str(telegram_id)] = current
+            self._write_all_unlocked(data)
+
     def add_favorite(self, telegram_id: int, university_item: dict[str, Any]) -> bool:
         with self._lock:
             data = self._read_all_unlocked()
@@ -198,6 +231,7 @@ class UserDataStorage:
     ) -> None:
         self.save_profile(telegram_id, profile)
         self.save_last_results(telegram_id, last_results)
+        self.set_active_results(telegram_id, last_results)
 
     def reset_user(self, telegram_id: int) -> None:
         self.reset_profile(telegram_id)

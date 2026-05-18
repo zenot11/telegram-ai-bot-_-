@@ -191,21 +191,21 @@ async def save_result_to_favorites(message: Message) -> None:
         await message.answer("Такого варианта сейчас нет. Попробуй выбрать другой номер.")
         return
 
-    last_results = user_storage.get_last_results(message.from_user.id)
-    item = _get_result_by_number(last_results, result_number)
+    results = _active_or_last_results(message.from_user.id)
+    item = _get_result_by_number(results, result_number)
     if item is None:
         await message.answer("Такого варианта сейчас нет. Попробуй выбрать другой номер.")
         return
 
     added = user_storage.add_favorite(message.from_user.id, item)
     if not added:
-        await message.answer("Этот вариант уже есть в избранном.", reply_markup=search_results_keyboard(len(last_results)))
+        await message.answer("Этот вариант уже есть в избранном.", reply_markup=search_results_keyboard(len(results)))
         return
 
     await message.answer(
         f"Добавила в избранное: {escape(str(item.get('university', 'Вуз')))} — "
         f"{escape(str(item.get('program', 'программа')))}.",
-        reply_markup=search_results_keyboard(len(last_results)),
+        reply_markup=search_results_keyboard(len(results)),
     )
 
 
@@ -222,3 +222,9 @@ def _get_result_by_number(results: list[dict], result_number: int) -> dict | Non
     if index < 0 or index >= len(results):
         return None
     return results[index]
+
+
+def _active_or_last_results(telegram_id: int) -> list[dict]:
+    if user_storage.has_active_results(telegram_id):
+        return user_storage.get_active_results(telegram_id)
+    return user_storage.get_last_results(telegram_id)

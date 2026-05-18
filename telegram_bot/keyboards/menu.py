@@ -10,7 +10,7 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
         [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Сравнить вузы")],
         [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Мой профиль")],
         [KeyboardButton(text="Итог подбора"), KeyboardButton(text="Советы по подбору")],
-        [KeyboardButton(text="История подборов")],
+        [KeyboardButton(text="История подборов"), KeyboardButton(text="Фильтры результатов")],
         [KeyboardButton(text="Направления"), KeyboardButton(text="Регионы")],
         [KeyboardButton(text="Как читать категории")],
     ]
@@ -46,7 +46,8 @@ def profile_keyboard() -> ReplyKeyboardMarkup:
 def summary_keyboard() -> ReplyKeyboardMarkup:
     keyboard = [
         [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Сравнить вузы")],
-        [KeyboardButton(text="Советы по подбору"), KeyboardButton(text="История подборов")],
+        [KeyboardButton(text="Советы по подбору"), KeyboardButton(text="Фильтры результатов")],
+        [KeyboardButton(text="История подборов")],
     ]
     if settings.webapp_url:
         keyboard.append([KeyboardButton(text="Открыть Mini App", web_app=WebAppInfo(url=settings.webapp_url))])
@@ -135,7 +136,8 @@ def advice_keyboard(has_results: bool) -> ReplyKeyboardMarkup:
         keyboard.extend(
             [
                 [KeyboardButton(text="Итог подбора"), KeyboardButton(text="Сравнить вузы")],
-                [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="История подборов")],
+                [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Фильтры результатов")],
+                [KeyboardButton(text="История подборов")],
             ]
         )
     else:

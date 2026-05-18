@@ -74,6 +74,31 @@ def test_save_last_results(tmp_path) -> None:
     assert storage.get_last_results(123) == [item]
 
 
+def test_save_search_sets_active_results(tmp_path) -> None:
+    storage = UserDataStorage(str(tmp_path / "user_data.json"))
+    item = sample_university()
+
+    storage.save_search(123, sample_profile(), [item])
+
+    assert storage.get_last_results(123) == [item]
+    assert storage.get_active_results(123) == [item]
+    assert storage.has_active_results(123) is True
+
+
+def test_active_results_can_be_changed_and_cleared(tmp_path) -> None:
+    storage = UserDataStorage(str(tmp_path / "user_data.json"))
+
+    storage.save_search(123, sample_profile(), [sample_university()])
+    storage.set_active_results(123, [second_university()])
+
+    assert storage.get_active_results(123) == [second_university()]
+
+    storage.clear_active_results(123)
+
+    assert storage.get_active_results(123) == []
+    assert storage.has_active_results(123) is False
+
+
 def test_add_favorite_does_not_duplicate(tmp_path) -> None:
     storage = UserDataStorage(str(tmp_path / "user_data.json"))
     item = sample_university()
@@ -156,5 +181,6 @@ def test_reset_profile_clears_profile_and_favorites(tmp_path) -> None:
 
     assert storage.get_profile(123) is None
     assert storage.get_last_results(123) == []
+    assert storage.get_active_results(123) == []
     assert storage.get_favorites(123) == []
     assert storage.get_search_history(123) == []

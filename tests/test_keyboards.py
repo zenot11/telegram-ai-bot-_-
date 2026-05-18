@@ -8,6 +8,7 @@ from telegram_bot.keyboards.menu import (
     main_menu_keyboard,
 )
 from telegram_bot.keyboards.compare import compare_options_keyboard
+from telegram_bot.keyboards.filters import filtered_results_keyboard, filters_keyboard
 from telegram_bot.keyboards.search import search_results_keyboard
 
 
@@ -25,6 +26,7 @@ def test_search_save_buttons_match_results_count() -> None:
     assert "Итог подбора" in texts
     assert "История подборов" in texts
     assert "Советы по подбору" in texts
+    assert "Фильтры результатов" in texts
 
 
 def test_search_save_buttons_include_fourth_and_fifth_results() -> None:
@@ -56,6 +58,7 @@ def test_main_menu_contains_search_history_button() -> None:
 
     assert "История подборов" in texts
     assert "Советы по подбору" in texts
+    assert "Фильтры результатов" in texts
 
 
 def test_history_keyboard_actions() -> None:
@@ -82,6 +85,7 @@ def test_advice_keyboard_with_results_contains_next_steps() -> None:
     assert "Избранные вузы" in texts
     assert "История подборов" in texts
     assert "Подобрать заново" in texts
+    assert "Фильтры результатов" in texts
 
 
 def test_advice_keyboard_without_results_is_compact() -> None:
@@ -90,6 +94,37 @@ def test_advice_keyboard_without_results_is_compact() -> None:
     assert "Подобрать заново" in texts
     assert "История подборов" in texts
     assert "Сравнить вузы" not in texts
+
+
+def test_filters_inline_keyboard_contains_expected_callbacks() -> None:
+    markup = filters_keyboard(
+        {
+            "all": 5,
+            "safe": 2,
+            "realistic": 1,
+            "ambitious": 1,
+            "budget": 4,
+            "paid": 1,
+        }
+    )
+    callbacks = [button.callback_data for row in markup.inline_keyboard for button in row]
+
+    assert "filter_all" in callbacks
+    assert "filter_safe" in callbacks
+    assert "filter_realistic" in callbacks
+    assert "filter_ambitious" in callbacks
+    assert "filter_budget" in callbacks
+    assert "filter_paid" in callbacks
+
+
+def test_filtered_results_keyboard_keeps_save_buttons_and_filter_actions() -> None:
+    texts = keyboard_texts(filtered_results_keyboard(2))
+
+    assert "Сохранить 1" in texts
+    assert "Сохранить 2" in texts
+    assert "Сохранить 3" not in texts
+    assert "Все варианты" in texts
+    assert "Фильтры результатов" in texts
 
 
 def test_compare_buttons_do_not_promise_fourth_or_fifth_items() -> None:
