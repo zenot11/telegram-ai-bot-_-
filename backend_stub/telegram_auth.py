@@ -77,6 +77,23 @@ def extract_telegram_user_id(validated_data: dict[str, Any]) -> int | None:
     return None
 
 
+def build_safe_webapp_user(validated_data: dict[str, Any]) -> dict[str, Any]:
+    user = validated_data.get("user")
+    if not isinstance(user, dict):
+        return {}
+
+    safe_user: dict[str, Any] = {}
+    user_id = extract_telegram_user_id(validated_data)
+    if user_id is not None:
+        safe_user["id"] = user_id
+
+    for field in ("first_name", "last_name", "username", "language_code"):
+        value = user.get(field)
+        if isinstance(value, str) and value.strip():
+            safe_user[field] = value.strip()
+    return safe_user
+
+
 def _parse_int(value: Any) -> int | None:
     if isinstance(value, bool):
         return None

@@ -38,6 +38,15 @@
 -> карточки, фильтры, сравнение и локальное избранное в Mini App
 ```
 
+Для Telegram-режима Mini App дополнительно проверяет сессию:
+
+```text
+Mini App
+-> backend_stub /api/webapp/session
+-> проверка Telegram WebApp initData по HMAC
+-> режим telegram/local/invalid
+```
+
 ## `telegram_bot/`
 
 `telegram_bot/` содержит весь код Telegram-бота.
@@ -102,8 +111,12 @@
 
 - `main.py` - aiohttp-приложение, фильтрация вузов, normalizing query params, static routes Mini App.
 - `data_loader.py` - загрузка, нормализация и валидация `universities.json`.
+- `telegram_auth.py` - проверка Telegram WebApp `initData`, извлечение Telegram ID и безопасных полей пользователя.
+- `webapp_session.py` - endpoint `/api/webapp/session` для диагностики режима Mini App.
+- `favorites_api.py` - защищённые endpoints синхронизации избранного Mini App с ботом.
 - `/health` - проверка, что backend работает.
 - `/api/universities` - основной endpoint подбора вузов.
+- `/api/webapp/session` - проверка Telegram WebApp-сессии или local mode.
 - `/miniapp` и `/miniapp/` - отдача `mini_app/index.html`.
 - `/miniapp/{asset}` - отдача `styles.css`, `app.js`, `favicon.svg`.
 - `/favicon.ico` - favicon для браузера.
@@ -117,15 +130,18 @@ Mini App остается простым HTML + CSS + JS без сборки.
 
 - `index.html` - структура страницы.
 - `styles.css` - стиль в духе командного сайта “Аиша”, CSS-переменные для светлой/тёмной темы, адаптивные вкладки, фильтры, карточки и таблица сравнения.
-- `app.js` - вкладки, переключение темы, валидация формы, запрос к `/api/universities`, локальные фильтры, итог подбора, синхронизация избранного или localStorage fallback, локальное сравнение, отрисовка карточек и таблицы сравнения.
+- `app.js` - вкладки, переключение темы, валидация формы, запрос к `/api/universities`, проверка `/api/webapp/session`, локальные фильтры, итог подбора, синхронизация избранного или localStorage fallback, локальное сравнение, отрисовка карточек и таблицы сравнения.
 - `favicon.svg` - favicon.
 
 Mini App не использует OpenAI и не хранит токены. Выбранная тема и выбранные вузы для сравнения хранятся локально в браузере через `localStorage`. Сравнение не синхронизируется с Telegram-ботом.
 
-Для избранного есть дополнительный режим синхронизации. Если Mini App открыт внутри Telegram, он отправляет `window.Telegram.WebApp.initData` в backend через header `X-Telegram-Init-Data`. Backend проверяет подпись initData через `TELEGRAM_BOT_TOKEN`, достаёт Telegram ID из проверенных данных и использует тот же `telegram_bot/storage/user_data.py`, что и Telegram-бот. Если Mini App открыт в обычном браузере без initData, избранное остаётся в локальном режиме через `localStorage`.
+Mini App показывает статус сессии: local mode, проверенная Telegram-сессия, невалидная сессия или недоступный backend. Если Mini App открыт внутри Telegram, он отправляет `window.Telegram.WebApp.initData` в backend через header `X-Telegram-Init-Data`. Backend проверяет подпись initData через `TELEGRAM_BOT_TOKEN`, достаёт Telegram ID из проверенных данных и возвращает только безопасные поля пользователя. Если Mini App открыт в обычном браузере без initData, он остаётся в локальном режиме.
+
+Для избранного есть дополнительный режим синхронизации. Синхронизация с Telegram-ботом запускается только после успешной проверки `/api/webapp/session`. Backend использует тот же `telegram_bot/storage/user_data.py`, что и Telegram-бот. Если сессия не подтверждена или Mini App открыт в обычном браузере, избранное остаётся в локальном режиме через `localStorage`.
 
 Favorites API:
 
+- `GET /api/webapp/session`;
 - `GET /api/favorites`;
 - `POST /api/favorites/add`;
 - `POST /api/favorites/remove`;

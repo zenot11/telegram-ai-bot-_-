@@ -8,6 +8,7 @@ import pytest
 
 from backend_stub.telegram_auth import (
     TelegramAuthError,
+    build_safe_webapp_user,
     extract_telegram_user_id,
     validate_telegram_init_data,
 )
@@ -73,3 +74,13 @@ def test_errors_do_not_contain_bot_token() -> None:
         validate_telegram_init_data(make_init_data(tamper_hash=True), TEST_BOT_TOKEN)
 
     assert TEST_BOT_TOKEN not in str(error.value)
+
+
+def test_build_safe_webapp_user_returns_limited_fields() -> None:
+    validated = validate_telegram_init_data(make_init_data(), TEST_BOT_TOKEN)
+    safe_user = build_safe_webapp_user(validated)
+
+    assert safe_user["id"] == 123
+    assert safe_user["first_name"] == "Test"
+    assert "hash" not in safe_user
+    assert "auth_date" not in safe_user

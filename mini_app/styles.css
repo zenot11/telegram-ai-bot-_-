@@ -24,6 +24,10 @@
   --ambitious-text: #8d2745;
   --danger: #b4233a;
   --danger-soft: #fff6f8;
+  --session-success: #e4f7ee;
+  --session-local: #edf2ff;
+  --session-warning: #fff3d7;
+  --session-error: #ffe6ec;
   --compare-best: #e7f7ef;
   --compare-good: #edf2ff;
   --compare-warning: #fff3d7;
@@ -61,6 +65,10 @@
   --ambitious-text: #ff9fba;
   --danger: #ff8295;
   --danger-soft: rgba(255, 130, 149, 0.12);
+  --session-success: rgba(76, 175, 120, 0.18);
+  --session-local: rgba(142, 162, 255, 0.18);
+  --session-warning: rgba(255, 196, 67, 0.17);
+  --session-error: rgba(255, 130, 149, 0.16);
   --compare-best: rgba(76, 175, 120, 0.18);
   --compare-good: rgba(142, 162, 255, 0.18);
   --compare-warning: rgba(255, 196, 67, 0.17);
@@ -220,6 +228,79 @@ main,
   cursor: pointer;
   box-shadow: var(--shadow-soft);
   transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.session-badge {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 12px;
+  color: var(--muted);
+  background: var(--card);
+  font-weight: 900;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.session-badge--success {
+  color: var(--safe-text);
+  background: var(--session-success);
+}
+
+.session-badge--local {
+  color: var(--blue);
+  background: var(--session-local);
+}
+
+.session-badge--warning {
+  color: var(--realistic-text);
+  background: var(--session-warning);
+}
+
+.session-badge--error {
+  color: var(--danger);
+  background: var(--session-error);
+}
+
+.session-card {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px;
+  background: var(--card-soft);
+}
+
+.session-card h3,
+.session-card p {
+  margin-bottom: 0;
+}
+
+.session-card--success {
+  border-color: var(--safe);
+  background: var(--session-success);
+}
+
+.session-card--local {
+  background: var(--session-local);
+}
+
+.session-card--warning {
+  background: var(--session-warning);
+}
+
+.session-card--error {
+  border-color: var(--danger-border);
+  background: var(--session-error);
+}
+
+.session-user {
+  color: var(--muted);
+  font-weight: 800;
 }
 
 .theme-toggle:hover {
@@ -993,6 +1074,10 @@ select:focus {
   }
 
   .theme-toggle {
+    width: 100%;
+  }
+
+  .session-badge {
     width: 100%;
   }
 

@@ -22,6 +22,7 @@
           <button class="tab-button" type="button" data-tab-target="favorites" aria-selected="false">Избранное <span id="favorites-count">0</span></button>
           <button class="tab-button" type="button" data-tab-target="about" aria-selected="false">О проекте</button>
         </nav>
+        <span id="session-badge" class="session-badge session-badge--checking">Проверка…</span>
         <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Переключить тему" aria-pressed="false">
           🌙 Тёмная
         </button>
@@ -197,6 +198,14 @@
             временная демонстрационная база. Перед сдачей данные будут заменены на финальные
             данные вузов без переписывания основной логики.
           </p>
+          <article id="session-card" class="session-card session-card--checking" aria-live="polite">
+            <div>
+              <p class="eyebrow">Сессия</p>
+              <h3>Статус Mini App</h3>
+            </div>
+            <p id="session-description">Проверяю режим открытия Mini App.</p>
+            <p id="session-user" class="session-user"></p>
+          </article>
           <div class="category-list" aria-label="Как читать категории">
             <article class="category-card">
               <span class="badge safe">Безопасный</span>

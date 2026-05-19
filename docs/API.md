@@ -133,6 +133,59 @@ Backend также отдаёт Mini App:
 
 Mini App использует тот же endpoint `/api/universities`, что и Telegram-бот.
 
+## WebApp session API
+
+### GET `/api/webapp/session`
+
+Endpoint нужен для диагностики режима Mini App и безопасной проверки Telegram WebApp `initData`.
+
+Mini App передаёт `initData` в header:
+
+```text
+X-Telegram-Init-Data: <window.Telegram.WebApp.initData>
+```
+
+Если header отсутствует, backend считает, что Mini App открыт в обычном браузере, и возвращает local mode:
+
+```json
+{
+  "status": "ok",
+  "mode": "local",
+  "authenticated": false
+}
+```
+
+Если `initData` валиден, backend возвращает подтверждённую Telegram-сессию:
+
+```json
+{
+  "status": "ok",
+  "mode": "telegram",
+  "authenticated": true,
+  "user": {
+    "id": 123456,
+    "first_name": "Test"
+  }
+}
+```
+
+Если `initData` не проходит проверку:
+
+```json
+{
+  "status": "error",
+  "mode": "telegram",
+  "authenticated": false,
+  "error": "invalid_init_data"
+}
+```
+
+HTTP status: `401`.
+
+Если backend не настроен для проверки Telegram-сессии, например нет `TELEGRAM_BOT_TOKEN`, ответ содержит безопасную ошибку `bot_token_not_configured` без значения токена.
+
+Endpoint не возвращает `initData`, `hash` или bot token.
+
 ## Favorites API для Telegram Mini App
 
 Эти endpoints нужны для синхронизации избранного между Telegram-ботом и Mini App.
@@ -143,7 +196,7 @@ Mini App должен передавать Telegram WebApp initData в header:
 X-Telegram-Init-Data: <window.Telegram.WebApp.initData>
 ```
 
-Backend проверяет `initData` через `TELEGRAM_BOT_TOKEN`, достаёт `user.id` из проверенных данных и только после этого работает с избранным пользователя. `user_id` из query или body не принимается.
+Backend проверяет `initData` через `TELEGRAM_BOT_TOKEN`, достаёт `user.id` из проверенных данных и только после этого работает с избранным пользователя. `user_id` из query или body не принимается. Mini App вызывает Favorites API только после успешной проверки `/api/webapp/session`.
 
 Если `initData` отсутствует или не проходит проверку, backend возвращает:
 

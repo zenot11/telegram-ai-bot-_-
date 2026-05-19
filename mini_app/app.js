@@ -8,6 +8,10 @@ const statusNode = document.querySelector("#status-text");
 const filterStatusNode = document.querySelector("#filter-status");
 const favoritesStatusNode = document.querySelector("#favorites-status");
 const favoritesSyncStatusNode = document.querySelector("#favorites-sync-status");
+const sessionBadgeNode = document.querySelector("#session-badge");
+const sessionCardNode = document.querySelector("#session-card");
+const sessionDescriptionNode = document.querySelector("#session-description");
+const sessionUserNode = document.querySelector("#session-user");
 const resultsSection = document.querySelector("#results-section");
 const summaryCard = document.querySelector("#summary-card");
 const summaryContentNode = document.querySelector("#summary-content");
@@ -39,6 +43,13 @@ let favorites = loadFavorites();
 let comparisonItems = loadComparisonItems();
 let comparisonNotice = "";
 let favoritesSyncNotice = "";
+let sessionState = {
+  status: "checking",
+  mode: "checking",
+  authenticated: false,
+  user: null,
+  message: "Проверяю режим открытия Mini App.",
+};
 
 const categoryMeta = {
   safe: {
@@ -68,7 +79,7 @@ const filterLabels = {
 };
 
 const telegramWebApp = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-const telegramInitData = telegramWebApp?.initData || "";
+const telegramInitData = getTelegramInitData();
 
 initTheme();
 
@@ -205,7 +216,7 @@ themeToggleButton?.addEventListener("click", () => {
 });
 
 renderAll();
-initFavoritesSync();
+checkWebAppSession();
 
 function initTheme() {
   applyTheme(getPreferredTheme());
@@ -292,6 +303,7 @@ function validateScore(rawValue, score) {
 }
 
 function renderAll() {
+  renderSessionStatus();
   renderSearchResults();
   renderSummary();
   renderAdvice();
@@ -299,6 +311,133 @@ function renderAll() {
   renderFilteredResults();
   renderFavorites();
   renderComparison();
+}
+
+function getTelegramInitData() {
+  return telegramWebApp?.initData || "";
+}
+
+function hasTelegramInitData() {
+  return Boolean(telegramInitData);
+}
+
+function isTelegramSessionVerified() {
+  return sessionState.mode === "telegram" && sessionState.authenticated === true;
+}
+
+async function checkWebAppSession() {
+  sessionState = {
+    status: "checking",
+    mode: hasTelegramInitData() ? "telegram" : "local",
+    authenticated: false,
+    user: null,
+    message: hasTelegramInitData()
+      ? "Проверяю Telegram-сессию."
+      : "Проверяю локальный режим Mini App.",
+  };
+  renderSessionStatus();
+
+  try {
+    const response = await fetch("/api/webapp/session", {
+      headers: hasTelegramInitData() ? { "X-Telegram-Init-Data": telegramInitData } : {},
+    });
+    const payload = await response.json().catch(() => ({}));
+
+    if (response.ok && payload.mode === "telegram" && payload.authenticated) {
+      sessionState = {
+        status: "telegram_verified",
+        mode: "telegram",
+        authenticated: true,
+        user: payload.user || null,
+        message: "Mini App открыт через Telegram. Сессия проверена, избранное может синхронизироваться с ботом.",
+      };
+      renderSessionStatus();
+      await initFavoritesSync();
+      return;
+    }
+
+    if (response.ok && payload.mode === "local") {
+      sessionState = {
+        status: "local",
+        mode: "local",
+        authenticated: false,
+        user: null,
+        message: "Локальный режим. Mini App открыт не через Telegram, поэтому избранное хранится только в этом браузере.",
+      };
+      favoritesSyncNotice = "Локальный режим: избранное хранится только в этом браузере.";
+      renderAll();
+      return;
+    }
+
+    sessionState = {
+      status: payload.error === "bot_token_not_configured" ? "backend_unavailable" : "invalid",
+      mode: "telegram",
+      authenticated: false,
+      user: null,
+      message: payload.error === "bot_token_not_configured"
+        ? "Backend не настроен для проверки Telegram-сессии. Избранное сохранится локально."
+        : "Telegram-сессия не прошла проверку. Синхронизация отключена, избранное сохранится локально.",
+    };
+    favoritesSyncNotice = "Синхронизация отключена, избранное сохранится локально.";
+    renderAll();
+  } catch (error) {
+    sessionState = {
+      status: "backend_unavailable",
+      mode: hasTelegramInitData() ? "telegram" : "local",
+      authenticated: false,
+      user: null,
+      message: "Backend недоступен. Mini App работает в локальном режиме.",
+    };
+    favoritesSyncNotice = "Backend недоступен. Избранное сохранится локально.";
+    renderAll();
+  }
+}
+
+function renderSessionStatus() {
+  const meta = getSessionMeta(sessionState.status);
+
+  if (sessionBadgeNode) {
+    sessionBadgeNode.textContent = meta.badge;
+    sessionBadgeNode.className = `session-badge session-badge--${meta.className}`;
+  }
+
+  if (sessionCardNode) {
+    sessionCardNode.className = `session-card session-card--${meta.className}`;
+  }
+
+  if (sessionDescriptionNode) {
+    sessionDescriptionNode.textContent = sessionState.message;
+  }
+
+  if (sessionUserNode) {
+    sessionUserNode.textContent = formatSessionUser(sessionState.user);
+  }
+}
+
+function getSessionMeta(status) {
+  const statuses = {
+    checking: { className: "checking", badge: "Проверка…" },
+    telegram_verified: { className: "success", badge: "Telegram ✓" },
+    local: { className: "local", badge: "Локальный режим" },
+    invalid: { className: "error", badge: "Сессия не проверена" },
+    backend_unavailable: { className: "warning", badge: "Backend недоступен" },
+  };
+  return statuses[status] || statuses.checking;
+}
+
+function formatSessionUser(user) {
+  if (!user || typeof user !== "object") {
+    return "";
+  }
+
+  const name = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
+  if (name) {
+    return `Пользователь Telegram: ${name}`;
+  }
+  if (user.username) {
+    return `Пользователь Telegram: @${user.username}`;
+  }
+  return "Пользователь Telegram подтверждён.";
 }
 
 function renderSearchResults() {
@@ -556,7 +695,7 @@ async function initFavoritesSync() {
 }
 
 function hasTelegramAuth() {
-  return Boolean(telegramInitData);
+  return isTelegramSessionVerified();
 }
 
 async function requestFavoritesApi(path, body = null) {
