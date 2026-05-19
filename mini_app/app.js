@@ -13,19 +13,29 @@ const summaryContentNode = document.querySelector("#summary-content");
 const adviceCard = document.querySelector("#advice-card");
 const filterControlsNode = document.querySelector("#filter-controls");
 const favoritesCountNode = document.querySelector("#favorites-count");
+const comparisonCountNode = document.querySelector("#comparison-count");
+const comparisonCounterNode = document.querySelector("#comparison-counter");
+const comparisonStatusNode = document.querySelector("#comparison-status");
+const comparisonSelectedNode = document.querySelector("#comparison-selected");
+const comparisonTableNode = document.querySelector("#comparison-table");
 const clearFavoritesButton = document.querySelector("#clear-favorites");
+const clearComparisonButton = document.querySelector("#clear-comparison");
 const themeToggleButton = document.querySelector("#theme-toggle");
 
 const SAFE_MARGIN = 25;
 const AMBITIOUS_MARGIN = 20;
 const FAVORITES_KEY = "aishaMiniAppFavorites";
 const THEME_KEY = "aisha_theme";
+const COMPARISON_KEY = "aisha_compare";
+const MAX_COMPARISON_ITEMS = 3;
 
 let lastResults = [];
 let displayedResults = [];
 let activeFilter = "all";
 let currentSearch = null;
 let favorites = loadFavorites();
+let comparisonItems = loadComparisonItems();
+let comparisonNotice = "";
 
 const categoryMeta = {
   safe: {
@@ -163,11 +173,27 @@ document.addEventListener("click", (event) => {
   const removeButton = event.target.closest("[data-remove-favorite]");
   if (removeButton) {
     removeFromFavorites(removeButton.dataset.favoriteKey);
+    return;
+  }
+
+  const compareButton = event.target.closest("[data-compare-key]");
+  if (compareButton) {
+    toggleCompare(compareButton.dataset.compareKey);
+    return;
+  }
+
+  const removeCompareButton = event.target.closest("[data-remove-compare]");
+  if (removeCompareButton) {
+    removeFromComparison(removeCompareButton.dataset.compareKey);
   }
 });
 
 clearFavoritesButton.addEventListener("click", () => {
   clearFavorites();
+});
+
+clearComparisonButton.addEventListener("click", () => {
+  clearComparison();
 });
 
 themeToggleButton?.addEventListener("click", () => {
@@ -267,6 +293,7 @@ function renderAll() {
   renderFilterControls();
   renderFilteredResults();
   renderFavorites();
+  renderComparison();
 }
 
 function renderSearchResults() {
@@ -411,7 +438,9 @@ function renderCard(item, score, index) {
   const minScore = getMinScore(item);
   const delta = minScore === null ? null : score - minScore;
   const key = makeFavoriteKey(item);
+  const compareKey = getUniversityKey(item);
   const alreadyFavorite = isFavorite(item);
+  const alreadyCompared = isCompared(item);
 
   return `
     <article class="result-card">
@@ -432,9 +461,14 @@ function renderCard(item, score, index) {
         ${item.url ? `<div><b>Сайт:</b> <a class="site-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.url)}</a></div>` : ""}
         <div><b>Пометка:</b> демонстрационные данные</div>
       </div>
-      <button class="favorite-button ${alreadyFavorite ? "is-added" : ""}" type="button" data-add-favorite data-favorite-key="${escapeAttribute(key)}">
-        ${alreadyFavorite ? "В избранном" : "В избранное"}
-      </button>
+      <div class="card-actions">
+        <button class="favorite-button ${alreadyFavorite ? "is-added" : ""}" type="button" data-add-favorite data-favorite-key="${escapeAttribute(key)}">
+          ${alreadyFavorite ? "В избранном" : "В избранное"}
+        </button>
+        <button class="favorite-button compare-button ${alreadyCompared ? "is-added" : ""}" type="button" data-compare-key="${escapeAttribute(compareKey)}">
+          ${alreadyCompared ? "В сравнении" : "Добавить к сравнению"}
+        </button>
+      </div>
     </article>
   `;
 }
@@ -514,15 +548,232 @@ function clearFavorites() {
   renderAll();
 }
 
+function renderComparison() {
+  const count = comparisonItems.length;
+  comparisonCountNode.textContent = String(count);
+  comparisonCounterNode.textContent = `Выбрано: ${count}/${MAX_COMPARISON_ITEMS}`;
+  clearComparisonButton.disabled = count === 0;
+  comparisonSelectedNode.innerHTML = renderComparisonSelected();
+
+  if (!count) {
+    comparisonStatusNode.textContent = comparisonNotice || "Пока нечего сравнивать. Выполни подбор и добавь 2–3 варианта.";
+    comparisonTableNode.innerHTML = "";
+    return;
+  }
+
+  if (count === 1) {
+    comparisonStatusNode.textContent = comparisonNotice || "Выбран 1 вариант. Добавь ещё один, чтобы увидеть таблицу сравнения.";
+    comparisonTableNode.innerHTML = "";
+    return;
+  }
+
+  comparisonStatusNode.textContent = comparisonNotice || "Сравни параметры и выбери наиболее подходящий вариант.";
+  comparisonTableNode.innerHTML = renderComparisonTable(comparisonItems);
+}
+
+function renderComparisonSelected() {
+  if (!comparisonItems.length) {
+    return "";
+  }
+
+  return comparisonItems.map((item, index) => {
+    const key = getUniversityKey(item);
+    return `
+      <article class="comparison-selected-card">
+        <div>
+          <b>${index + 1}. ${escapeHtml(textValue(item.university, "Вуз"))}</b>
+          <span>${escapeHtml(textValue(item.program, "программа не указана"))}</span>
+        </div>
+        <button class="secondary-button danger-button" type="button" data-remove-compare="${escapeAttribute(key)}">Удалить</button>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderComparisonTable(items) {
+  const highlights = getComparisonHighlights(items);
+  const rows = [
+    { label: "Вуз", value: (item) => textValue(item.university, "не указано") },
+    { label: "Программа", value: (item) => textValue(item.program, "не указано") },
+    { label: "Город", value: (item) => textValue(item.city, "не указано") },
+    { label: "Регион", value: (item) => textValue(item.region, "не указано") },
+    { label: "Направление", value: (item) => textValue(item.direction, "не указано") },
+    { label: "Категория", highlight: "category", value: (item) => getCategoryLabel(item) },
+    { label: "Мин. балл", highlight: "minScore", value: (item) => formatValue(getMinScore(item)) },
+    { label: "Твои баллы", value: (item) => formatValue(getUserScore(item)) },
+    { label: "Запас/не хватает", highlight: "margin", value: (item) => formatDelta(getScoreMargin(item)) },
+    { label: "Тип обучения", highlight: "type", value: (item) => textValue(item.type, "не указано") },
+    { label: "Стоимость", highlight: "price", value: (item) => formatPrice(item.price) },
+    { label: "Форма", value: (item) => textValue(item.study_form, "не указано") },
+    { label: "Срок", value: (item) => textValue(item.duration, "не указано") },
+    { label: "Предметы", value: (item) => Array.isArray(item.subjects) && item.subjects.length ? item.subjects.join(", ") : "не указаны" },
+    { label: "Сайт", html: (item) => item.url ? `<a class="site-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noopener noreferrer">Открыть сайт</a>` : "не указано" },
+  ];
+
+  return `
+    <div class="comparison-table-scroll">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Параметр</th>
+            ${items.map((item, index) => `<th>${index + 1}. ${escapeHtml(textValue(item.university, "Вуз"))}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>
+              <th>${escapeHtml(row.label)}</th>
+              ${items.map((item) => `
+                <td class="${getComparisonCellClass(row.highlight, item, highlights)}">
+                  ${row.html ? row.html(item) : escapeHtml(row.value(item))}
+                </td>
+              `).join("")}
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+    <p class="comparison-note">Сравнение носит справочный характер. Перед подачей документов проверь данные на официальных сайтах вузов.</p>
+  `;
+}
+
+function getComparisonHighlights(items) {
+  return {
+    category: getBestKeys(items, (item) => getCategoryRank(getItemCategory(item)), "max"),
+    minScore: getBestKeys(items, (item) => getMinScore(item), "min"),
+    margin: getBestKeys(items, (item) => getScoreMargin(item), "max"),
+    type: new Set(items.filter((item) => normalizeType(item.type) === "budget").map(getUniversityKey)),
+    price: getBestKeys(items, (item) => getNumericPrice(item.price), "min"),
+  };
+}
+
+function getBestKeys(items, extractor, mode) {
+  const values = items
+    .map((item) => ({ key: getUniversityKey(item), value: extractor(item) }))
+    .filter((entry) => Number.isFinite(entry.value));
+
+  if (!values.length) {
+    return new Set();
+  }
+
+  const target = mode === "max"
+    ? Math.max(...values.map((entry) => entry.value))
+    : Math.min(...values.map((entry) => entry.value));
+
+  return new Set(values.filter((entry) => entry.value === target).map((entry) => entry.key));
+}
+
+function getComparisonCellClass(highlightName, item, highlights) {
+  if (!highlightName) {
+    return "";
+  }
+
+  const key = getUniversityKey(item);
+  if (highlights[highlightName]?.has(key)) {
+    return highlightName === "category" || highlightName === "type" ? "compare-good" : "compare-best";
+  }
+
+  if (highlightName === "category" && getItemCategory(item) === "ambitious") {
+    return "compare-warning";
+  }
+
+  if (highlightName === "margin" && Number(getScoreMargin(item)) < 0) {
+    return "compare-warning";
+  }
+
+  return "";
+}
+
+function loadComparisonItems() {
+  try {
+    const raw = window.localStorage.getItem(COMPARISON_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((item) => item && typeof item === "object").slice(0, MAX_COMPARISON_ITEMS)
+      : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveComparisonItems() {
+  try {
+    window.localStorage.setItem(COMPARISON_KEY, JSON.stringify(comparisonItems.slice(0, MAX_COMPARISON_ITEMS)));
+  } catch (error) {
+    comparisonNotice = "Не удалось сохранить сравнение в браузере, но текущая таблица продолжит работать.";
+  }
+}
+
+function toggleCompare(key) {
+  const item = findItemByCompareKey(key);
+  if (!item) {
+    return;
+  }
+
+  if (isCompared(item)) {
+    removeFromComparison(key);
+    return;
+  }
+
+  if (comparisonItems.length >= MAX_COMPARISON_ITEMS) {
+    comparisonNotice = "Можно сравнить до 3 вариантов одновременно.";
+    renderAll();
+    activateTab("comparison");
+    return;
+  }
+
+  comparisonNotice = "";
+  comparisonItems = [
+    ...comparisonItems,
+    {
+      ...item,
+      saved_score: currentSearch?.score || item.saved_score || getMinScore(item) || 0,
+      category: getItemCategory(item),
+    },
+  ];
+  saveComparisonItems();
+  renderAll();
+
+  if (telegramWebApp?.HapticFeedback) {
+    telegramWebApp.HapticFeedback.impactOccurred("light");
+  }
+}
+
+function removeFromComparison(key) {
+  comparisonNotice = "";
+  comparisonItems = comparisonItems.filter((item) => getUniversityKey(item) !== key);
+  saveComparisonItems();
+  renderAll();
+}
+
+function clearComparison() {
+  comparisonNotice = "";
+  comparisonItems = [];
+  saveComparisonItems();
+  renderAll();
+}
+
 function findResultByKey(key) {
   return lastResults.find((item) => makeFavoriteKey(item) === key)
     || displayedResults.find((item) => makeFavoriteKey(item) === key)
     || favorites.find((item) => makeFavoriteKey(item) === key);
 }
 
+function findItemByCompareKey(key) {
+  return lastResults.find((item) => getUniversityKey(item) === key)
+    || displayedResults.find((item) => getUniversityKey(item) === key)
+    || favorites.find((item) => getUniversityKey(item) === key)
+    || comparisonItems.find((item) => getUniversityKey(item) === key);
+}
+
 function isFavorite(item) {
   const key = makeFavoriteKey(item);
   return favorites.some((favorite) => makeFavoriteKey(favorite) === key);
+}
+
+function isCompared(item) {
+  const key = getUniversityKey(item);
+  return comparisonItems.some((comparedItem) => getUniversityKey(comparedItem) === key);
 }
 
 function makeFavoriteKey(item) {
@@ -533,6 +784,16 @@ function makeFavoriteKey(item) {
     item.min_score,
     item.type,
     item.url,
+  ].map((value) => textValue(value, "")).join("|");
+}
+
+function getUniversityKey(item) {
+  return [
+    item.university,
+    item.program,
+    item.city,
+    item.min_score,
+    item.type,
   ].map((value) => textValue(value, "")).join("|");
 }
 
@@ -560,8 +821,49 @@ function getItemCategory(item, fallbackScore = currentSearch?.score || item.save
   return classifyUniversity(Number(fallbackScore) || 0, item);
 }
 
+function getCategoryLabel(item) {
+  const category = getItemCategory(item);
+  return categoryMeta[category]?.shortLabel || "не указано";
+}
+
+function getCategoryRank(category) {
+  const ranks = {
+    safe: 3,
+    realistic: 2,
+    ambitious: 1,
+  };
+  return ranks[category] || 0;
+}
+
+function getUserScore(item) {
+  const score = Number(item.saved_score || currentSearch?.score || 0);
+  return Number.isFinite(score) && score > 0 ? score : null;
+}
+
+function getScoreMargin(item) {
+  const score = getUserScore(item);
+  const minScore = getMinScore(item);
+  if (score === null || minScore === null) {
+    return null;
+  }
+  return score - minScore;
+}
+
 function getMinScore(item) {
   const value = Number(item.min_score);
+  return Number.isFinite(value) ? value : null;
+}
+
+function getNumericPrice(price) {
+  if (price === null || price === undefined || price === "") {
+    return null;
+  }
+  if (typeof price === "number") {
+    return Number.isFinite(price) ? price : null;
+  }
+
+  const cleaned = String(price).replace(/[^\d.,]/g, "").replace(",", ".");
+  const value = Number(cleaned);
   return Number.isFinite(value) ? value : null;
 }
 

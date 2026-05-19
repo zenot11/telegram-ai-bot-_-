@@ -18,6 +18,7 @@
           <button class="tab-button is-active" type="button" data-tab-target="home" aria-selected="true">Главная</button>
           <button class="tab-button" type="button" data-tab-target="search" aria-selected="false">Подбор</button>
           <button class="tab-button" type="button" data-tab-target="filters" aria-selected="false">Фильтры</button>
+          <button class="tab-button" type="button" data-tab-target="comparison" aria-selected="false">Сравнение <span id="comparison-count">0</span></button>
           <button class="tab-button" type="button" data-tab-target="favorites" aria-selected="false">Избранное <span id="favorites-count">0</span></button>
           <button class="tab-button" type="button" data-tab-target="about" aria-selected="false">О проекте</button>
         </nav>
@@ -119,6 +120,7 @@
           <div id="summary-content" class="summary-content"></div>
           <div class="summary-actions">
             <button class="secondary-button" type="button" data-tab-target="filters">Фильтры</button>
+            <button class="secondary-button" type="button" data-tab-target="comparison">Сравнение</button>
             <button class="secondary-button" type="button" data-tab-target="favorites">Избранное</button>
             <button class="secondary-button" type="button" data-tab-target="search">Новый подбор</button>
           </div>
@@ -145,6 +147,29 @@
         <div id="filter-controls" class="filter-controls" aria-label="Фильтры результатов"></div>
         <p id="filter-status" class="panel-status">Сначала сделай подбор, чтобы включить фильтры.</p>
         <div id="filter-results" class="results-grid"></div>
+      </section>
+
+      <section id="comparison" class="tab-panel section comparison-section" aria-labelledby="comparison-title">
+        <div class="section-heading">
+          <p class="eyebrow">Сравнение</p>
+          <h2 id="comparison-title">Сравнение вузов</h2>
+          <p>Выбери 2–3 варианта из результатов или избранного, чтобы быстро сравнить ключевые параметры.</p>
+        </div>
+        <div class="comparison-info">
+          <p>
+            Сравнение помогает увидеть различия между программами. Это не гарантия поступления:
+            проходные баллы меняются каждый год.
+          </p>
+          <strong id="comparison-counter">Выбрано: 0/3</strong>
+        </div>
+        <div class="comparison-actions">
+          <button id="clear-comparison" class="secondary-button danger-button" type="button">Очистить сравнение</button>
+          <button class="secondary-button" type="button" data-tab-target="search">Перейти к подбору</button>
+          <button class="secondary-button" type="button" data-tab-target="favorites">Открыть избранное</button>
+        </div>
+        <p id="comparison-status" class="panel-status">Пока нечего сравнивать. Выполни подбор и добавь 2–3 варианта.</p>
+        <div id="comparison-selected" class="comparison-selected"></div>
+        <div id="comparison-table" class="comparison-table-wrap"></div>
       </section>
 
       <section id="favorites" class="tab-panel section favorites-section" aria-labelledby="favorites-title">

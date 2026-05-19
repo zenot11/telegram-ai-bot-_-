@@ -24,6 +24,7 @@ def test_index_contains_aisha_and_search_form() -> None:
     assert "Главная" in html
     assert "Подбор" in html
     assert "Фильтры" in html
+    assert "Сравнение" in html
     assert "Избранное" in html
     assert "О проекте" in html
     assert "Итог подбора" in html

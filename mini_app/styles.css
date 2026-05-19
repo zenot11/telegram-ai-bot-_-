@@ -24,6 +24,9 @@
   --ambitious-text: #8d2745;
   --danger: #b4233a;
   --danger-soft: #fff6f8;
+  --compare-best: #e7f7ef;
+  --compare-good: #edf2ff;
+  --compare-warning: #fff3d7;
   --page-grid-line: rgba(255, 255, 255, 0.34);
   --page-grid-line-strong: rgba(255, 255, 255, 0.3);
   --surface-border: rgba(255, 255, 255, 0.72);
@@ -58,6 +61,9 @@
   --ambitious-text: #ff9fba;
   --danger: #ff8295;
   --danger-soft: rgba(255, 130, 149, 0.12);
+  --compare-best: rgba(76, 175, 120, 0.18);
+  --compare-good: rgba(142, 162, 255, 0.18);
+  --compare-warning: rgba(255, 196, 67, 0.17);
   --page-grid-line: rgba(255, 255, 255, 0.045);
   --page-grid-line-strong: rgba(255, 255, 255, 0.055);
   --surface-border: rgba(255, 255, 255, 0.1);
@@ -538,6 +544,12 @@ select:focus {
   gap: 10px;
 }
 
+.card-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
 .advice-card h3 {
   margin-bottom: 8px;
 }
@@ -689,6 +701,12 @@ select:focus {
   background: var(--card-soft);
 }
 
+.compare-button.is-added {
+  color: var(--safe-text);
+  border: 1px solid var(--safe);
+  background: var(--safe);
+}
+
 .favorite-button--remove {
   color: var(--danger);
   border: 1px solid var(--danger-border);
@@ -698,6 +716,154 @@ select:focus {
 .favorite-button--remove:hover {
   color: var(--card);
   background: var(--danger);
+}
+
+.comparison-info {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--muted);
+  background: var(--card-soft);
+  line-height: 1.45;
+}
+
+.comparison-section {
+  scroll-margin-top: 16px;
+}
+
+.comparison-info p {
+  margin-bottom: 0;
+}
+
+.comparison-info strong {
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.comparison-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.comparison-selected {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.comparison-selected-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow-soft);
+}
+
+.comparison-selected-card div {
+  display: grid;
+  gap: 4px;
+}
+
+.comparison-selected-card span {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.comparison-table-wrap {
+  display: grid;
+  gap: 12px;
+}
+
+.comparison-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow-soft);
+}
+
+.comparison-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--ink);
+  font-size: 0.94rem;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: 13px 14px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.38;
+}
+
+.comparison-table th:last-child,
+.comparison-table td:last-child {
+  border-right: 0;
+}
+
+.comparison-table tr:last-child th,
+.comparison-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.comparison-table thead th {
+  color: var(--ink);
+  background: var(--card-soft);
+  font-weight: 950;
+}
+
+.comparison-table tbody th {
+  width: 180px;
+  color: var(--ink);
+  background: var(--card-soft);
+  font-weight: 900;
+}
+
+.comparison-table td {
+  color: var(--muted);
+}
+
+.comparison-table .compare-best {
+  color: var(--safe-text);
+  background: var(--compare-best);
+  font-weight: 900;
+}
+
+.comparison-table .compare-good {
+  color: var(--blue);
+  background: var(--compare-good);
+  font-weight: 900;
+}
+
+.comparison-table .compare-warning {
+  color: var(--realistic-text);
+  background: var(--compare-warning);
+  font-weight: 900;
+}
+
+.comparison-note {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  color: var(--muted);
+  background: var(--card-soft);
+  line-height: 1.45;
 }
 
 .category-list {
@@ -890,8 +1056,17 @@ select:focus {
   }
 
   .summary-actions,
-  .favorites-actions {
+  .favorites-actions,
+  .comparison-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .comparison-info {
+    grid-template-columns: 1fr;
+  }
+
+  .comparison-table {
+    min-width: 680px;
   }
 }
