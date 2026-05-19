@@ -7,6 +7,7 @@ const favoritesNode = document.querySelector("#favorites-list");
 const statusNode = document.querySelector("#status-text");
 const filterStatusNode = document.querySelector("#filter-status");
 const favoritesStatusNode = document.querySelector("#favorites-status");
+const favoritesSyncStatusNode = document.querySelector("#favorites-sync-status");
 const resultsSection = document.querySelector("#results-section");
 const summaryCard = document.querySelector("#summary-card");
 const summaryContentNode = document.querySelector("#summary-content");
@@ -24,7 +25,8 @@ const themeToggleButton = document.querySelector("#theme-toggle");
 
 const SAFE_MARGIN = 25;
 const AMBITIOUS_MARGIN = 20;
-const FAVORITES_KEY = "aishaMiniAppFavorites";
+const FAVORITES_KEY = "aisha_favorites";
+const LEGACY_FAVORITES_KEY = "aishaMiniAppFavorites";
 const THEME_KEY = "aisha_theme";
 const COMPARISON_KEY = "aisha_compare";
 const MAX_COMPARISON_ITEMS = 3;
@@ -36,6 +38,7 @@ let currentSearch = null;
 let favorites = loadFavorites();
 let comparisonItems = loadComparisonItems();
 let comparisonNotice = "";
+let favoritesSyncNotice = "";
 
 const categoryMeta = {
   safe: {
@@ -65,6 +68,7 @@ const filterLabels = {
 };
 
 const telegramWebApp = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+const telegramInitData = telegramWebApp?.initData || "";
 
 initTheme();
 
@@ -201,6 +205,7 @@ themeToggleButton?.addEventListener("click", () => {
 });
 
 renderAll();
+initFavoritesSync();
 
 function initTheme() {
   applyTheme(getPreferredTheme());
@@ -475,6 +480,7 @@ function renderCard(item, score, index) {
 
 function renderFavorites() {
   favoritesCountNode.textContent = String(favorites.length);
+  renderFavoritesSyncStatus();
 
   if (!favorites.length) {
     favoritesStatusNode.textContent = "Избранное пока пустое. Добавь подходящий вариант из результатов подбора.";
@@ -486,6 +492,19 @@ function renderFavorites() {
   favoritesStatusNode.textContent = `Сохранено вариантов: ${favorites.length}.`;
   clearFavoritesButton.disabled = false;
   favoritesNode.innerHTML = favorites.map((item, index) => renderFavoriteCard(item, index + 1)).join("");
+}
+
+function renderFavoritesSyncStatus() {
+  if (!favoritesSyncStatusNode) {
+    return;
+  }
+  if (favoritesSyncNotice) {
+    favoritesSyncStatusNode.textContent = favoritesSyncNotice;
+    return;
+  }
+  favoritesSyncStatusNode.textContent = hasTelegramAuth()
+    ? "Избранное синхронизируется с Telegram-ботом."
+    : "Локальный режим: избранное хранится только в этом браузере.";
 }
 
 function renderFavoriteCard(item, index) {
@@ -500,7 +519,7 @@ function renderFavoriteCard(item, index) {
 
 function loadFavorites() {
   try {
-    const raw = window.localStorage.getItem(FAVORITES_KEY);
+    const raw = window.localStorage.getItem(FAVORITES_KEY) || window.localStorage.getItem(LEGACY_FAVORITES_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
@@ -516,7 +535,56 @@ function saveFavorites() {
   }
 }
 
-function addToFavorites(item) {
+async function initFavoritesSync() {
+  if (!hasTelegramAuth()) {
+    favoritesSyncNotice = "Локальный режим: избранное хранится только в этом браузере.";
+    renderFavoritesSyncStatus();
+    return;
+  }
+
+  try {
+    const payload = await requestFavoritesApi("/api/favorites/sync", {
+      local_favorites: favorites,
+    });
+    updateFavoritesFromServer(payload.favorites);
+    favoritesSyncNotice = "Избранное синхронизировано с Telegram.";
+    renderAll();
+  } catch (error) {
+    favoritesSyncNotice = "Сейчас избранное сохранено локально. Синхронизация будет доступна при открытии через Telegram.";
+    renderFavoritesSyncStatus();
+  }
+}
+
+function hasTelegramAuth() {
+  return Boolean(telegramInitData);
+}
+
+async function requestFavoritesApi(path, body = null) {
+  const options = {
+    method: body ? "POST" : "GET",
+    headers: {
+      "X-Telegram-Init-Data": telegramInitData,
+    },
+  };
+  if (body) {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(path, options);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload.status === "error") {
+    throw new Error(payload.error || `Favorites API returned ${response.status}`);
+  }
+  return payload;
+}
+
+function updateFavoritesFromServer(serverFavorites) {
+  favorites = Array.isArray(serverFavorites) ? serverFavorites.filter((item) => item && typeof item === "object") : [];
+  saveFavorites();
+}
+
+async function addToFavorites(item) {
   if (!item) {
     return;
   }
@@ -531,21 +599,58 @@ function addToFavorites(item) {
     saveFavorites();
   }
   renderAll();
+
+  if (hasTelegramAuth()) {
+    try {
+      const payload = await requestFavoritesApi("/api/favorites/add", { item });
+      updateFavoritesFromServer(payload.favorites);
+      favoritesSyncNotice = "Избранное синхронизировано с Telegram.";
+      renderAll();
+    } catch (error) {
+      favoritesSyncNotice = "Не удалось синхронизировать с Telegram. Избранное сохранено локально.";
+      renderFavoritesSyncStatus();
+    }
+  }
+
   if (telegramWebApp?.HapticFeedback) {
     telegramWebApp.HapticFeedback.impactOccurred("light");
   }
 }
 
-function removeFromFavorites(key) {
+async function removeFromFavorites(key) {
   favorites = favorites.filter((item) => makeFavoriteKey(item) !== key);
   saveFavorites();
   renderAll();
+
+  if (hasTelegramAuth()) {
+    try {
+      const payload = await requestFavoritesApi("/api/favorites/remove", { key });
+      updateFavoritesFromServer(payload.favorites);
+      favoritesSyncNotice = "Избранное синхронизировано с Telegram.";
+      renderAll();
+    } catch (error) {
+      favoritesSyncNotice = "Не удалось синхронизировать удаление. Локальная копия обновлена.";
+      renderFavoritesSyncStatus();
+    }
+  }
 }
 
-function clearFavorites() {
+async function clearFavorites() {
   favorites = [];
   saveFavorites();
   renderAll();
+
+  if (hasTelegramAuth()) {
+    try {
+      const payload = await requestFavoritesApi("/api/favorites/clear", {});
+      updateFavoritesFromServer(payload.favorites);
+      favoritesSyncNotice = "Избранное очищено и синхронизировано с Telegram.";
+      renderAll();
+    } catch (error) {
+      favoritesSyncNotice = "Не удалось синхронизировать очистку. Локальная копия очищена.";
+      renderFavoritesSyncStatus();
+    }
+  }
 }
 
 function renderComparison() {
@@ -777,14 +882,7 @@ function isCompared(item) {
 }
 
 function makeFavoriteKey(item) {
-  return [
-    item.university,
-    item.program,
-    item.city,
-    item.min_score,
-    item.type,
-    item.url,
-  ].map((value) => textValue(value, "")).join("|");
+  return getUniversityKey(item);
 }
 
 function getUniversityKey(item) {

@@ -117,10 +117,20 @@ Mini App остается простым HTML + CSS + JS без сборки.
 
 - `index.html` - структура страницы.
 - `styles.css` - стиль в духе командного сайта “Аиша”, CSS-переменные для светлой/тёмной темы, адаптивные вкладки, фильтры, карточки и таблица сравнения.
-- `app.js` - вкладки, переключение темы, валидация формы, запрос к `/api/universities`, локальные фильтры, итог подбора, избранное и сравнение через `localStorage`, отрисовка карточек и таблицы сравнения.
+- `app.js` - вкладки, переключение темы, валидация формы, запрос к `/api/universities`, локальные фильтры, итог подбора, синхронизация избранного или localStorage fallback, локальное сравнение, отрисовка карточек и таблицы сравнения.
 - `favicon.svg` - favicon.
 
-Mini App не использует OpenAI и не хранит токены. Избранное Mini App, выбранная тема и выбранные вузы для сравнения хранятся локально в браузере через `localStorage`. Избранное и сравнение не синхронизируются с Telegram-ботом, потому что авторизация и `initData`-проверка не входят в текущий этап.
+Mini App не использует OpenAI и не хранит токены. Выбранная тема и выбранные вузы для сравнения хранятся локально в браузере через `localStorage`. Сравнение не синхронизируется с Telegram-ботом.
+
+Для избранного есть дополнительный режим синхронизации. Если Mini App открыт внутри Telegram, он отправляет `window.Telegram.WebApp.initData` в backend через header `X-Telegram-Init-Data`. Backend проверяет подпись initData через `TELEGRAM_BOT_TOKEN`, достаёт Telegram ID из проверенных данных и использует тот же `telegram_bot/storage/user_data.py`, что и Telegram-бот. Если Mini App открыт в обычном браузере без initData, избранное остаётся в локальном режиме через `localStorage`.
+
+Favorites API:
+
+- `GET /api/favorites`;
+- `POST /api/favorites/add`;
+- `POST /api/favorites/remove`;
+- `POST /api/favorites/clear`;
+- `POST /api/favorites/sync`.
 
 ## `tests/`
 

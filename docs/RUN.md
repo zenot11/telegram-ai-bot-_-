@@ -147,6 +147,8 @@ WEBAPP_URL=https://your-ngrok-url.ngrok-free.dev/miniapp
 
 После изменения `.env` перезапустите Telegram-бота.
 
+В обычном браузере Mini App работает в локальном режиме: избранное хранится только в `localStorage`. Для синхронизации избранного с Telegram-ботом нужно открывать Mini App именно через Telegram `/webapp` и публичный HTTPS `WEBAPP_URL`, чтобы Telegram передал WebApp `initData`.
+
 ## 10. Частые проблемы
 
 ### Backend не запущен

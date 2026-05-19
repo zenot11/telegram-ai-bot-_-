@@ -132,3 +132,96 @@ Backend также отдаёт Mini App:
 - `/favicon.ico` - favicon для браузера.
 
 Mini App использует тот же endpoint `/api/universities`, что и Telegram-бот.
+
+## Favorites API для Telegram Mini App
+
+Эти endpoints нужны для синхронизации избранного между Telegram-ботом и Mini App.
+
+Mini App должен передавать Telegram WebApp initData в header:
+
+```text
+X-Telegram-Init-Data: <window.Telegram.WebApp.initData>
+```
+
+Backend проверяет `initData` через `TELEGRAM_BOT_TOKEN`, достаёт `user.id` из проверенных данных и только после этого работает с избранным пользователя. `user_id` из query или body не принимается.
+
+Если `initData` отсутствует или не проходит проверку, backend возвращает:
+
+```json
+{
+  "status": "error",
+  "error": "unauthorized"
+}
+```
+
+HTTP status: `401`.
+
+### GET `/api/favorites`
+
+Возвращает избранные вузы пользователя.
+
+Ответ:
+
+```json
+{
+  "status": "ok",
+  "mode": "telegram",
+  "favorites": []
+}
+```
+
+### POST `/api/favorites/add`
+
+Добавляет вуз в избранное без дублей.
+
+Body:
+
+```json
+{
+  "item": {
+    "university": "АГУ",
+    "city": "Майкоп",
+    "program": "Прикладная информатика",
+    "min_score": 185,
+    "type": "бюджет"
+  }
+}
+```
+
+### POST `/api/favorites/remove`
+
+Удаляет вуз из избранного.
+
+Body можно передать по ключу:
+
+```json
+{
+  "key": "агу|прикладная информатика|майкоп|185|бюджет"
+}
+```
+
+Или по объекту `item`, тогда backend сам вычислит ключ.
+
+### POST `/api/favorites/clear`
+
+Очищает избранное пользователя.
+
+### POST `/api/favorites/sync`
+
+Объединяет локальное избранное Mini App с избранным Telegram-бота.
+
+Body:
+
+```json
+{
+  "local_favorites": []
+}
+```
+
+Backend объединяет записи без дублей по стабильному ключу:
+
+```text
+university + program + city + min_score + type
+```
+
+Этот endpoint используется при первом открытии Mini App внутри Telegram. Если Mini App открыт в обычном браузере без `initData`, он продолжает работать в локальном режиме через `localStorage`.

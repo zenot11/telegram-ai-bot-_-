@@ -118,6 +118,31 @@ def test_clear_favorites(tmp_path) -> None:
     assert storage.get_favorites(123) == []
 
 
+def test_remove_favorite_by_key(tmp_path) -> None:
+    storage = UserDataStorage(str(tmp_path / "user_data.json"))
+    first = sample_university()
+    second = second_university()
+
+    storage.add_favorite(123, first)
+    storage.add_favorite(123, second)
+    removed = storage.remove_favorite_by_key(123, storage.favorite_key(second))
+
+    assert removed == second
+    assert storage.get_favorites(123) == [first]
+
+
+def test_merge_favorites_deduplicates_by_key(tmp_path) -> None:
+    storage = UserDataStorage(str(tmp_path / "user_data.json"))
+    first = sample_university()
+    second = second_university()
+
+    storage.add_favorite(123, first)
+    merged = storage.merge_favorites(123, [first, second])
+
+    assert merged == [first, second]
+    assert storage.get_favorites(123) == [first, second]
+
+
 def test_remove_favorite_removes_selected_item(tmp_path) -> None:
     storage = UserDataStorage(str(tmp_path / "user_data.json"))
 

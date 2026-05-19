@@ -116,6 +116,31 @@ class UserDataStorage:
             self._write_all_unlocked(data)
             return True
 
+    def merge_favorites(self, telegram_id: int, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        with self._lock:
+            data = self._read_all_unlocked()
+            current = data.get(str(telegram_id), {})
+            if not isinstance(current, dict):
+                current = {}
+
+            favorites = current.get("favorites", [])
+            if not isinstance(favorites, list):
+                favorites = []
+            merged = [item for item in favorites if isinstance(item, dict)]
+            keys = {self.favorite_key(item) for item in merged}
+
+            for item in items:
+                key = self.favorite_key(item)
+                if key not in keys:
+                    merged.append(item)
+                    keys.add(key)
+
+            current["telegram_id"] = telegram_id
+            current["favorites"] = merged
+            data[str(telegram_id)] = current
+            self._write_all_unlocked(data)
+            return merged
+
     def get_favorites(self, telegram_id: int) -> list[dict[str, Any]]:
         profile = self.get_profile(telegram_id)
         if not profile:
@@ -151,6 +176,27 @@ class UserDataStorage:
             data[str(telegram_id)] = current
             self._write_all_unlocked(data)
             return removed if isinstance(removed, dict) else None
+
+    def remove_favorite_by_key(self, telegram_id: int, key: str) -> dict[str, Any] | None:
+        with self._lock:
+            data = self._read_all_unlocked()
+            current = data.get(str(telegram_id), {})
+            if not isinstance(current, dict):
+                return None
+
+            favorites = current.get("favorites", [])
+            if not isinstance(favorites, list):
+                return None
+
+            normalized_key = str(key)
+            for index, item in enumerate(favorites):
+                if isinstance(item, dict) and self.favorite_key(item) == normalized_key:
+                    removed = favorites.pop(index)
+                    current["favorites"] = favorites
+                    data[str(telegram_id)] = current
+                    self._write_all_unlocked(data)
+                    return removed
+            return None
 
     def add_search_history(
         self,
@@ -258,13 +304,15 @@ class UserDataStorage:
         )
 
     @staticmethod
-    def _favorite_key(item: dict[str, Any]) -> tuple[str, str, str, str]:
-        return (
-            str(item.get("university", "")).strip().lower(),
-            str(item.get("city", "")).strip().lower(),
-            str(item.get("program", "")).strip().lower(),
-            str(item.get("type", "")).strip().lower(),
+    def favorite_key(item: dict[str, Any]) -> str:
+        return "|".join(
+            str(item.get(field, "")).strip().lower()
+            for field in ("university", "program", "city", "min_score", "type")
         )
+
+    @staticmethod
+    def _favorite_key(item: dict[str, Any]) -> str:
+        return UserDataStorage.favorite_key(item)
 
 
 user_storage = UserDataStorage()

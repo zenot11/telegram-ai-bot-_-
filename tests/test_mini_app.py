@@ -57,6 +57,12 @@ def test_app_js_has_local_filters_and_favorites() -> None:
     assert "function addToFavorites" in js
     assert "function removeFromFavorites" in js
     assert "function clearFavorites" in js
+    assert "X-Telegram-Init-Data" in js
+    assert "/api/favorites" in js
+    assert "aisha_favorites" in js
+    assert "function initFavoritesSync" in js
+    assert "function requestFavoritesApi" in js
+    assert "Локальный режим" in js
     assert "window.Telegram && window.Telegram.WebApp" in js
 
 

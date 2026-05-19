@@ -7,6 +7,7 @@ from aiohttp import web
 from dotenv import load_dotenv
 
 from backend_stub.data_loader import DataLoadError, get_universities_data_path, load_universities
+from backend_stub.favorites_api import setup_favorites_routes
 from telegram_bot.services.recommendation import AMBITIOUS_SCORE_MARGIN
 from telegram_bot.services.validation import (
     education_type_label,
@@ -148,7 +149,10 @@ def _json_dumps(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False)
 
 
-def create_app(universities_data: list[dict[str, Any]] | None = None) -> web.Application:
+def create_app(
+    universities_data: list[dict[str, Any]] | None = None,
+    favorites_storage: Any | None = None,
+) -> web.Application:
     data_path = get_universities_data_path()
     universities_data = universities_data if universities_data is not None else load_universities(data_path)
     app = web.Application()
@@ -156,6 +160,7 @@ def create_app(universities_data: list[dict[str, Any]] | None = None) -> web.App
     app[DATA_PATH_KEY] = data_path
     app.router.add_get("/health", health)
     app.router.add_get("/api/universities", universities)
+    setup_favorites_routes(app, favorites_storage)
     app.router.add_get("/miniapp", miniapp_index)
     app.router.add_get("/miniapp/", miniapp_index)
     app.router.add_get("/miniapp/{asset}", miniapp_asset)
