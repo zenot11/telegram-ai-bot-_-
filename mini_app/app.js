@@ -14,10 +14,12 @@ const adviceCard = document.querySelector("#advice-card");
 const filterControlsNode = document.querySelector("#filter-controls");
 const favoritesCountNode = document.querySelector("#favorites-count");
 const clearFavoritesButton = document.querySelector("#clear-favorites");
+const themeToggleButton = document.querySelector("#theme-toggle");
 
 const SAFE_MARGIN = 25;
 const AMBITIOUS_MARGIN = 20;
 const FAVORITES_KEY = "aishaMiniAppFavorites";
+const THEME_KEY = "aisha_theme";
 
 let lastResults = [];
 let displayedResults = [];
@@ -53,6 +55,8 @@ const filterLabels = {
 };
 
 const telegramWebApp = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+
+initTheme();
 
 if (telegramWebApp) {
   telegramWebApp.ready();
@@ -166,7 +170,63 @@ clearFavoritesButton.addEventListener("click", () => {
   clearFavorites();
 });
 
+themeToggleButton?.addEventListener("click", () => {
+  toggleTheme();
+});
+
 renderAll();
+
+function initTheme() {
+  applyTheme(getPreferredTheme());
+}
+
+function getPreferredTheme() {
+  const savedTheme = getSavedTheme();
+  if (savedTheme) {
+    return savedTheme;
+  }
+  return telegramWebApp?.colorScheme === "dark" ? "dark" : "light";
+}
+
+function getSavedTheme() {
+  try {
+    const savedTheme = window.localStorage.getItem(THEME_KEY);
+    return ["light", "dark"].includes(savedTheme) ? savedTheme : "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function saveTheme(theme) {
+  try {
+    window.localStorage.setItem(THEME_KEY, theme);
+  } catch (error) {
+    return;
+  }
+}
+
+function applyTheme(theme) {
+  const safeTheme = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = safeTheme;
+
+  if (themeToggleButton) {
+    const isDark = safeTheme === "dark";
+    themeToggleButton.textContent = isDark ? "☀️ Светлая" : "🌙 Тёмная";
+    themeToggleButton.setAttribute("aria-pressed", String(isDark));
+    themeToggleButton.setAttribute("title", isDark ? "Включить светлую тему" : "Включить тёмную тему");
+  }
+}
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  const nextTheme = currentTheme === "dark" ? "light" : "dark";
+  applyTheme(nextTheme);
+  saveTheme(nextTheme);
+
+  if (telegramWebApp?.HapticFeedback) {
+    telegramWebApp.HapticFeedback.selectionChanged();
+  }
+}
 
 function activateTab(tabName) {
   const safeTabName = tabName || "home";

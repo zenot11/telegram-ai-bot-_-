@@ -27,6 +27,8 @@ def test_index_contains_aisha_and_search_form() -> None:
     assert "Избранное" in html
     assert "О проекте" in html
     assert "Итог подбора" in html
+    assert "theme-toggle" in html
+    assert "Переключить тему" in html
     assert "<form" in html
     assert "Подобрать варианты" in html
     assert "region" in html
@@ -57,6 +59,17 @@ def test_app_js_has_local_filters_and_favorites() -> None:
     assert "window.Telegram && window.Telegram.WebApp" in js
 
 
+def test_app_js_has_theme_toggle_without_tokens() -> None:
+    js = read_mini_app_file("app.js")
+
+    assert "aisha_theme" in js
+    assert "function initTheme" in js
+    assert "function applyTheme" in js
+    assert "function toggleTheme" in js
+    assert "dataset.theme" in js
+    assert "TELEGRAM_BOT_TOKEN" not in js
+
+
 def test_styles_include_recommendation_categories() -> None:
     css = read_mini_app_file("styles.css")
 
@@ -78,6 +91,17 @@ def test_styles_include_light_site_layout_classes() -> None:
     assert ".filter-chip" in css
     assert ".favorite-button" in css
     assert "@media" in css
+
+
+def test_styles_include_theme_variables_and_dark_theme() -> None:
+    css = read_mini_app_file("styles.css")
+
+    assert "--background" in css
+    assert "--surface" in css
+    assert "--text" in css
+    assert "--primary" in css
+    assert '[data-theme="dark"]' in css
+    assert ".theme-toggle" in css
 
 
 def test_index_mentions_demo_data_warning() -> None:

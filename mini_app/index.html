@@ -13,13 +13,18 @@
         <span class="brand__mark">А</span>
         <span>Аиша</span>
       </button>
-      <nav class="tabs nav-tabs" aria-label="Разделы Mini App">
-        <button class="tab-button is-active" type="button" data-tab-target="home" aria-selected="true">Главная</button>
-        <button class="tab-button" type="button" data-tab-target="search" aria-selected="false">Подбор</button>
-        <button class="tab-button" type="button" data-tab-target="filters" aria-selected="false">Фильтры</button>
-        <button class="tab-button" type="button" data-tab-target="favorites" aria-selected="false">Избранное <span id="favorites-count">0</span></button>
-        <button class="tab-button" type="button" data-tab-target="about" aria-selected="false">О проекте</button>
-      </nav>
+      <div class="topbar__actions">
+        <nav class="tabs nav-tabs" aria-label="Разделы Mini App">
+          <button class="tab-button is-active" type="button" data-tab-target="home" aria-selected="true">Главная</button>
+          <button class="tab-button" type="button" data-tab-target="search" aria-selected="false">Подбор</button>
+          <button class="tab-button" type="button" data-tab-target="filters" aria-selected="false">Фильтры</button>
+          <button class="tab-button" type="button" data-tab-target="favorites" aria-selected="false">Избранное <span id="favorites-count">0</span></button>
+          <button class="tab-button" type="button" data-tab-target="about" aria-selected="false">О проекте</button>
+        </nav>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Переключить тему" aria-pressed="false">
+          🌙 Тёмная
+        </button>
+      </div>
     </header>
 
     <main>
