@@ -15,6 +15,7 @@
 - [docs/RUN.md](docs/RUN.md) - запуск проекта;
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - архитектура;
 - [docs/API.md](docs/API.md) - backend API;
+- [docs/DATA.md](docs/DATA.md) - формат и проверка базы вузов;
 - [docs/BOTFATHER.md](docs/BOTFATHER.md) - настройка Telegram Mini App;
 - [docs/DEFENSE.md](docs/DEFENSE.md) - сценарий защиты;
 - [DEMO.md](DEMO.md) - подробная демонстрация;
@@ -116,6 +117,12 @@ docs/                      # расширенная документация
 
 Проходные баллы, стоимость и ссылки являются демонстрационными. Это не официальные данные и не гарантия поступления.
 
+Формальный контракт базы описан в [docs/DATA.md](docs/DATA.md). Перед заменой демонстрационного файла на финальную базу нужно выполнить:
+
+```bash
+python scripts/check_data.py
+```
+
 Ожидаемая структура записи:
 
 ```json
@@ -136,7 +143,7 @@ docs/                      # расширенная документация
 }
 ```
 
-Поля `study_form`, `duration`, `note`, `price` и `url` могут отсутствовать или быть пустыми. Код должен показывать аккуратные fallback-значения, а не технические `None` или `null`.
+Поля `study_form`, `duration`, `note` и `price` могут отсутствовать или быть пустыми. Код должен показывать аккуратные fallback-значения, а не технические `None` или `null`.
 
 ## Как заменить данные перед сдачей
 
@@ -145,6 +152,7 @@ docs/                      # расширенная документация
 После замены файла нужно выполнить:
 
 ```bash
+python scripts/check_data.py
 bash scripts/check_project.sh
 ```
 
@@ -417,6 +425,7 @@ Safety/crisis-сообщения не отправляются в OpenAI.
 ```bash
 python3 -m compileall telegram_bot backend_stub tests
 python3 -m json.tool backend_stub/data/universities.json > /tmp/universities_check.json
+python scripts/check_data.py
 pytest
 ```
 
@@ -428,6 +437,12 @@ bash scripts/check_project.sh
 ```
 
 Скрипт не запускает Telegram-бота и не требует реальных токенов.
+
+Отдельная проверка структуры базы:
+
+```bash
+python scripts/check_data.py
+```
 
 ## Команды
 

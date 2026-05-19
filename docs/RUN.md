@@ -52,6 +52,12 @@ WEBAPP_URL=
 
 ## 5. Запуск backend
 
+Перед запуском можно проверить структуру базы вузов:
+
+```bash
+python scripts/check_data.py
+```
+
 В первом терминале:
 
 ```bash
@@ -104,6 +110,7 @@ bash scripts/check_project.sh
 
 - `compileall` для Python-кода;
 - проверку JSON-файла `universities.json`;
+- проверку структуры базы через `scripts/check_data.py`;
 - весь набор `pytest`.
 
 ## 8. Mini App локально

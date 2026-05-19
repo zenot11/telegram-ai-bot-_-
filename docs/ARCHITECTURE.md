@@ -12,6 +12,7 @@
 - Backend Stub - временный HTTP backend на aiohttp.
 - Mini App - веб-интерфейс внутри Telegram или браузера.
 - JSON-база вузов - демонстрационный файл с программами.
+- Data Loader - загрузка и проверка структуры JSON-базы.
 - Tests - pytest-проверки логики проекта.
 - Scripts - скрипты запуска и проверки.
 - Docs - документация по запуску, API, BotFather и защите.
@@ -100,12 +101,15 @@
 `backend_stub/` - временный backend API.
 
 - `main.py` - aiohttp-приложение, фильтрация вузов, normalizing query params, static routes Mini App.
+- `data_loader.py` - загрузка, нормализация и валидация `universities.json`.
 - `/health` - проверка, что backend работает.
 - `/api/universities` - основной endpoint подбора вузов.
 - `/miniapp` и `/miniapp/` - отдача `mini_app/index.html`.
 - `/miniapp/{asset}` - отдача `styles.css`, `app.js`, `favicon.svg`.
 - `/favicon.ico` - favicon для браузера.
 - `data/universities.json` - демонстрационная база вузов.
+
+Backend загружает базу при создании приложения. Если JSON некорректный или структура записей не соответствует контракту, backend завершает запуск с понятной ошибкой. Формат базы описан в `docs/DATA.md`.
 
 ## `mini_app/`
 

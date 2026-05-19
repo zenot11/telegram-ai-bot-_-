@@ -1,4 +1,4 @@
-from backend_stub.main import load_universities
+from backend_stub.data_loader import load_universities
 
 
 REQUIRED_FIELDS = {
@@ -10,7 +10,6 @@ REQUIRED_FIELDS = {
     "subjects",
     "min_score",
     "type",
-    "price",
     "url",
 }
 

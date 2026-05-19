@@ -6,6 +6,7 @@ from typing import Any
 from aiohttp import web
 from dotenv import load_dotenv
 
+from backend_stub.data_loader import DataLoadError, get_universities_data_path, load_universities
 from telegram_bot.services.recommendation import AMBITIOUS_SCORE_MARGIN
 from telegram_bot.services.validation import (
     education_type_label,
@@ -18,13 +19,10 @@ from telegram_bot.services.validation import (
 
 load_dotenv()
 
-DATA_PATH = Path(__file__).resolve().parent / "data" / "universities.json"
 MINI_APP_PATH = Path(__file__).resolve().parent.parent / "mini_app"
 MINI_APP_ASSETS = {"styles.css", "app.js", "favicon.svg"}
-
-
-def load_universities() -> list[dict[str, Any]]:
-    return json.loads(DATA_PATH.read_text(encoding="utf-8"))
+UNIVERSITIES_KEY = web.AppKey("universities", list[dict[str, Any]])
+DATA_PATH_KEY = web.AppKey("data_path", Path)
 
 
 def normalize(text: str) -> str:
@@ -93,8 +91,22 @@ def _min_score(item: dict[str, Any]) -> int | None:
     return None
 
 
-async def health(_: web.Request) -> web.Response:
-    return web.Response(text="ok")
+async def health(request: web.Request) -> web.Response:
+    universities = request.app[UNIVERSITIES_KEY]
+    data_path = request.app[DATA_PATH_KEY]
+    try:
+        data_source = str(data_path.relative_to(Path.cwd()))
+    except ValueError:
+        data_source = str(data_path)
+    return web.json_response(
+        {
+            "status": "ok",
+            "service": "backend_stub",
+            "universities_count": len(universities),
+            "data_source": data_source,
+        },
+        dumps=_json_dumps,
+    )
 
 
 async def universities(request: web.Request) -> web.Response:
@@ -113,7 +125,7 @@ async def universities(request: web.Request) -> web.Response:
     except ValueError:
         return web.json_response({"error": "score must be an integer"}, status=400)
 
-    results = filter_universities(load_universities(), region, score, direction, education_type, limit)
+    results = filter_universities(request.app[UNIVERSITIES_KEY], region, score, direction, education_type, limit)
     return web.json_response(results[:limit], dumps=_json_dumps)
 
 
@@ -136,8 +148,12 @@ def _json_dumps(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False)
 
 
-def create_app() -> web.Application:
+def create_app(universities_data: list[dict[str, Any]] | None = None) -> web.Application:
+    data_path = get_universities_data_path()
+    universities_data = universities_data if universities_data is not None else load_universities(data_path)
     app = web.Application()
+    app[UNIVERSITIES_KEY] = universities_data
+    app[DATA_PATH_KEY] = data_path
     app.router.add_get("/health", health)
     app.router.add_get("/api/universities", universities)
     app.router.add_get("/miniapp", miniapp_index)
@@ -149,4 +165,7 @@ def create_app() -> web.Application:
 
 if __name__ == "__main__":
     port = int(os.getenv("BACKEND_PORT", "8000"))
-    web.run_app(create_app(), host="0.0.0.0", port=port)
+    try:
+        web.run_app(create_app(), host="0.0.0.0", port=port)
+    except DataLoadError as error:
+        raise SystemExit(f"Backend data error: {error}") from error

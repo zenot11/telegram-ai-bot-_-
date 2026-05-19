@@ -2,6 +2,8 @@
 
 `backend_stub` - временный backend API проекта “Аиша”. Он используется Telegram-ботом и Mini App.
 
+Backend читает данные из JSON-базы `backend_stub/data/universities.json`. Формат базы описан в [docs/DATA.md](DATA.md).
+
 ## GET `/health`
 
 Проверяет, что backend запущен.
@@ -14,8 +16,13 @@ GET /health
 
 Ответ:
 
-```text
-ok
+```json
+{
+  "status": "ok",
+  "service": "backend_stub",
+  "universities_count": 45,
+  "data_source": "backend_stub/data/universities.json"
+}
 ```
 
 ## GET `/api/universities`
@@ -89,7 +96,7 @@ Backend мягко нормализует ввод:
 backend_stub/data/universities.json
 ```
 
-Ожидаемые поля:
+Структура ответа `/api/universities` совпадает с записью в JSON-базе. Ожидаемые поля:
 
 - `university` - название вуза;
 - `city` - город;
@@ -109,7 +116,9 @@ backend_stub/data/universities.json
 
 `note` используется для пометки демонстрационных данных.
 
-Если структура полей сохранится, финальную базу можно подставить перед сдачей без переписывания основной логики поиска, карточек, сравнения и Mini App.
+Если структура полей сохранится, финальную базу можно подставить перед сдачей без переписывания основной логики поиска, карточек, сравнения, экспорта и Mini App.
+
+Подробный контракт и проверка базы описаны в [docs/DATA.md](DATA.md).
 
 ## Static routes Mini App
 

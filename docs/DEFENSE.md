@@ -161,5 +161,8 @@ Telegram Mini App требует публичный HTTPS URL. Ngrok даёт в
 Нужно заменить `backend_stub/data/universities.json` финальным файлом с той же структурой полей и запустить проверки:
 
 ```bash
+python scripts/check_data.py
 bash scripts/check_project.sh
 ```
+
+Формат записей описан в `docs/DATA.md`. Если проверка проходит, логика бота и Mini App останется прежней, потому что они работают через единый backend API.
