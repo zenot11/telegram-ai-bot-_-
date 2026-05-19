@@ -5,6 +5,7 @@ const resultsNode = document.querySelector("#results");
 const filterResultsNode = document.querySelector("#filter-results");
 const favoritesNode = document.querySelector("#favorites-list");
 const statusNode = document.querySelector("#status-text");
+const resultsActionsNode = document.querySelector("#results-actions");
 const filterStatusNode = document.querySelector("#filter-status");
 const favoritesStatusNode = document.querySelector("#favorites-status");
 const favoritesSyncStatusNode = document.querySelector("#favorites-sync-status");
@@ -26,6 +27,9 @@ const comparisonTableNode = document.querySelector("#comparison-table");
 const clearFavoritesButton = document.querySelector("#clear-favorites");
 const clearComparisonButton = document.querySelector("#clear-comparison");
 const themeToggleButton = document.querySelector("#theme-toggle");
+const clearFormButton = document.querySelector("#clear-form");
+const quickScenarioButtons = document.querySelectorAll("[data-quick-scenario]");
+const toastContainerNode = document.querySelector("#toast-container");
 
 const SAFE_MARGIN = 25;
 const AMBITIOUS_MARGIN = 20;
@@ -78,6 +82,30 @@ const filterLabels = {
   paid: "Платное",
 };
 
+const quickScenarios = {
+  "adygea-it": {
+    region: "Адыгея",
+    score: 230,
+    direction: "IT",
+    type: "budget",
+    label: "Адыгея · 230 · IT · Бюджет",
+  },
+  "moscow-economy": {
+    region: "Москва",
+    score: 260,
+    direction: "экономика",
+    type: "budget",
+    label: "Москва · 260 · экономика · Бюджет",
+  },
+  "tatarstan-medicine": {
+    region: "Татарстан",
+    score: 250,
+    direction: "медицина",
+    type: "budget",
+    label: "Татарстан · 250 · медицина · Бюджет",
+  },
+};
+
 const telegramWebApp = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 const telegramInitData = getTelegramInitData();
 
@@ -94,15 +122,42 @@ tabButtons.forEach((button) => {
   });
 });
 
-form.addEventListener("submit", async (event) => {
+form.addEventListener("submit", (event) => {
   event.preventDefault();
+  performSearch();
+});
 
+quickScenarioButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    applyQuickScenario(button.dataset.quickScenario);
+  });
+});
+
+clearFormButton?.addEventListener("click", () => {
+  clearSearchForm();
+});
+
+async function performSearch() {
   const formData = new FormData(form);
   const scoreValue = String(formData.get("score") || "").trim();
   const score = Number(scoreValue);
   const type = formData.get("education-type") === "paid" ? "paid" : "budget";
   const typeLabel = type === "paid" ? "Платное" : "Бюджет";
+  const region = String(formData.get("region") || "").trim();
+  const direction = String(formData.get("direction") || "").trim();
 
+  if (!region) {
+    showStatus("Выбери регион для подбора.", true);
+    showToast("Выбери регион.", "warning");
+    activateTab("search");
+    return;
+  }
+  if (!direction) {
+    showStatus("Выбери направление для подбора.", true);
+    showToast("Выбери направление.", "warning");
+    activateTab("search");
+    return;
+  }
   const validationError = validateScore(scoreValue, score);
   if (validationError) {
     currentSearch = null;
@@ -110,14 +165,15 @@ form.addEventListener("submit", async (event) => {
     displayedResults = [];
     renderAll();
     showStatus(validationError, true);
+    showToast(validationError, "warning");
     scrollToResults();
     return;
   }
 
   currentSearch = {
-    region: formData.get("region"),
+    region,
     score,
-    direction: formData.get("direction"),
+    direction,
     type,
     typeLabel,
   };
@@ -156,9 +212,11 @@ form.addEventListener("submit", async (event) => {
     renderAll();
 
     if (!lastResults.length) {
-      showStatus("По таким параметрам вариантов не найдено. Проверь регион, направление или тип обучения. Небольшие опечатки я стараюсь исправлять автоматически.");
+      showStatus("По этим параметрам вариантов не нашлось. Попробуй увеличить диапазон баллов, выбрать соседний регион или поменять тип обучения.");
+      showToast("По этим параметрам вариантов не нашлось.", "warning");
     } else {
-      showStatus(`Нашла вариантов: ${lastResults.length}. Сейчас используются демонстрационные данные.`);
+      showStatus(`Найдено: ${lastResults.length} вариантов. Можно сохранить, отфильтровать или сравнить.`);
+      showToast(`Найдено: ${lastResults.length} вариантов.`, "success");
     }
 
     scrollToResults();
@@ -166,10 +224,58 @@ form.addEventListener("submit", async (event) => {
     lastResults = [];
     displayedResults = [];
     renderAll();
-    showStatus("Backend-заглушка недоступна. Запусти python -m backend_stub.main.", true);
+    showStatus("Не удалось получить данные. Проверь, запущен ли backend.", true);
+    showToast("Не удалось получить данные. Проверь backend.", "error");
     scrollToResults();
   }
-});
+}
+
+function applyQuickScenario(scenarioId) {
+  const scenario = quickScenarios[scenarioId];
+  if (!scenario) {
+    return;
+  }
+
+  setFormValues(scenario);
+  activateTab("search");
+  showToast(`Сценарий применён: ${scenario.label}`, "success");
+  performSearch();
+}
+
+function setFormValues({ region, score, direction, type }) {
+  const regionInput = form.elements.region;
+  const scoreInput = form.elements.score;
+  const directionInput = form.elements.direction;
+  const typeInput = form.querySelector(`input[name="education-type"][value="${type}"]`);
+
+  if (regionInput) {
+    regionInput.value = region;
+  }
+  if (scoreInput) {
+    scoreInput.value = String(score);
+  }
+  if (directionInput) {
+    directionInput.value = direction;
+  }
+  if (typeInput) {
+    typeInput.checked = true;
+  }
+}
+
+function clearSearchForm() {
+  form.reset();
+  if (form.elements.region) {
+    form.elements.region.value = "";
+  }
+  if (form.elements.direction) {
+    form.elements.direction.value = "";
+  }
+  if (form.elements.score) {
+    form.elements.score.value = "";
+  }
+  showStatus("Форма очищена. Последние результаты остались ниже.");
+  showToast("Форма очищена.", "info");
+}
 
 document.addEventListener("click", (event) => {
   const filterButton = event.target.closest("[data-filter]");
@@ -264,6 +370,7 @@ function toggleTheme() {
   const nextTheme = currentTheme === "dark" ? "light" : "dark";
   applyTheme(nextTheme);
   saveTheme(nextTheme);
+  showToast(nextTheme === "dark" ? "Тёмная тема включена." : "Светлая тема включена.", "info");
 
   if (telegramWebApp?.HapticFeedback) {
     telegramWebApp.HapticFeedback.selectionChanged();
@@ -443,8 +550,10 @@ function formatSessionUser(user) {
 function renderSearchResults() {
   if (!lastResults.length) {
     resultsNode.innerHTML = "";
+    resultsActionsNode?.classList.add("is-hidden");
     return;
   }
+  resultsActionsNode?.classList.remove("is-hidden");
   resultsNode.innerHTML = renderCards(lastResults, currentSearch?.score || 0);
 }
 
@@ -513,6 +622,7 @@ function applyFilter(filterName) {
   renderFilterControls();
   renderFilteredResults();
   activateTab("filters");
+  showToast(`Фильтр: ${filterLabels[activeFilter]}`, "info");
   if (telegramWebApp?.HapticFeedback) {
     telegramWebApp.HapticFeedback.selectionChanged();
   }
@@ -528,7 +638,7 @@ function renderFilteredResults() {
   }
 
   if (!displayedResults.length) {
-    filterStatusNode.textContent = `По фильтру “${filterLabels[activeFilter]}” вариантов нет. Попробуй другой фильтр или измени параметры подбора.`;
+    filterStatusNode.textContent = "В этом фильтре вариантов нет. Попробуй выбрать другой фильтр или вернуться ко всем результатам.";
     filterResultsNode.innerHTML = "";
     return;
   }
@@ -622,7 +732,7 @@ function renderFavorites() {
   renderFavoritesSyncStatus();
 
   if (!favorites.length) {
-    favoritesStatusNode.textContent = "Избранное пока пустое. Добавь подходящий вариант из результатов подбора.";
+    favoritesStatusNode.textContent = "Пока здесь пусто. Добавь вуз из результатов, чтобы быстро вернуться к нему позже.";
     favoritesNode.innerHTML = "";
     clearFavoritesButton.disabled = true;
     return;
@@ -671,6 +781,7 @@ function saveFavorites() {
     window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
   } catch (error) {
     favoritesStatusNode.textContent = "Не удалось сохранить избранное в браузере, но приложение продолжит работать.";
+    showToast("Не удалось сохранить избранное в браузере.", "warning");
   }
 }
 
@@ -687,9 +798,11 @@ async function initFavoritesSync() {
     });
     updateFavoritesFromServer(payload.favorites);
     favoritesSyncNotice = "Избранное синхронизировано с Telegram.";
+    showToast("Избранное синхронизировано с Telegram.", "success");
     renderAll();
   } catch (error) {
     favoritesSyncNotice = "Сейчас избранное сохранено локально. Синхронизация будет доступна при открытии через Telegram.";
+    showToast("Избранное сохранено локально.", "warning");
     renderFavoritesSyncStatus();
   }
 }
@@ -727,7 +840,9 @@ async function addToFavorites(item) {
   if (!item) {
     return;
   }
-  if (!isFavorite(item)) {
+  if (isFavorite(item)) {
+    showToast("Уже в избранном.", "info");
+  } else {
     favorites = [
       ...favorites,
       {
@@ -736,6 +851,7 @@ async function addToFavorites(item) {
       },
     ];
     saveFavorites();
+    showToast("Добавлено в избранное.", "success");
   }
   renderAll();
 
@@ -744,9 +860,11 @@ async function addToFavorites(item) {
       const payload = await requestFavoritesApi("/api/favorites/add", { item });
       updateFavoritesFromServer(payload.favorites);
       favoritesSyncNotice = "Избранное синхронизировано с Telegram.";
+      showToast("Избранное синхронизировано с Telegram.", "success");
       renderAll();
     } catch (error) {
       favoritesSyncNotice = "Не удалось синхронизировать с Telegram. Избранное сохранено локально.";
+      showToast("Не удалось синхронизировать с Telegram. Сохранено локально.", "warning");
       renderFavoritesSyncStatus();
     }
   }
@@ -759,6 +877,7 @@ async function addToFavorites(item) {
 async function removeFromFavorites(key) {
   favorites = favorites.filter((item) => makeFavoriteKey(item) !== key);
   saveFavorites();
+  showToast("Удалено из избранного.", "info");
   renderAll();
 
   if (hasTelegramAuth()) {
@@ -766,9 +885,11 @@ async function removeFromFavorites(key) {
       const payload = await requestFavoritesApi("/api/favorites/remove", { key });
       updateFavoritesFromServer(payload.favorites);
       favoritesSyncNotice = "Избранное синхронизировано с Telegram.";
+      showToast("Избранное синхронизировано с Telegram.", "success");
       renderAll();
     } catch (error) {
       favoritesSyncNotice = "Не удалось синхронизировать удаление. Локальная копия обновлена.";
+      showToast("Удаление сохранено локально.", "warning");
       renderFavoritesSyncStatus();
     }
   }
@@ -777,6 +898,7 @@ async function removeFromFavorites(key) {
 async function clearFavorites() {
   favorites = [];
   saveFavorites();
+  showToast("Избранное очищено.", "info");
   renderAll();
 
   if (hasTelegramAuth()) {
@@ -784,9 +906,11 @@ async function clearFavorites() {
       const payload = await requestFavoritesApi("/api/favorites/clear", {});
       updateFavoritesFromServer(payload.favorites);
       favoritesSyncNotice = "Избранное очищено и синхронизировано с Telegram.";
+      showToast("Избранное очищено и синхронизировано.", "success");
       renderAll();
     } catch (error) {
       favoritesSyncNotice = "Не удалось синхронизировать очистку. Локальная копия очищена.";
+      showToast("Очистка сохранена локально.", "warning");
       renderFavoritesSyncStatus();
     }
   }
@@ -800,7 +924,7 @@ function renderComparison() {
   comparisonSelectedNode.innerHTML = renderComparisonSelected();
 
   if (!count) {
-    comparisonStatusNode.textContent = comparisonNotice || "Пока нечего сравнивать. Выполни подбор и добавь 2–3 варианта.";
+    comparisonStatusNode.textContent = comparisonNotice || "Добавь 2–3 вуза к сравнению, чтобы увидеть таблицу различий.";
     comparisonTableNode.innerHTML = "";
     return;
   }
@@ -961,6 +1085,7 @@ function toggleCompare(key) {
 
   if (comparisonItems.length >= MAX_COMPARISON_ITEMS) {
     comparisonNotice = "Можно сравнить до 3 вариантов одновременно.";
+    showToast("Можно сравнить до 3 вариантов.", "warning");
     renderAll();
     activateTab("comparison");
     return;
@@ -976,6 +1101,7 @@ function toggleCompare(key) {
     },
   ];
   saveComparisonItems();
+  showToast("Добавлено к сравнению.", "success");
   renderAll();
 
   if (telegramWebApp?.HapticFeedback) {
@@ -987,6 +1113,7 @@ function removeFromComparison(key) {
   comparisonNotice = "";
   comparisonItems = comparisonItems.filter((item) => getUniversityKey(item) !== key);
   saveComparisonItems();
+  showToast("Убрано из сравнения.", "info");
   renderAll();
 }
 
@@ -994,6 +1121,7 @@ function clearComparison() {
   comparisonNotice = "";
   comparisonItems = [];
   saveComparisonItems();
+  showToast("Сравнение очищено.", "info");
   renderAll();
 }
 
@@ -1157,6 +1285,29 @@ function showStatus(text, isError = false) {
 
 function scrollToResults() {
   resultsSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function showToast(message, type = "info") {
+  if (!toastContainerNode || !message) {
+    return;
+  }
+
+  const safeType = ["success", "info", "warning", "error"].includes(type) ? type : "info";
+  const toast = document.createElement("div");
+  toast.className = `toast toast--${safeType}`;
+  toast.textContent = message;
+  toastContainerNode.appendChild(toast);
+
+  while (toastContainerNode.children.length > 3) {
+    toastContainerNode.removeChild(toastContainerNode.firstElementChild);
+  }
+
+  window.setTimeout(() => {
+    toast.classList.add("toast--leaving");
+    window.setTimeout(() => {
+      toast.remove();
+    }, 180);
+  }, 3200);
 }
 
 function escapeHtml(value) {

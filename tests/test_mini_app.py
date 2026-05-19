@@ -44,7 +44,7 @@ def test_app_js_uses_backend_api_without_openai_key() -> None:
 
     assert "/api/universities" in js
     assert "OPENAI_API_KEY" not in js
-    assert "Backend-заглушка недоступна" in js
+    assert "Не удалось получить данные" in js
 
 
 def test_app_js_has_local_filters_and_favorites() -> None:

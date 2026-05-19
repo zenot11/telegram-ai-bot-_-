@@ -38,6 +38,19 @@
             Аиша помогает подобрать вуз по региону, баллам, направлению и типу обучения.
           </p>
           <button class="primary-button hero-button" type="button" data-tab-target="search">Начать подбор</button>
+
+          <section class="quick-start" aria-labelledby="quick-start-title">
+            <div>
+              <p class="eyebrow">Быстрый старт</p>
+              <h2 id="quick-start-title">Готовые сценарии</h2>
+              <p>Нажми пример, и я заполню форму и сразу запущу подбор.</p>
+            </div>
+            <div class="quick-scenarios">
+              <button class="quick-scenario" type="button" data-quick-scenario="adygea-it">Адыгея · 230 · IT · Бюджет</button>
+              <button class="quick-scenario" type="button" data-quick-scenario="moscow-economy">Москва · 260 · экономика · Бюджет</button>
+              <button class="quick-scenario" type="button" data-quick-scenario="tatarstan-medicine">Татарстан · 250 · медицина · Бюджет</button>
+            </div>
+          </section>
         </div>
 
         <aside class="assistant-card" aria-label="Карточка Аиши">
@@ -61,10 +74,23 @@
           <p>Заполни поля, и Аиша покажет до 5 демонстрационных программ.</p>
         </div>
 
+        <section class="example-panel" aria-labelledby="examples-title">
+          <div>
+            <p class="eyebrow">Попробовать пример</p>
+            <h3 id="examples-title">Быстрые сценарии подбора</h3>
+          </div>
+          <div class="quick-scenarios quick-scenarios--compact">
+            <button class="quick-scenario" type="button" data-quick-scenario="adygea-it">Адыгея / 230 / IT / Бюджет</button>
+            <button class="quick-scenario" type="button" data-quick-scenario="moscow-economy">Москва / 260 / экономика / Бюджет</button>
+            <button class="quick-scenario" type="button" data-quick-scenario="tatarstan-medicine">Татарстан / 250 / медицина / Бюджет</button>
+          </div>
+        </section>
+
         <form id="search-form" class="search-form">
           <label>
-            Регион
+            <span class="field-label">Регион</span>
             <select id="region" name="region" required>
+              <option value="" selected disabled>Выбери регион</option>
               <option value="Адыгея">Адыгея</option>
               <option value="Москва">Москва</option>
               <option value="Краснодарский край">Краснодарский край</option>
@@ -74,16 +100,19 @@
               <option value="Ростовская область">Ростовская область</option>
               <option value="Свердловская область">Свердловская область</option>
             </select>
+            <span class="field-helper">Например: Адыгея, Москва, Краснодарский край.</span>
           </label>
 
           <label>
-            Баллы ЕГЭ
+            <span class="field-label">Баллы ЕГЭ</span>
             <input id="score" name="score" inputmode="numeric" placeholder="Например, 230" required>
+            <span class="field-helper">Введи сумму баллов ЕГЭ, например 230.</span>
           </label>
 
           <label>
-            Направление
+            <span class="field-label">Направление</span>
             <select id="direction" name="direction" required>
+              <option value="" selected disabled>Выбери направление</option>
               <option value="IT">IT</option>
               <option value="психология">психология</option>
               <option value="медицина">медицина</option>
@@ -94,6 +123,7 @@
               <option value="строительство">строительство</option>
               <option value="туризм">туризм</option>
             </select>
+            <span class="field-helper">Например: IT, медицина, экономика.</span>
           </label>
 
           <fieldset>
@@ -108,9 +138,13 @@
                 <span>Платное</span>
               </label>
             </div>
+            <span class="field-helper">Бюджет — бесплатное обучение, платное — контракт.</span>
           </fieldset>
 
-          <button type="submit" class="primary-button">Подобрать варианты</button>
+          <div class="form-actions">
+            <button type="submit" class="primary-button">Подобрать варианты</button>
+            <button id="clear-form" type="button" class="secondary-button">Очистить форму</button>
+          </div>
         </form>
 
         <article id="summary-card" class="summary-card is-hidden" aria-live="polite">
@@ -134,6 +168,11 @@
             <p class="eyebrow">Результаты</p>
             <h2>Найденные варианты</h2>
             <p id="status-text">Заполни форму, чтобы увидеть подходящие варианты.</p>
+            <div id="results-actions" class="results-actions is-hidden">
+              <button class="secondary-button" type="button" data-tab-target="filters">К фильтрам</button>
+              <button class="secondary-button" type="button" data-tab-target="comparison">К сравнению</button>
+              <button class="secondary-button" type="button" data-tab-target="favorites">К избранному</button>
+            </div>
           </div>
           <div id="results" class="results-grid"></div>
         </section>
@@ -146,7 +185,7 @@
           <p>Фильтры работают локально по последнему подбору и не отправляют новый запрос к backend.</p>
         </div>
         <div id="filter-controls" class="filter-controls" aria-label="Фильтры результатов"></div>
-        <p id="filter-status" class="panel-status">Сначала сделай подбор, чтобы включить фильтры.</p>
+        <p id="filter-status" class="panel-status empty-state">Сначала сделай подбор, чтобы включить фильтры.</p>
         <div id="filter-results" class="results-grid"></div>
       </section>
 
@@ -168,7 +207,7 @@
           <button class="secondary-button" type="button" data-tab-target="search">Перейти к подбору</button>
           <button class="secondary-button" type="button" data-tab-target="favorites">Открыть избранное</button>
         </div>
-        <p id="comparison-status" class="panel-status">Пока нечего сравнивать. Выполни подбор и добавь 2–3 варианта.</p>
+        <p id="comparison-status" class="panel-status empty-state">Пока нечего сравнивать. Выполни подбор и добавь 2–3 варианта.</p>
         <div id="comparison-selected" class="comparison-selected"></div>
         <div id="comparison-table" class="comparison-table-wrap"></div>
       </section>
@@ -183,7 +222,7 @@
           <button id="clear-favorites" class="secondary-button danger-button" type="button">Очистить избранное</button>
           <button class="secondary-button" type="button" data-tab-target="search">Вернуться к подбору</button>
         </div>
-        <p id="favorites-status" class="panel-status"></p>
+        <p id="favorites-status" class="panel-status empty-state"></p>
         <div id="favorites-list" class="results-grid"></div>
       </section>
 
@@ -206,6 +245,18 @@
             <p id="session-description">Проверяю режим открытия Mini App.</p>
             <p id="session-user" class="session-user"></p>
           </article>
+          <section class="how-to-card" aria-labelledby="how-to-title">
+            <p class="eyebrow">Как пользоваться</p>
+            <h3 id="how-to-title">Короткий маршрут</h3>
+            <ol>
+              <li>Выбери регион.</li>
+              <li>Укажи баллы.</li>
+              <li>Выбери направление и тип обучения.</li>
+              <li>Сохрани интересные варианты.</li>
+              <li>Сравни 2–3 вуза в таблице.</li>
+              <li>Проверь данные на официальных сайтах вузов.</li>
+            </ol>
+          </section>
           <div class="category-list" aria-label="Как читать категории">
             <article class="category-card">
               <span class="badge safe">Безопасный</span>
@@ -230,6 +281,8 @@
     <footer class="footer">
       Аиша · Telegram Mini App · демонстрационный прототип
     </footer>
+
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script src="/miniapp/app.js"></script>
   </body>
