@@ -20,6 +20,7 @@
           <button class="tab-button" type="button" data-tab-target="filters" aria-selected="false">Фильтры</button>
           <button class="tab-button" type="button" data-tab-target="comparison" aria-selected="false">Сравнение <span id="comparison-count">0</span></button>
           <button class="tab-button" type="button" data-tab-target="favorites" aria-selected="false">Избранное <span id="favorites-count">0</span></button>
+          <button class="tab-button" type="button" data-tab-target="plan" aria-selected="false">План</button>
           <button class="tab-button" type="button" data-tab-target="about" aria-selected="false">О проекте</button>
         </nav>
         <span id="session-badge" class="session-badge session-badge--checking">Проверка…</span>
@@ -157,6 +158,7 @@
             <button class="secondary-button" type="button" data-tab-target="filters">Фильтры</button>
             <button class="secondary-button" type="button" data-tab-target="comparison">Сравнение</button>
             <button class="secondary-button" type="button" data-tab-target="favorites">Избранное</button>
+            <button class="secondary-button" type="button" data-tab-target="plan">План</button>
             <button class="secondary-button" type="button" data-tab-target="search">Новый подбор</button>
           </div>
         </article>
@@ -172,6 +174,7 @@
               <button class="secondary-button" type="button" data-tab-target="filters">К фильтрам</button>
               <button class="secondary-button" type="button" data-tab-target="comparison">К сравнению</button>
               <button class="secondary-button" type="button" data-tab-target="favorites">К избранному</button>
+              <button class="secondary-button" type="button" data-tab-target="plan">Открыть план</button>
             </div>
           </div>
           <div id="results" class="results-grid"></div>
@@ -224,6 +227,16 @@
         </div>
         <p id="favorites-status" class="panel-status empty-state"></p>
         <div id="favorites-list" class="results-grid"></div>
+      </section>
+
+      <section id="plan" class="tab-panel section plan-section" aria-labelledby="plan-title">
+        <div class="section-heading">
+          <p class="eyebrow">План</p>
+          <h2 id="plan-title">Твой план поступления</h2>
+          <p>План строится локально по последнему подбору, избранному и сравнению.</p>
+        </div>
+        <div id="plan-content" class="plan-content" aria-live="polite"></div>
+        <textarea id="plan-copy-fallback" class="plan-copy-fallback is-hidden" readonly aria-label="Текст плана для ручного копирования"></textarea>
       </section>
 
       <section id="about" class="tab-panel section about-section" aria-labelledby="about-title">

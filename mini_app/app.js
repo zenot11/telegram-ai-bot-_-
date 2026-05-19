@@ -24,6 +24,8 @@ const comparisonCounterNode = document.querySelector("#comparison-counter");
 const comparisonStatusNode = document.querySelector("#comparison-status");
 const comparisonSelectedNode = document.querySelector("#comparison-selected");
 const comparisonTableNode = document.querySelector("#comparison-table");
+const planContentNode = document.querySelector("#plan-content");
+const planCopyFallbackNode = document.querySelector("#plan-copy-fallback");
 const clearFavoritesButton = document.querySelector("#clear-favorites");
 const clearComparisonButton = document.querySelector("#clear-comparison");
 const themeToggleButton = document.querySelector("#theme-toggle");
@@ -306,6 +308,19 @@ document.addEventListener("click", (event) => {
   const removeCompareButton = event.target.closest("[data-remove-compare]");
   if (removeCompareButton) {
     removeFromComparison(removeCompareButton.dataset.compareKey);
+    return;
+  }
+
+  const copyPlanButton = event.target.closest("[data-plan-copy]");
+  if (copyPlanButton) {
+    copyAdmissionPlan();
+    return;
+  }
+
+  const refreshPlanButton = event.target.closest("[data-plan-refresh]");
+  if (refreshPlanButton) {
+    renderAdmissionPlan();
+    showToast("План обновлён.", "success");
   }
 });
 
@@ -418,6 +433,7 @@ function renderAll() {
   renderFilteredResults();
   renderFavorites();
   renderComparison();
+  renderAdmissionPlan();
 }
 
 function getTelegramInitData() {
@@ -937,6 +953,278 @@ function renderComparison() {
 
   comparisonStatusNode.textContent = comparisonNotice || "Сравни параметры и выбери наиболее подходящий вариант.";
   comparisonTableNode.innerHTML = renderComparisonTable(comparisonItems);
+}
+
+function renderAdmissionPlan() {
+  if (!planContentNode) {
+    return;
+  }
+
+  if (!currentSearch) {
+    planCopyFallbackNode?.classList.add("is-hidden");
+    planContentNode.innerHTML = `
+      <article class="plan-empty empty-state">
+        <h3>Пока нет плана поступления</h3>
+        <p>Сначала выполни подбор вузов, а я соберу персональные шаги.</p>
+        <button class="primary-button" type="button" data-tab-target="search">Перейти к подбору</button>
+      </article>
+    `;
+    return;
+  }
+
+  const plan = buildAdmissionPlan();
+  planCopyFallbackNode?.classList.add("is-hidden");
+  planContentNode.innerHTML = `
+    <article class="plan-hero">
+      <div>
+        <p class="eyebrow">Персональный маршрут</p>
+        <h3>Твой план поступления</h3>
+        <p>${escapeHtml(plan.overview)}</p>
+      </div>
+      <div class="plan-progress">
+        <span>Готовность плана</span>
+        <strong>${plan.completedSteps}/${plan.checklist.length}</strong>
+      </div>
+    </article>
+
+    <div class="plan-grid">
+      <article class="plan-card">
+        <span class="plan-badge plan-badge--next">Краткий итог</span>
+        <div class="plan-summary">
+          <div><b>Регион:</b> ${escapeHtml(currentSearch.region)}</div>
+          <div><b>Направление:</b> ${escapeHtml(currentSearch.direction)}</div>
+          <div><b>Тип:</b> ${escapeHtml(currentSearch.typeLabel)}</div>
+          <div><b>Баллы:</b> ${currentSearch.score}</div>
+          <div><b>Найдено:</b> ${lastResults.length}</div>
+          <div><b>Избранное:</b> ${favorites.length}</div>
+        </div>
+      </article>
+
+      <article class="plan-card">
+        <span class="plan-badge plan-badge--important">Что сделать сначала</span>
+        ${renderPlanList(plan.firstSteps)}
+      </article>
+
+      <article class="plan-card plan-card--wide">
+        <span class="plan-badge plan-badge--next">Чеклист</span>
+        <div class="plan-checklist">
+          ${plan.checklist.map((item) => renderChecklistItem(item)).join("")}
+        </div>
+      </article>
+    </div>
+
+    <div class="plan-category-grid">
+      ${renderPlanCategoryBlock("Безопасные варианты", "safe", plan.safeItems, plan.categoryMessages.safe)}
+      ${renderPlanCategoryBlock("Реалистичные варианты", "realistic", plan.realisticItems, plan.categoryMessages.realistic)}
+      ${renderPlanCategoryBlock("Амбициозные варианты", "ambitious", plan.ambitiousItems, plan.categoryMessages.ambitious)}
+    </div>
+
+    <article class="plan-card">
+      <span class="plan-badge plan-badge--important">Что проверить перед подачей</span>
+      ${renderPlanList(plan.checkBeforeSubmit)}
+    </article>
+
+    <article class="plan-card">
+      <span class="plan-badge plan-badge--next">Следующие действия</span>
+      ${renderPlanList(plan.nextActions)}
+      <p class="plan-note">Это не гарантия поступления, а помощник для планирования. Проверь официальные сайты вузов перед подачей документов.</p>
+    </article>
+
+    <div class="plan-actions">
+      <button class="secondary-button" type="button" data-tab-target="search">Открыть подбор</button>
+      <button class="secondary-button" type="button" data-tab-target="filters">Открыть фильтры</button>
+      <button class="secondary-button" type="button" data-tab-target="favorites">Открыть избранное</button>
+      <button class="secondary-button" type="button" data-tab-target="comparison">Открыть сравнение</button>
+      <button class="secondary-button" type="button" data-plan-copy>Скопировать план</button>
+      <button class="secondary-button" type="button" data-plan-refresh>Обновить план</button>
+    </div>
+  `;
+}
+
+function buildAdmissionPlan() {
+  const counts = getFilterCounts(lastResults);
+  const safeItems = lastResults.filter((item) => getItemCategory(item) === "safe");
+  const realisticItems = lastResults.filter((item) => getItemCategory(item) === "realistic");
+  const ambitiousItems = lastResults.filter((item) => getItemCategory(item) === "ambitious");
+  const checklist = [
+    { label: "Подбор выполнен", done: lastResults.length > 0 },
+    { label: "Сохранены избранные варианты", done: favorites.length > 0 },
+    { label: "Добавлены вузы к сравнению", done: comparisonItems.length >= 2 },
+    { label: "Проверены официальные сайты", done: false },
+    { label: "Подготовлен итоговый список", done: false },
+  ];
+
+  const firstSteps = [];
+  if (!lastResults.length) {
+    firstSteps.push("Измени параметры поиска: регион, направление, тип обучения или баллы.");
+  } else if (safeItems.length >= 2) {
+    firstSteps.push("Начни с безопасных вариантов: они дают самый спокойный запасной список.");
+  } else if (safeItems.length === 0 && realisticItems.length > 0) {
+    firstSteps.push("Сохрани 2–3 реалистичных варианта и проверь проходные баллы на сайтах вузов.");
+  } else {
+    firstSteps.push("Выбери 2–3 наиболее понятных варианта и сравни их по программе, баллам и стоимости.");
+  }
+
+  if (ambitiousItems.length) {
+    firstSteps.push("Амбициозные варианты оставь как цель, но не делай их единственной стратегией.");
+  }
+  if (!favorites.length) {
+    firstSteps.push("Сохрани 2–3 вуза в избранное, чтобы не потерять их.");
+  } else {
+    firstSteps.push("У тебя уже есть избранные вузы. Следующий шаг — сравнить их по баллам, стоимости и программе.");
+  }
+  if (comparisonItems.length < 2) {
+    firstSteps.push("Добавь минимум 2 вуза в сравнение, чтобы увидеть различия в таблице.");
+  } else {
+    firstSteps.push("Ты уже начал сравнение. Проверь таблицу и выбери наиболее подходящие варианты.");
+  }
+
+  const nextActions = [
+    "Открой фильтры и посмотри безопасные, реалистичные и амбициозные варианты отдельно.",
+    "Добавь основные варианты в избранное.",
+    "Сравни 2–3 вуза в таблице.",
+    "Перейди на сайты вузов и проверь актуальные условия.",
+  ];
+
+  const checkBeforeSubmit = [
+    "Актуальные проходные баллы и сроки приёма.",
+    "Стоимость, если рассматриваешь платное обучение.",
+    "Предметы, форма обучения и длительность программы.",
+    "Официальные страницы выбранных вузов.",
+  ];
+
+  return {
+    counts,
+    safeItems,
+    realisticItems,
+    ambitiousItems,
+    checklist,
+    completedSteps: checklist.filter((item) => item.done).length,
+    overview: buildAdmissionOverview(counts),
+    firstSteps,
+    nextActions,
+    checkBeforeSubmit,
+    categoryMessages: {
+      safe: safeItems.length
+        ? "У тебя есть варианты с запасом. Начни с них как со спокойного списка."
+        : "Безопасных вариантов пока нет. Попробуй расширить регион или тип обучения.",
+      realistic: realisticItems.length
+        ? "Эти варианты близки к твоим баллам. Их стоит сохранить и проверить на сайтах вузов."
+        : "Реалистичных вариантов сейчас нет. Проверь соседние параметры поиска.",
+      ambitious: ambitiousItems.length
+        ? "Эти варианты можно оставить как цель, но лучше дополнить их более спокойными."
+        : "Амбициозных вариантов нет. Текущий список выглядит более спокойным.",
+    },
+  };
+}
+
+function buildAdmissionOverview(counts) {
+  if (!lastResults.length) {
+    return "По текущим параметрам варианты не найдены. Попробуй соседний регион, другой тип обучения или более широкое направление.";
+  }
+  if (counts.safe >= 2) {
+    return `Подбор выглядит спокойным: найдено ${counts.safe} безопасных вариантов из ${lastResults.length}.`;
+  }
+  if (counts.safe === 0 && counts.realistic > 0) {
+    return "Безопасных вариантов пока нет, но есть реалистичные. Стоит добавить запасные варианты.";
+  }
+  if (counts.ambitious > 0 && counts.safe + counts.realistic === 0) {
+    return "Сейчас подбор в основном амбициозный. Добавь более спокойные варианты.";
+  }
+  return `Найдено ${lastResults.length} вариантов. Используй избранное и сравнение, чтобы сузить список.`;
+}
+
+function renderPlanList(items) {
+  return `
+    <ul class="plan-list">
+      ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+    </ul>
+  `;
+}
+
+function renderChecklistItem(item) {
+  return `
+    <div class="plan-checkitem ${item.done ? "is-done" : ""}">
+      <span>${item.done ? "✓" : "•"}</span>
+      <strong>${escapeHtml(item.label)}</strong>
+    </div>
+  `;
+}
+
+function renderPlanCategoryBlock(title, category, items, message) {
+  const meta = categoryMeta[category];
+  const topItems = items.slice(0, 3);
+  return `
+    <article class="plan-card">
+      <span class="plan-badge plan-badge--${meta.className}">${escapeHtml(title)}</span>
+      <p>${escapeHtml(message)}</p>
+      ${
+        topItems.length
+          ? `<ol class="plan-program-list">${topItems.map((item) => `
+              <li>
+                <b>${escapeHtml(textValue(item.university, "Вуз"))}</b>
+                <span>${escapeHtml(textValue(item.program, "программа не указана"))}</span>
+              </li>
+            `).join("")}</ol>`
+          : `<p class="plan-muted">В этой категории пока нет вариантов.</p>`
+      }
+    </article>
+  `;
+}
+
+async function copyAdmissionPlan() {
+  if (!currentSearch) {
+    showToast("Сначала выполни подбор.", "warning");
+    return;
+  }
+
+  const text = buildAdmissionPlanText(buildAdmissionPlan());
+  try {
+    if (!navigator.clipboard?.writeText) {
+      throw new Error("Clipboard is unavailable");
+    }
+    await navigator.clipboard.writeText(text);
+    planCopyFallbackNode?.classList.add("is-hidden");
+    showToast("План скопирован.", "success");
+  } catch (error) {
+    if (planCopyFallbackNode) {
+      planCopyFallbackNode.value = text;
+      planCopyFallbackNode.classList.remove("is-hidden");
+      planCopyFallbackNode.focus();
+      planCopyFallbackNode.select();
+    }
+    showToast("Не удалось скопировать автоматически. Скопируй текст вручную.", "warning");
+  }
+}
+
+function buildAdmissionPlanText(plan) {
+  const lines = [
+    "Аиша — персональный план поступления",
+    "",
+    "Краткий итог:",
+    `Регион: ${currentSearch.region}`,
+    `Направление: ${currentSearch.direction}`,
+    `Тип обучения: ${currentSearch.typeLabel}`,
+    `Баллы: ${currentSearch.score}`,
+    `Найдено вариантов: ${lastResults.length}`,
+    `Безопасные: ${plan.counts.safe}`,
+    `Реалистичные: ${plan.counts.realistic}`,
+    `Амбициозные: ${plan.counts.ambitious}`,
+    `Избранное: ${favorites.length}`,
+    `В сравнении: ${comparisonItems.length}`,
+    "",
+    "Что сделать сначала:",
+    ...plan.firstSteps.map((item, index) => `${index + 1}. ${item}`),
+    "",
+    "Что проверить перед подачей:",
+    ...plan.checkBeforeSubmit.map((item, index) => `${index + 1}. ${item}`),
+    "",
+    "Следующие действия:",
+    ...plan.nextActions.map((item, index) => `${index + 1}. ${item}`),
+    "",
+    "Важно: это не гарантия поступления, а помощник для планирования. Проверь официальные сайты вузов перед подачей документов.",
+  ];
+  return lines.join("\n");
 }
 
 function renderComparisonSelected() {
