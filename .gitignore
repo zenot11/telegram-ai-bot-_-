@@ -16,4 +16,5 @@ __pycache__/
 .venv/
 venv/
 telegram_bot/storage/user_data.json
+telegram_bot/storage/feedback.json
 .pytest_cache/

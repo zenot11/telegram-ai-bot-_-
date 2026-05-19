@@ -278,3 +278,108 @@ university + program + city + min_score + type
 ```
 
 Этот endpoint используется при первом открытии Mini App внутри Telegram. Если Mini App открыт в обычном браузере без `initData`, он продолжает работать в локальном режиме через `localStorage`.
+
+## Feedback API для Mini App
+
+Эти endpoints нужны для обратной связи из Mini App. Они сохраняют обращения в локальный файл `telegram_bot/storage/feedback.json`.
+
+Если Mini App открыт через Telegram, он передаёт:
+
+```text
+X-Telegram-Init-Data: <window.Telegram.WebApp.initData>
+```
+
+Backend проверяет `initData` и достаёт `user.id` только из проверенных данных. `user_id` из query или body не принимается.
+
+Если header отсутствует, `POST /api/feedback` работает в local mode: заявка создаётся без Telegram ID. Если header есть, но невалидный, backend возвращает `401 invalid_init_data`.
+
+### POST `/api/feedback`
+
+Создаёт обращение.
+
+Body:
+
+```json
+{
+  "category": "search_problem",
+  "message": "Не нашёл регион в подборе",
+  "context": {
+    "last_search": {
+      "region": "Адыгея",
+      "score": 230,
+      "direction": "IT",
+      "type": "budget",
+      "results_count": 5
+    },
+    "active_tab": "feedback",
+    "session_mode": "telegram",
+    "theme": "light"
+  }
+}
+```
+
+Категории:
+
+- `admission_question` - вопрос по поступлению;
+- `search_problem` - проблема с подбором вузов;
+- `mini_app_problem` - проблема с Mini App;
+- `data_error` - ошибка в данных;
+- `improvement` - предложить улучшение;
+- `other` - другое.
+
+Успешный ответ:
+
+```json
+{
+  "status": "ok",
+  "mode": "telegram",
+  "ticket": {
+    "ticket_id": "AISH-0007",
+    "status": "new",
+    "category_label": "Проблема с подбором вузов",
+    "created_at": "2026-05-19T16:30:00Z"
+  }
+}
+```
+
+Ошибки:
+
+- `400 invalid_category`;
+- `400 message_too_short`;
+- `400 message_too_long`;
+- `401 invalid_init_data`;
+- `503 bot_token_not_configured`, если Telegram mode запрошен, но backend не настроен для проверки сессии.
+
+Ответы не содержат `initData`, `hash` или bot token.
+
+### GET `/api/feedback/my`
+
+Возвращает последние обращения пользователя в Telegram mode.
+
+Если Mini App открыт в обычном браузере без `initData`, endpoint возвращает local mode и пустой список:
+
+```json
+{
+  "status": "ok",
+  "mode": "local",
+  "tickets": []
+}
+```
+
+Если `initData` валиден:
+
+```json
+{
+  "status": "ok",
+  "mode": "telegram",
+  "tickets": [
+    {
+      "ticket_id": "AISH-0007",
+      "status": "new",
+      "category_label": "Проблема с Mini App",
+      "created_at": "2026-05-19T16:30:00Z",
+      "message": "Mini App не открывается"
+    }
+  ]
+}
+```

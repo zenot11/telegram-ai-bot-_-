@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 from backend_stub.data_loader import DataLoadError, get_universities_data_path, load_universities
 from backend_stub.favorites_api import setup_favorites_routes
+from backend_stub.feedback_api import setup_feedback_routes
 from backend_stub.webapp_session import setup_webapp_session_routes
 from telegram_bot.services.recommendation import AMBITIOUS_SCORE_MARGIN
 from telegram_bot.services.validation import (
@@ -163,6 +164,7 @@ def create_app(
     app.router.add_get("/api/universities", universities)
     setup_webapp_session_routes(app)
     setup_favorites_routes(app, favorites_storage)
+    setup_feedback_routes(app)
     app.router.add_get("/miniapp", miniapp_index)
     app.router.add_get("/miniapp/", miniapp_index)
     app.router.add_get("/miniapp/{asset}", miniapp_asset)

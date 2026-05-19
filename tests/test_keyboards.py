@@ -62,6 +62,7 @@ def test_main_menu_contains_search_history_button() -> None:
     assert "История подборов" in texts
     assert "Советы по подбору" in texts
     assert "Фильтры результатов" in texts
+    assert "Обратная связь" in texts
 
 
 def test_history_keyboard_actions() -> None:

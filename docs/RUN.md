@@ -151,6 +151,8 @@ WEBAPP_URL=https://your-ngrok-url.ngrok-free.dev/miniapp
 
 Проверенный Telegram-режим появляется только при открытии Mini App через Telegram `/webapp` и публичный HTTPS `WEBAPP_URL`, когда Telegram передаёт WebApp `initData`. Backend проверяет эту сессию через `/api/webapp/session`, и только после этого синхронизация избранного с Telegram-ботом включается.
 
+Обращения пользователей сохраняются в `telegram_bot/storage/feedback.json`. Файл создаётся автоматически при первом обращении через `/feedback` или вкладку `Поддержка` в Mini App и не должен попадать в Git.
+
 ## 10. Частые проблемы
 
 ### Backend не запущен

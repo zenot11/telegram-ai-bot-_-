@@ -19,6 +19,7 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
         keyboard.append([KeyboardButton(text="Открыть Mini App", web_app=WebAppInfo(url=settings.webapp_url))])
     keyboard.extend(
         [
+            [KeyboardButton(text="Обратная связь")],
             [KeyboardButton(text="Психологическая поддержка")],
             [KeyboardButton(text="Помощь")],
         ]

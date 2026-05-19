@@ -524,7 +524,9 @@ h3 {
 .summary-card,
 .advice-card,
 .plan-hero,
-.plan-card {
+.plan-card,
+.feedback-status-card,
+.feedback-ticket {
   border: 1px solid var(--surface-border);
   border-radius: 18px;
   background: var(--surface-translucent);
@@ -1413,6 +1415,108 @@ select:focus {
   transform: translateY(8px);
 }
 
+.feedback-section {
+  scroll-margin-top: 16px;
+}
+
+.feedback-status-card {
+  padding: 16px 18px;
+  color: var(--muted);
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.feedback-status-card--success {
+  color: var(--safe-text);
+  background: var(--session-success);
+}
+
+.feedback-status-card--local {
+  background: var(--session-local);
+}
+
+.feedback-status-card--warning {
+  color: var(--realistic-text);
+  background: var(--session-warning);
+}
+
+.feedback-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.feedback-form textarea {
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  color: var(--ink);
+  background: var(--card);
+  outline: none;
+}
+
+.feedback-form textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.feedback-success {
+  color: var(--safe-text);
+}
+
+.feedback-error {
+  color: var(--danger);
+}
+
+.feedback-history {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.feedback-list {
+  display: grid;
+  gap: 12px;
+}
+
+.feedback-ticket {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.feedback-ticket div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.feedback-ticket strong {
+  color: var(--blue);
+}
+
+.feedback-ticket span,
+.feedback-ticket small,
+.feedback-ticket p {
+  color: var(--muted);
+}
+
+.feedback-ticket p {
+  margin: 0;
+  line-height: 1.45;
+}
+
 @media (max-width: 860px) {
   .topbar {
     align-items: flex-start;
@@ -1551,7 +1655,8 @@ select:focus {
   .favorites-actions,
   .results-actions,
   .plan-actions,
-  .comparison-actions {
+  .comparison-actions,
+  .feedback-actions {
     display: grid;
     grid-template-columns: 1fr;
   }

@@ -26,10 +26,19 @@ const comparisonSelectedNode = document.querySelector("#comparison-selected");
 const comparisonTableNode = document.querySelector("#comparison-table");
 const planContentNode = document.querySelector("#plan-content");
 const planCopyFallbackNode = document.querySelector("#plan-copy-fallback");
+const feedbackForm = document.querySelector("#feedback-form");
+const feedbackCategoryNode = document.querySelector("#feedback-category");
+const feedbackMessageNode = document.querySelector("#feedback-message");
+const feedbackStatusNode = document.querySelector("#feedback-status");
+const feedbackResultNode = document.querySelector("#feedback-result");
+const feedbackHistoryStatusNode = document.querySelector("#feedback-history-status");
+const feedbackListNode = document.querySelector("#feedback-list");
 const clearFavoritesButton = document.querySelector("#clear-favorites");
 const clearComparisonButton = document.querySelector("#clear-comparison");
 const themeToggleButton = document.querySelector("#theme-toggle");
 const clearFormButton = document.querySelector("#clear-form");
+const clearFeedbackButton = document.querySelector("#feedback-clear");
+const refreshFeedbackButton = document.querySelector("#feedback-refresh");
 const quickScenarioButtons = document.querySelectorAll("[data-quick-scenario]");
 const toastContainerNode = document.querySelector("#toast-container");
 
@@ -49,6 +58,8 @@ let favorites = loadFavorites();
 let comparisonItems = loadComparisonItems();
 let comparisonNotice = "";
 let favoritesSyncNotice = "";
+let feedbackTickets = [];
+let latestLocalFeedbackTicket = null;
 let sessionState = {
   status: "checking",
   mode: "checking",
@@ -108,6 +119,15 @@ const quickScenarios = {
   },
 };
 
+const feedbackCategoryLabels = {
+  admission_question: "Вопрос по поступлению",
+  search_problem: "Проблема с подбором вузов",
+  mini_app_problem: "Проблема с Mini App",
+  data_error: "Ошибка в данных",
+  improvement: "Предложить улучшение",
+  other: "Другое",
+};
+
 const telegramWebApp = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 const telegramInitData = getTelegramInitData();
 
@@ -137,6 +157,19 @@ quickScenarioButtons.forEach((button) => {
 
 clearFormButton?.addEventListener("click", () => {
   clearSearchForm();
+});
+
+feedbackForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  submitFeedback();
+});
+
+clearFeedbackButton?.addEventListener("click", () => {
+  resetFeedbackForm();
+});
+
+refreshFeedbackButton?.addEventListener("click", () => {
+  loadMyFeedback();
 });
 
 async function performSearch() {
@@ -434,6 +467,8 @@ function renderAll() {
   renderFavorites();
   renderComparison();
   renderAdmissionPlan();
+  renderFeedbackStatus();
+  renderMyFeedback();
 }
 
 function getTelegramInitData() {
@@ -476,6 +511,7 @@ async function checkWebAppSession() {
       };
       renderSessionStatus();
       await initFavoritesSync();
+      await loadMyFeedback();
       return;
     }
 
@@ -488,6 +524,7 @@ async function checkWebAppSession() {
         message: "Локальный режим. Mini App открыт не через Telegram, поэтому избранное хранится только в этом браузере.",
       };
       favoritesSyncNotice = "Локальный режим: избранное хранится только в этом браузере.";
+      feedbackTickets = latestLocalFeedbackTicket ? [latestLocalFeedbackTicket] : [];
       renderAll();
       return;
     }
@@ -502,6 +539,7 @@ async function checkWebAppSession() {
         : "Telegram-сессия не прошла проверку. Синхронизация отключена, избранное сохранится локально.",
     };
     favoritesSyncNotice = "Синхронизация отключена, избранное сохранится локально.";
+    feedbackTickets = [];
     renderAll();
   } catch (error) {
     sessionState = {
@@ -512,6 +550,7 @@ async function checkWebAppSession() {
       message: "Backend недоступен. Mini App работает в локальном режиме.",
     };
     favoritesSyncNotice = "Backend недоступен. Избранное сохранится локально.";
+    feedbackTickets = latestLocalFeedbackTicket ? [latestLocalFeedbackTicket] : [];
     renderAll();
   }
 }
@@ -561,6 +600,219 @@ function formatSessionUser(user) {
     return `Пользователь Telegram: @${user.username}`;
   }
   return "Пользователь Telegram подтверждён.";
+}
+
+function renderFeedbackStatus() {
+  if (!feedbackStatusNode) {
+    return;
+  }
+
+  if (sessionState.status === "checking") {
+    feedbackStatusNode.textContent = "Проверяю режим Mini App.";
+    feedbackStatusNode.className = "feedback-status-card";
+    return;
+  }
+
+  if (isTelegramSessionVerified()) {
+    feedbackStatusNode.textContent = "Telegram-сессия проверена: обращение сохранится с привязкой к боту.";
+    feedbackStatusNode.className = "feedback-status-card feedback-status-card--success";
+    return;
+  }
+
+  if (hasTelegramInitData() && !isTelegramSessionVerified()) {
+    feedbackStatusNode.textContent = "Telegram-сессия не прошла проверку. Обращение можно отправить только после повторного открытия Mini App через Telegram.";
+    feedbackStatusNode.className = "feedback-status-card feedback-status-card--warning";
+    return;
+  }
+
+  feedbackStatusNode.textContent = "Локальный режим: обращение сохранится без привязки к Telegram.";
+  feedbackStatusNode.className = "feedback-status-card feedback-status-card--local";
+}
+
+async function submitFeedback() {
+  const category = String(feedbackCategoryNode?.value || "other").trim();
+  const message = String(feedbackMessageNode?.value || "").trim();
+  const validationError = validateFeedbackForm(category, message);
+  if (validationError) {
+    setFeedbackResult(validationError, true);
+    showToast(validationError, "warning");
+    return;
+  }
+
+  if (hasTelegramInitData() && !isTelegramSessionVerified()) {
+    const text = "Telegram-сессия не прошла проверку. Открой Mini App через /webapp и попробуй снова.";
+    setFeedbackResult(text, true);
+    showToast("Сессия Telegram не проверена.", "error");
+    return;
+  }
+
+  try {
+    const payload = await requestFeedbackApi("/api/feedback", {
+      category,
+      message,
+      context: buildFeedbackContext(),
+    });
+    const ticket = payload.ticket || {};
+    latestLocalFeedbackTicket = payload.mode === "local" ? ticket : latestLocalFeedbackTicket;
+    setFeedbackResult(`Заявка ${ticket.ticket_id || ""} создана. Спасибо за обратную связь.`);
+    if (feedbackMessageNode) {
+      feedbackMessageNode.value = "";
+    }
+    showToast("Заявка создана.", "success");
+
+    if (isTelegramSessionVerified()) {
+      await loadMyFeedback();
+    } else {
+      feedbackTickets = ticket.ticket_id ? [ticket] : [];
+      renderMyFeedback();
+    }
+  } catch (error) {
+    const text = feedbackErrorMessage(error);
+    setFeedbackResult(text, true);
+    showToast(text, "error");
+  }
+}
+
+async function loadMyFeedback() {
+  if (!feedbackHistoryStatusNode || !feedbackListNode) {
+    return;
+  }
+
+  if (hasTelegramInitData() && !isTelegramSessionVerified()) {
+    feedbackTickets = [];
+    renderMyFeedback();
+    return;
+  }
+
+  try {
+    const payload = await requestFeedbackApi("/api/feedback/my", null);
+    feedbackTickets = Array.isArray(payload.tickets) ? payload.tickets : [];
+    renderMyFeedback();
+    if (payload.mode === "telegram") {
+      showToast("Обращения обновлены.", "info");
+    }
+  } catch (error) {
+    if (!hasTelegramInitData()) {
+      feedbackTickets = latestLocalFeedbackTicket ? [latestLocalFeedbackTicket] : [];
+      renderMyFeedback();
+      return;
+    }
+    feedbackHistoryStatusNode.textContent = "Не удалось обновить обращения. Проверь backend или открой Mini App через Telegram.";
+    showToast("Не удалось обновить обращения.", "warning");
+  }
+}
+
+function renderMyFeedback() {
+  if (!feedbackHistoryStatusNode || !feedbackListNode) {
+    return;
+  }
+
+  if (!feedbackTickets.length) {
+    feedbackHistoryStatusNode.textContent = isTelegramSessionVerified()
+      ? "Пока обращений нет."
+      : "Пока обращений нет. В локальном режиме показывается только последняя заявка текущей страницы.";
+    feedbackListNode.innerHTML = "";
+    return;
+  }
+
+  feedbackHistoryStatusNode.textContent = `Показано обращений: ${feedbackTickets.length}.`;
+  feedbackListNode.innerHTML = feedbackTickets.map((ticket) => `
+    <article class="feedback-ticket">
+      <div>
+        <strong>${escapeHtml(textValue(ticket.ticket_id, "Заявка"))}</strong>
+        <span>${escapeHtml(textValue(ticket.category_label, "Другое"))}</span>
+      </div>
+      <p>${escapeHtml(textValue(ticket.message, "Сообщение сохранено"))}</p>
+      <small>Статус: ${escapeHtml(textValue(ticket.status, "new"))} · ${escapeHtml(textValue(ticket.created_at, "дата не указана"))}</small>
+    </article>
+  `).join("");
+}
+
+function validateFeedbackForm(category, message) {
+  if (!feedbackCategoryLabels[category]) {
+    return "Выбери тип обращения.";
+  }
+  if (!message) {
+    return "Напиши обращение чуть подробнее.";
+  }
+  if (message.length < 5) {
+    return "Опиши проблему чуть подробнее.";
+  }
+  if (message.length > 1000) {
+    return "Сообщение слишком длинное. Сократи его до 1000 символов.";
+  }
+  return "";
+}
+
+function resetFeedbackForm() {
+  if (feedbackForm) {
+    feedbackForm.reset();
+  }
+  setFeedbackResult("Форма обращения очищена.");
+  showToast("Форма обращения очищена.", "info");
+}
+
+function setFeedbackResult(text, isError = false) {
+  if (!feedbackResultNode) {
+    return;
+  }
+  feedbackResultNode.textContent = text;
+  feedbackResultNode.className = `panel-status ${isError ? "feedback-error" : "feedback-success"}`;
+}
+
+async function requestFeedbackApi(path, body = null) {
+  const options = {
+    method: body ? "POST" : "GET",
+    headers: {},
+  };
+  if (isTelegramSessionVerified()) {
+    options.headers["X-Telegram-Init-Data"] = telegramInitData;
+  }
+  if (body) {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(path, options);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload.status === "error") {
+    throw new Error(payload.error || `Feedback API returned ${response.status}`);
+  }
+  return payload;
+}
+
+function buildFeedbackContext() {
+  return {
+    last_search: currentSearch
+      ? {
+          region: currentSearch.region,
+          score: currentSearch.score,
+          direction: currentSearch.direction,
+          type: currentSearch.type,
+          results_count: lastResults.length,
+        }
+      : null,
+    active_tab: document.querySelector(".tab-button.is-active")?.dataset.tabTarget || "unknown",
+    session_mode: sessionState.mode,
+    theme: document.documentElement.dataset.theme || "light",
+  };
+}
+
+function feedbackErrorMessage(error) {
+  const message = String(error?.message || "");
+  if (message.includes("message_too_short")) {
+    return "Опиши проблему чуть подробнее.";
+  }
+  if (message.includes("message_too_long")) {
+    return "Сообщение слишком длинное. Сократи его до 1000 символов.";
+  }
+  if (message.includes("invalid_category")) {
+    return "Выбери тип обращения.";
+  }
+  if (message.includes("invalid_init_data")) {
+    return "Telegram-сессия не прошла проверку. Открой Mini App через /webapp и попробуй снова.";
+  }
+  return "Не удалось отправить обращение. Проверь backend или попробуй позже.";
 }
 
 function renderSearchResults() {

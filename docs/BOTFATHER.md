@@ -18,6 +18,8 @@ history - История подборов
 compare - Сравнить вузы
 categories - Как читать категории
 support - Психологическая поддержка
+feedback - Обратная связь
+my_feedback - Мои обращения
 webapp - Открыть Mini App
 about - О проекте
 demo - Сценарий демонстрации

@@ -15,6 +15,8 @@ def test_backend_registers_mini_app_static_paths() -> None:
     assert "/api/favorites/clear" in paths
     assert "/api/favorites/sync" in paths
     assert "/api/webapp/session" in paths
+    assert "/api/feedback" in paths
+    assert "/api/feedback/my" in paths
     assert "/miniapp" in paths
     assert "/miniapp/" in paths
     assert "/miniapp/{asset}" in paths

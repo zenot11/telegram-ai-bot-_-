@@ -21,6 +21,7 @@
           <button class="tab-button" type="button" data-tab-target="comparison" aria-selected="false">Сравнение <span id="comparison-count">0</span></button>
           <button class="tab-button" type="button" data-tab-target="favorites" aria-selected="false">Избранное <span id="favorites-count">0</span></button>
           <button class="tab-button" type="button" data-tab-target="plan" aria-selected="false">План</button>
+          <button class="tab-button" type="button" data-tab-target="feedback" aria-selected="false">Поддержка</button>
           <button class="tab-button" type="button" data-tab-target="about" aria-selected="false">О проекте</button>
         </nav>
         <span id="session-badge" class="session-badge session-badge--checking">Проверка…</span>
@@ -237,6 +238,56 @@
         </div>
         <div id="plan-content" class="plan-content" aria-live="polite"></div>
         <textarea id="plan-copy-fallback" class="plan-copy-fallback is-hidden" readonly aria-label="Текст плана для ручного копирования"></textarea>
+      </section>
+
+      <section id="feedback" class="tab-panel section feedback-section" aria-labelledby="feedback-title">
+        <div class="section-heading">
+          <p class="eyebrow">Поддержка</p>
+          <h2 id="feedback-title">Поддержка и обратная связь</h2>
+          <p>Напиши, если заметил ошибку, проблему с подбором или хочешь предложить улучшение.</p>
+        </div>
+
+        <article id="feedback-status" class="feedback-status-card" aria-live="polite">
+          Локальный режим: обращение сохранится без привязки к Telegram.
+        </article>
+
+        <form id="feedback-form" class="feedback-form">
+          <label>
+            <span class="field-label">Тип обращения</span>
+            <select id="feedback-category" name="feedback-category" required>
+              <option value="admission_question">Вопрос по поступлению</option>
+              <option value="search_problem">Проблема с подбором вузов</option>
+              <option value="mini_app_problem">Проблема с Mini App</option>
+              <option value="data_error">Ошибка в данных</option>
+              <option value="improvement">Предложить улучшение</option>
+              <option value="other">Другое</option>
+            </select>
+          </label>
+
+          <label>
+            <span class="field-label">Сообщение</span>
+            <textarea id="feedback-message" name="feedback-message" maxlength="1000" rows="6" placeholder="Например: Mini App не открывается, не нашёл регион или в карточке неверная ссылка." required></textarea>
+            <span class="field-helper">От 5 до 1000 символов. Не отправляй пароли, токены и паспортные данные.</span>
+          </label>
+
+          <div class="feedback-actions">
+            <button class="primary-button" type="submit">Отправить обращение</button>
+            <button id="feedback-clear" class="secondary-button" type="button">Очистить форму</button>
+            <button id="feedback-refresh" class="secondary-button" type="button">Обновить мои обращения</button>
+            <button class="secondary-button" type="button" data-tab-target="search">Перейти к подбору</button>
+          </div>
+        </form>
+
+        <p id="feedback-result" class="panel-status empty-state"></p>
+
+        <section class="feedback-history" aria-labelledby="feedback-history-title">
+          <div class="section-heading section-heading--compact">
+            <p class="eyebrow">История</p>
+            <h3 id="feedback-history-title">Мои последние обращения</h3>
+          </div>
+          <p id="feedback-history-status" class="panel-status empty-state">Пока обращений нет.</p>
+          <div id="feedback-list" class="feedback-list"></div>
+        </section>
       </section>
 
       <section id="about" class="tab-panel section about-section" aria-labelledby="about-title">
