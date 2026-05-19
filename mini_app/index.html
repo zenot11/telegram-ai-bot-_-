@@ -9,27 +9,28 @@
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="#home" aria-label="Аиша">
+      <button class="brand" type="button" data-tab-target="home" aria-label="Аиша">
         <span class="brand__mark">А</span>
         <span>Аиша</span>
-      </a>
-      <nav class="nav-links" aria-label="Навигация Mini App">
-        <a href="#home">Главная</a>
-        <a href="#search">Подбор</a>
-        <a href="#categories">Категории</a>
-        <a href="#about">О проекте</a>
+      </button>
+      <nav class="tabs nav-tabs" aria-label="Разделы Mini App">
+        <button class="tab-button is-active" type="button" data-tab-target="home" aria-selected="true">Главная</button>
+        <button class="tab-button" type="button" data-tab-target="search" aria-selected="false">Подбор</button>
+        <button class="tab-button" type="button" data-tab-target="filters" aria-selected="false">Фильтры</button>
+        <button class="tab-button" type="button" data-tab-target="favorites" aria-selected="false">Избранное <span id="favorites-count">0</span></button>
+        <button class="tab-button" type="button" data-tab-target="about" aria-selected="false">О проекте</button>
       </nav>
     </header>
 
     <main>
-      <section id="home" class="hero-section">
+      <section id="home" class="tab-panel is-active hero-section" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="eyebrow">Telegram Mini App</p>
-          <h1>Построй будущее уже сегодня</h1>
+          <h1 id="hero-title">Построй будущее уже сегодня</h1>
           <p class="hero-text">
             Аиша помогает подобрать вуз по региону, баллам, направлению и типу обучения.
           </p>
-          <a class="primary-button hero-button" href="#search">Начать подбор</a>
+          <button class="primary-button hero-button" type="button" data-tab-target="search">Начать подбор</button>
         </div>
 
         <aside class="assistant-card" aria-label="Карточка Аиши">
@@ -41,12 +42,12 @@
             <p>
               Я помогу выбрать регион, сравнить варианты и понять уровень поступления.
             </p>
-            <a class="assistant-link" href="#search">Подобрать вуз</a>
+            <button class="assistant-link" type="button" data-tab-target="search">Подобрать вуз</button>
           </div>
         </aside>
       </section>
 
-      <section id="search" class="section search-section" aria-labelledby="search-title">
+      <section id="search" class="tab-panel section search-section" aria-labelledby="search-title">
         <div class="section-heading">
           <p class="eyebrow">Подбор</p>
           <h2 id="search-title">Подбор вариантов</h2>
@@ -104,48 +105,86 @@
 
           <button type="submit" class="primary-button">Подобрать варианты</button>
         </form>
+
+        <article id="summary-card" class="summary-card is-hidden" aria-live="polite">
+          <div>
+            <p class="eyebrow">Итог</p>
+            <h3>Итог подбора</h3>
+          </div>
+          <div id="summary-content" class="summary-content"></div>
+          <div class="summary-actions">
+            <button class="secondary-button" type="button" data-tab-target="filters">Фильтры</button>
+            <button class="secondary-button" type="button" data-tab-target="favorites">Избранное</button>
+            <button class="secondary-button" type="button" data-tab-target="search">Новый подбор</button>
+          </div>
+        </article>
+
+        <article id="advice-card" class="advice-card is-hidden"></article>
+
+        <section id="results-section" class="results-section" aria-live="polite">
+          <div class="section-heading section-heading--compact">
+            <p class="eyebrow">Результаты</p>
+            <h2>Найденные варианты</h2>
+            <p id="status-text">Заполни форму, чтобы увидеть подходящие варианты.</p>
+          </div>
+          <div id="results" class="results-grid"></div>
+        </section>
       </section>
 
-      <section id="results-section" class="section results-section" aria-live="polite">
+      <section id="filters" class="tab-panel section filters-section" aria-labelledby="filters-title">
         <div class="section-heading">
-          <p class="eyebrow">Результаты</p>
-          <h2>Найденные варианты</h2>
-          <p id="status-text">Заполни форму, чтобы увидеть подходящие варианты.</p>
+          <p class="eyebrow">Фильтры</p>
+          <h2 id="filters-title">Фильтры результатов</h2>
+          <p>Фильтры работают локально по последнему подбору и не отправляют новый запрос к backend.</p>
         </div>
-        <div id="results" class="results-grid"></div>
+        <div id="filter-controls" class="filter-controls" aria-label="Фильтры результатов"></div>
+        <p id="filter-status" class="panel-status">Сначала сделай подбор, чтобы включить фильтры.</p>
+        <div id="filter-results" class="results-grid"></div>
       </section>
 
-      <section id="categories" class="section info-section" aria-labelledby="categories-title">
+      <section id="favorites" class="tab-panel section favorites-section" aria-labelledby="favorites-title">
         <div class="section-heading">
-          <p class="eyebrow">Категории</p>
-          <h2 id="categories-title">Как читать категории</h2>
+          <p class="eyebrow">Избранное</p>
+          <h2 id="favorites-title">Избранные варианты</h2>
+          <p>Избранное хранится локально в этом браузере и не синхронизируется с Telegram-ботом.</p>
         </div>
-        <div class="category-list">
-          <article class="category-card">
-            <span class="badge safe">Безопасный</span>
-            <p>Проходной балл ниже твоего с запасом.</p>
-          </article>
-          <article class="category-card">
-            <span class="badge realistic">Реалистичный</span>
-            <p>Баллы близки к проходному уровню.</p>
-          </article>
-          <article class="category-card">
-            <span class="badge ambitious">Амбициозный</span>
-            <p>Немного не хватает, но можно рассматривать как цель.</p>
-          </article>
+        <div class="favorites-actions">
+          <button id="clear-favorites" class="secondary-button danger-button" type="button">Очистить избранное</button>
+          <button class="secondary-button" type="button" data-tab-target="search">Вернуться к подбору</button>
         </div>
+        <p id="favorites-status" class="panel-status"></p>
+        <div id="favorites-list" class="results-grid"></div>
       </section>
 
-      <section id="about" class="section about-section" aria-labelledby="about-title">
+      <section id="about" class="tab-panel section about-section" aria-labelledby="about-title">
         <div>
           <p class="eyebrow">О проекте</p>
           <h2 id="about-title">Аиша помогает выбирать спокойнее</h2>
         </div>
-        <p>
-          Это демонстрационный прототип сервиса для абитуриентов. Сейчас используется
-          временная демонстрационная база. Перед сдачей данные будут заменены на финальные
-          данные вузов без переписывания основной логики.
-        </p>
+        <div class="about-content">
+          <p>
+            Это демонстрационный прототип сервиса для абитуриентов. Сейчас используется
+            временная демонстрационная база. Перед сдачей данные будут заменены на финальные
+            данные вузов без переписывания основной логики.
+          </p>
+          <div class="category-list" aria-label="Как читать категории">
+            <article class="category-card">
+              <span class="badge safe">Безопасный</span>
+              <p>Проходной балл ниже твоего с заметным запасом.</p>
+            </article>
+            <article class="category-card">
+              <span class="badge realistic">Реалистичный</span>
+              <p>Баллы близки к проходному уровню.</p>
+            </article>
+            <article class="category-card">
+              <span class="badge ambitious">Амбициозный</span>
+              <p>Немного не хватает, но можно рассматривать как цель.</p>
+            </article>
+          </div>
+          <p class="important-note">
+            Проходные баллы могут меняться, поэтому перед подачей документов проверь информацию на сайте вуза.
+          </p>
+        </div>
       </section>
     </main>
 

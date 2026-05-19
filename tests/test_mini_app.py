@@ -21,6 +21,12 @@ def test_index_contains_aisha_and_search_form() -> None:
     assert "Аиша" in html
     assert "Построй будущее уже сегодня" in html
     assert "Привет, я Аиша" in html
+    assert "Главная" in html
+    assert "Подбор" in html
+    assert "Фильтры" in html
+    assert "Избранное" in html
+    assert "О проекте" in html
+    assert "Итог подбора" in html
     assert "<form" in html
     assert "Подобрать варианты" in html
     assert "region" in html
@@ -36,6 +42,19 @@ def test_app_js_uses_backend_api_without_openai_key() -> None:
     assert "/api/universities" in js
     assert "OPENAI_API_KEY" not in js
     assert "Backend-заглушка недоступна" in js
+
+
+def test_app_js_has_local_filters_and_favorites() -> None:
+    js = read_mini_app_file("app.js")
+
+    assert "localStorage" in js
+    assert "lastResults" in js
+    assert "activeFilter" in js
+    assert "function filterResults" in js
+    assert "function addToFavorites" in js
+    assert "function removeFromFavorites" in js
+    assert "function clearFavorites" in js
+    assert "window.Telegram && window.Telegram.WebApp" in js
 
 
 def test_styles_include_recommendation_categories() -> None:
@@ -54,6 +73,11 @@ def test_styles_include_light_site_layout_classes() -> None:
     assert ".search-form" in css
     assert ".result-card" in css
     assert ".results-grid" in css
+    assert ".tabs" in css
+    assert ".tab-button" in css
+    assert ".filter-chip" in css
+    assert ".favorite-button" in css
+    assert "@media" in css
 
 
 def test_index_mentions_demo_data_warning() -> None:
