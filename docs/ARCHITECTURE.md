@@ -45,7 +45,7 @@
 - `config.py` - чтение настроек из `.env`: токен Telegram, OpenAI key, backend URL, WebApp URL.
 - `handlers/` - обработчики команд, кнопок и сценариев.
 - `keyboards/` - reply-клавиатуры для меню, поиска, сравнения и профиля.
-- `services/` - чистая логика: API-клиент, OpenAI wrapper, safety, validation, formatting, comparison, summary, history, advice, filters.
+- `services/` - чистая логика: API-клиент, OpenAI wrapper, safety, validation, formatting, comparison, summary, history, advice, filters, export.
 - `states/` - FSM-состояния для поиска и сравнения.
 - `storage/` - локальное JSON-хранилище пользователя.
 
@@ -54,6 +54,7 @@
 - `start.py` - `/start`, `/help`, `/about`, `/demo`, `/privacy`, `/next`, `/botfather`, `/webapp`, `/reset`.
 - `menu.py` - главное меню, профиль, избранное, `/summary`, `/advice`, `/history`, очистка истории, категории, регионы и направления.
 - `filters.py` - `/filters`, inline-фильтры последних результатов и активная отфильтрованная выдача.
+- `export.py` - `/export`, текстовый отчёт и отправка `.txt` файла по последнему подбору.
 - `search.py` - FSM-подбор вузов: регион, баллы, направление, тип обучения, запрос к backend.
 - `compare.py` - `/compare`, выбор источника и вариантов сравнения.
 - `support.py` - `/support` и кнопки психологической поддержки.
@@ -72,6 +73,8 @@
 - `history.py` - короткие записи истории подборов и форматирование `/history`.
 - `advice.py` - локальные советы по последнему подбору без обращения к OpenAI.
 - `filters.py` - фильтрация последних результатов по категориям и типу обучения.
+- `export.py` - plain text отчёт по `last_results` и `favorites`, split длинных сообщений и безопасное имя `.txt`.
+- `texts.py` - тексты команд `/help`, `/demo`, `/privacy`, `/botfather`.
 
 ## `telegram_bot/storage/`
 
@@ -86,10 +89,11 @@
 - `favorites`;
 - `history` - последние 5 подборов с краткими top-items и счётчиками категорий.
 
-`last_results` используется для `/summary`, `/history` и `/compare`. `active_results` нужен только для сохранения вариантов из текущей отфильтрованной выдачи и не заменяет полный последний подбор.
+`last_results` используется для `/summary`, `/history`, `/compare` и `/export`. `active_results` нужен только для сохранения вариантов из текущей отфильтрованной выдачи и не заменяет полный последний подбор.
 
 История хранит только учебный запрос и краткий результат подбора. Токены, OpenAI-данные и лишние персональные данные туда не записываются.
-- `texts.py` - тексты команд `/help`, `/demo`, `/privacy`, `/botfather`.
+
+Экспорт строится из уже сохранённых данных пользователя: profile, `last_results` и `favorites`. Он не обращается к backend повторно и не создаёт постоянные файлы в проекте.
 
 ## `backend_stub/`
 

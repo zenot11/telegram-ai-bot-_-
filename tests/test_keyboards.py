@@ -8,6 +8,7 @@ from telegram_bot.keyboards.menu import (
     main_menu_keyboard,
 )
 from telegram_bot.keyboards.compare import compare_options_keyboard
+from telegram_bot.keyboards.export import empty_export_keyboard, export_menu_keyboard
 from telegram_bot.keyboards.filters import filtered_results_keyboard, filters_keyboard
 from telegram_bot.keyboards.search import search_results_keyboard
 
@@ -27,6 +28,8 @@ def test_search_save_buttons_match_results_count() -> None:
     assert "История подборов" in texts
     assert "Советы по подбору" in texts
     assert "Фильтры результатов" in texts
+    assert "Экспорт результата" in texts
+    assert "Экспорт результата" in texts
 
 
 def test_search_save_buttons_include_fourth_and_fifth_results() -> None:
@@ -86,6 +89,7 @@ def test_advice_keyboard_with_results_contains_next_steps() -> None:
     assert "История подборов" in texts
     assert "Подобрать заново" in texts
     assert "Фильтры результатов" in texts
+    assert "Экспорт результата" in texts
 
 
 def test_advice_keyboard_without_results_is_compact() -> None:
@@ -132,3 +136,21 @@ def test_compare_buttons_do_not_promise_fourth_or_fifth_items() -> None:
 
     assert "Сравнить первые 3" in texts
     assert "Сравнить 4 и 5" not in texts
+
+
+def test_export_inline_keyboard_contains_text_and_file_actions() -> None:
+    markup = export_menu_keyboard()
+    texts = [button.text for row in markup.inline_keyboard for button in row]
+    callbacks = [button.callback_data for row in markup.inline_keyboard for button in row]
+
+    assert "Показать текстом" in texts
+    assert "Скачать .txt" in texts
+    assert "export_text" in callbacks
+    assert "export_txt" in callbacks
+
+
+def test_empty_export_keyboard_points_to_search() -> None:
+    texts = keyboard_texts(empty_export_keyboard())
+
+    assert "Подобрать вуз" in texts
+    assert "Вернуться в меню" in texts
