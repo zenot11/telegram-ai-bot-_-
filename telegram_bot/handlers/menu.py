@@ -7,7 +7,9 @@ from aiogram.types import Message
 
 from telegram_bot.config import settings
 from telegram_bot.keyboards.menu import (
+    about_menu_keyboard,
     advice_keyboard,
+    assistant_menu_keyboard,
     empty_advice_keyboard,
     empty_favorites_keyboard,
     empty_history_keyboard,
@@ -15,6 +17,8 @@ from telegram_bot.keyboards.menu import (
     history_keyboard,
     main_menu_keyboard,
     profile_keyboard,
+    results_menu_keyboard,
+    service_menu_keyboard,
     summary_keyboard,
 )
 from telegram_bot.keyboards.search import no_results_keyboard, search_results_keyboard
@@ -28,7 +32,7 @@ from telegram_bot.services.recommendation import (
     visible_recommendations,
 )
 from telegram_bot.services.summary import EMPTY_SUMMARY_TEXT, format_last_search_summary, format_search_brief_summary
-from telegram_bot.services.texts import HELP_TEXT
+from telegram_bot.services.texts import ABOUT_TEXT, BOTFATHER_TEXT, DEMO_TEXT, HELP_TEXT, NEXT_TEXT, PRIVACY_TEXT
 from telegram_bot.services.validation import (
     AVAILABLE_DIRECTIONS,
     AVAILABLE_REGIONS,
@@ -44,13 +48,85 @@ router = Router()
 @router.message(Command("menu"))
 async def cmd_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer("Главное меню. Выбери, с чего начнём:", reply_markup=main_menu_keyboard())
+    await message.answer(_main_menu_text(), reply_markup=main_menu_keyboard())
 
 
-@router.message(F.text == "Вернуться в меню")
+@router.message(F.text.in_({"Вернуться в меню", "Главное меню", "Назад"}))
 async def back_to_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer("Главное меню. Выбери, с чего начнём:", reply_markup=main_menu_keyboard())
+    await message.answer(_main_menu_text(), reply_markup=main_menu_keyboard())
+
+
+@router.message(F.text == "Мои результаты")
+async def results_menu(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer(
+        "Мои результаты.\n\n"
+        "Здесь собраны действия с последним подбором: итог, избранное, история, "
+        "сравнение, фильтры и экспорт.",
+        reply_markup=results_menu_keyboard(),
+    )
+
+
+@router.message(F.text == "Помощник")
+async def assistant_menu(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer(
+        "Помощник.\n\n"
+        "Здесь можно получить советы по поступлению, посмотреть доступные регионы "
+        "и направления или открыть поддержку, если тревожно и сложно выбрать.",
+        reply_markup=assistant_menu_keyboard(),
+    )
+
+
+@router.message(F.text == "Сервис")
+async def service_menu(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer(
+        "Сервис.\n\n"
+        "Здесь профиль, обратная связь, мои обращения, приватность и управление сохранёнными данными.",
+        reply_markup=service_menu_keyboard(),
+    )
+
+
+@router.message(F.text == "О проекте")
+async def about_project_menu(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer(
+        "О проекте.\n\n"
+        "Информация об Аише, демо-сценарий и настройки BotFather.",
+        reply_markup=about_menu_keyboard(),
+    )
+
+
+@router.message(F.text == "Описание проекта")
+async def about_project_text(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer(ABOUT_TEXT, reply_markup=about_menu_keyboard())
+
+
+@router.message(F.text == "Демо-сценарий")
+async def demo_text(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer(DEMO_TEXT, reply_markup=about_menu_keyboard())
+
+
+@router.message(F.text == "BotFather")
+async def botfather_text(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer(BOTFATHER_TEXT, reply_markup=about_menu_keyboard())
+
+
+@router.message(F.text == "Приватность")
+async def privacy_text(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer(PRIVACY_TEXT, reply_markup=service_menu_keyboard())
+
+
+@router.message(F.text == "Что делать дальше")
+async def next_text(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer(NEXT_TEXT, reply_markup=assistant_menu_keyboard())
 
 
 @router.message(F.text == "Мои баллы")
@@ -210,7 +286,7 @@ async def repeat_last_search(message: Message, state: FSMContext) -> None:
     )
 
 
-@router.message(F.text == "Сбросить профиль")
+@router.message(F.text.in_({"Сбросить профиль", "Сбросить данные"}))
 async def reset_profile_button(message: Message, state: FSMContext) -> None:
     await state.clear()
     if message.from_user:
@@ -316,6 +392,18 @@ async def categories_explanation(message: Message, state: FSMContext) -> None:
 
 def _format_favorite_card(index: int, item: dict) -> str:
     return format_university_card(index, item, icon="⭐", include_note=False)
+
+
+def _main_menu_text() -> str:
+    return (
+        "Главное меню Аиши. Выбери раздел:\n\n"
+        "Подобрать вуз — начать новый подбор.\n"
+        "Mini App — открыть расширенное приложение.\n"
+        "Мои результаты — итог, избранное, история, сравнение и экспорт.\n"
+        "Помощник — советы, категории и поддержка.\n"
+        "Сервис — профиль, обратная связь и приватность.\n"
+        "О проекте — описание, демо и BotFather."
+    )
 
 
 def _value(value: object) -> str:

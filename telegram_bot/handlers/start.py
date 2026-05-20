@@ -1,4 +1,4 @@
-from aiogram import Router
+from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
@@ -25,7 +25,8 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     await message.answer(
         "Привет! Я Аиша — помощник абитуриента.\n"
         "Я помогу спокойно подобрать варианты вузов по региону, баллам, направлению и типу обучения.\n"
-        "А если из-за поступления тревожно или сложно выбрать — помогу разложить задачу на маленькие шаги.",
+        "А если из-за поступления тревожно или сложно выбрать — помогу разложить задачу на маленькие шаги.\n\n"
+        "В меню ниже только основные разделы: подбор, Mini App, результаты, помощник, сервис и информация о проекте.",
         reply_markup=main_menu_keyboard(),
     )
 
@@ -61,6 +62,7 @@ async def cmd_botfather(message: Message) -> None:
 
 
 @router.message(Command("webapp"))
+@router.message(F.text.in_({"Mini App", "Открыть Mini App"}))
 async def cmd_webapp(message: Message) -> None:
     if not settings.webapp_url:
         await message.answer(

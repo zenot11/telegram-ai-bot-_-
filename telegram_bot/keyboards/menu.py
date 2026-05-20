@@ -7,28 +7,76 @@ MAX_FAVORITE_ACTION_BUTTONS = 5
 
 def main_menu_keyboard() -> ReplyKeyboardMarkup:
     keyboard = [
-        [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Сравнить вузы")],
-        [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Мой профиль")],
-        [KeyboardButton(text="Итог подбора"), KeyboardButton(text="Советы по подбору")],
-        [KeyboardButton(text="История подборов"), KeyboardButton(text="Фильтры результатов")],
-        [KeyboardButton(text="Экспорт результата")],
-        [KeyboardButton(text="Направления"), KeyboardButton(text="Регионы")],
-        [KeyboardButton(text="Как читать категории")],
+        [KeyboardButton(text="Подобрать вуз"), _mini_app_button("Mini App")],
+        [KeyboardButton(text="Мои результаты"), KeyboardButton(text="Помощник")],
+        [KeyboardButton(text="Сервис"), KeyboardButton(text="О проекте")],
     ]
-    if settings.webapp_url:
-        keyboard.append([KeyboardButton(text="Открыть Mini App", web_app=WebAppInfo(url=settings.webapp_url))])
-    keyboard.extend(
-        [
-            [KeyboardButton(text="Обратная связь")],
-            [KeyboardButton(text="Психологическая поддержка")],
-            [KeyboardButton(text="Помощь")],
-        ]
-    )
 
     return ReplyKeyboardMarkup(
         keyboard=keyboard,
         resize_keyboard=True,
-        input_field_placeholder="Выбери действие",
+        input_field_placeholder="Выбери раздел",
+    )
+
+
+def results_menu_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Итог подбора"), KeyboardButton(text="Избранные вузы")],
+            [KeyboardButton(text="История подборов"), KeyboardButton(text="Сравнить вузы")],
+            [KeyboardButton(text="Фильтры результатов"), KeyboardButton(text="Экспорт результата")],
+            [KeyboardButton(text="Назад")],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Действия с результатами",
+    )
+
+
+def assistant_menu_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Советы по подбору"), KeyboardButton(text="Что делать дальше")],
+            [KeyboardButton(text="Как читать категории")],
+            [KeyboardButton(text="Направления"), KeyboardButton(text="Регионы")],
+            [KeyboardButton(text="Психологическая поддержка")],
+            [_mini_app_button("Mini App")],
+            [KeyboardButton(text="Назад")],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Советы и поддержка",
+    )
+
+
+def service_menu_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Мой профиль")],
+            [KeyboardButton(text="Обратная связь"), KeyboardButton(text="Мои обращения")],
+            [KeyboardButton(text="Приватность"), KeyboardButton(text="Сбросить данные")],
+            [KeyboardButton(text="Назад")],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Сервисные действия",
+    )
+
+
+def about_menu_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Описание проекта"), KeyboardButton(text="Демо-сценарий")],
+            [KeyboardButton(text="BotFather")],
+            [KeyboardButton(text="Назад")],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Информация о проекте",
+    )
+
+
+def back_to_main_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="Назад")]],
+        resize_keyboard=True,
+        input_field_placeholder="Вернуться в меню",
     )
 
 
@@ -166,3 +214,9 @@ def empty_advice_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
         input_field_placeholder="Выбери действие",
     )
+
+
+def _mini_app_button(text: str = "Mini App") -> KeyboardButton:
+    if settings.webapp_url:
+        return KeyboardButton(text=text, web_app=WebAppInfo(url=settings.webapp_url))
+    return KeyboardButton(text=text)

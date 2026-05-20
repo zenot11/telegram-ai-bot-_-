@@ -1,11 +1,15 @@
 from aiogram.types import ReplyKeyboardMarkup
 
 from telegram_bot.keyboards.menu import (
+    about_menu_keyboard,
     advice_keyboard,
+    assistant_menu_keyboard,
     empty_history_keyboard,
     favorites_keyboard_for_count,
     history_keyboard,
     main_menu_keyboard,
+    results_menu_keyboard,
+    service_menu_keyboard,
 )
 from telegram_bot.keyboards.compare import compare_options_keyboard
 from telegram_bot.keyboards.export import empty_export_keyboard, export_menu_keyboard
@@ -56,13 +60,64 @@ def test_favorites_delete_buttons_include_fourth_and_fifth_items() -> None:
     assert "Удалить 6" not in texts
 
 
-def test_main_menu_contains_search_history_button() -> None:
+def test_main_menu_is_compact_and_contains_sections() -> None:
     texts = keyboard_texts(main_menu_keyboard())
 
+    assert "Подобрать вуз" in texts
+    assert "Mini App" in texts
+    assert "Мои результаты" in texts
+    assert "Помощник" in texts
+    assert "Сервис" in texts
+    assert "О проекте" in texts
+    assert len(texts) == 6
+    assert "История подборов" not in texts
+    assert "Фильтры результатов" not in texts
+    assert "Экспорт результата" not in texts
+    assert "Обратная связь" not in texts
+    assert "Мой профиль" not in texts
+
+
+def test_results_submenu_contains_result_actions() -> None:
+    texts = keyboard_texts(results_menu_keyboard())
+
+    assert "Итог подбора" in texts
+    assert "Избранные вузы" in texts
     assert "История подборов" in texts
-    assert "Советы по подбору" in texts
+    assert "Сравнить вузы" in texts
     assert "Фильтры результатов" in texts
+    assert "Экспорт результата" in texts
+    assert "Назад" in texts
+
+
+def test_assistant_submenu_contains_help_actions() -> None:
+    texts = keyboard_texts(assistant_menu_keyboard())
+
+    assert "Советы по подбору" in texts
+    assert "Что делать дальше" in texts
+    assert "Как читать категории" in texts
+    assert "Психологическая поддержка" in texts
+    assert "Mini App" in texts
+    assert "Назад" in texts
+
+
+def test_service_submenu_contains_profile_feedback_and_privacy() -> None:
+    texts = keyboard_texts(service_menu_keyboard())
+
+    assert "Мой профиль" in texts
     assert "Обратная связь" in texts
+    assert "Мои обращения" in texts
+    assert "Сбросить данные" in texts
+    assert "Приватность" in texts
+    assert "Назад" in texts
+
+
+def test_about_submenu_contains_project_info() -> None:
+    texts = keyboard_texts(about_menu_keyboard())
+
+    assert "Описание проекта" in texts
+    assert "Демо-сценарий" in texts
+    assert "BotFather" in texts
+    assert "Назад" in texts
 
 
 def test_history_keyboard_actions() -> None:
