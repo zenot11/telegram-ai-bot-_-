@@ -26,6 +26,8 @@ const comparisonSelectedNode = document.querySelector("#comparison-selected");
 const comparisonTableNode = document.querySelector("#comparison-table");
 const planContentNode = document.querySelector("#plan-content");
 const planCopyFallbackNode = document.querySelector("#plan-copy-fallback");
+const exportContentNode = document.querySelector("#export-content");
+const exportCopyFallbackNode = document.querySelector("#export-copy-fallback");
 const feedbackForm = document.querySelector("#feedback-form");
 const feedbackCategoryNode = document.querySelector("#feedback-category");
 const feedbackMessageNode = document.querySelector("#feedback-message");
@@ -313,6 +315,12 @@ function clearSearchForm() {
 }
 
 document.addEventListener("click", (event) => {
+  const tabTargetButton = event.target.closest("[data-tab-target]");
+  if (tabTargetButton && !Array.from(tabButtons).includes(tabTargetButton)) {
+    activateTab(tabTargetButton.dataset.tabTarget);
+    return;
+  }
+
   const filterButton = event.target.closest("[data-filter]");
   if (filterButton) {
     applyFilter(filterButton.dataset.filter);
@@ -354,6 +362,25 @@ document.addEventListener("click", (event) => {
   if (refreshPlanButton) {
     renderAdmissionPlan();
     showToast("План обновлён.", "success");
+    return;
+  }
+
+  const copyExportButton = event.target.closest("[data-export-copy]");
+  if (copyExportButton) {
+    copyExportReport();
+    return;
+  }
+
+  const printExportButton = event.target.closest("[data-export-print]");
+  if (printExportButton) {
+    printExportReport();
+    return;
+  }
+
+  const refreshExportButton = event.target.closest("[data-export-refresh]");
+  if (refreshExportButton) {
+    refreshExportReport();
+    return;
   }
 });
 
@@ -467,6 +494,7 @@ function renderAll() {
   renderFavorites();
   renderComparison();
   renderAdmissionPlan();
+  renderExportPreview();
   renderFeedbackStatus();
   renderMyFeedback();
 }
@@ -1287,6 +1315,7 @@ function renderAdmissionPlan() {
       <button class="secondary-button" type="button" data-tab-target="filters">Открыть фильтры</button>
       <button class="secondary-button" type="button" data-tab-target="favorites">Открыть избранное</button>
       <button class="secondary-button" type="button" data-tab-target="comparison">Открыть сравнение</button>
+      <button class="secondary-button" type="button" data-tab-target="export">Экспортировать план</button>
       <button class="secondary-button" type="button" data-plan-copy>Скопировать план</button>
       <button class="secondary-button" type="button" data-plan-refresh>Обновить план</button>
     </div>
@@ -1477,6 +1506,306 @@ function buildAdmissionPlanText(plan) {
     "Важно: это не гарантия поступления, а помощник для планирования. Проверь официальные сайты вузов перед подачей документов.",
   ];
   return lines.join("\n");
+}
+
+function renderExportPreview() {
+  if (!exportContentNode) {
+    return;
+  }
+
+  exportCopyFallbackNode?.classList.add("is-hidden");
+
+  if (!currentSearch) {
+    exportContentNode.innerHTML = `
+      <article class="export-empty empty-state">
+        <h3>Пока нечего экспортировать</h3>
+        <p>Сначала выполни подбор вузов, а затем здесь появится отчёт.</p>
+        <button class="primary-button" type="button" data-tab-target="search">Перейти к подбору</button>
+      </article>
+    `;
+    return;
+  }
+
+  const reportData = buildExportReportData();
+  exportContentNode.innerHTML = `
+    <article id="export-report-print" class="export-report">
+      <header class="export-report__header">
+        <div>
+          <p class="eyebrow">Отчёт</p>
+          <h3>Аиша — отчёт по подбору вузов</h3>
+        </div>
+        <span>Сформировано: ${escapeHtml(reportData.generatedAtText)}</span>
+      </header>
+
+      <section class="export-section-block">
+        <h4>Параметры подбора</h4>
+        <div class="export-grid">
+          <div><b>Регион:</b> ${escapeHtml(reportData.search.region)}</div>
+          <div><b>Баллы:</b> ${escapeHtml(formatValue(reportData.search.score))}</div>
+          <div><b>Направление:</b> ${escapeHtml(reportData.search.direction)}</div>
+          <div><b>Тип обучения:</b> ${escapeHtml(reportData.search.typeLabel)}</div>
+        </div>
+      </section>
+
+      <section class="export-section-block">
+        <h4>Краткий итог</h4>
+        ${renderExportSummaryGrid(reportData)}
+      </section>
+
+      ${renderExportItems("Найденные варианты", reportData.topResults, "По текущему подбору варианты не найдены.", 5)}
+      ${renderExportItems("Избранные вузы", reportData.favorites, "Избранные варианты пока не добавлены.")}
+      ${renderExportItems("Сравнение", reportData.comparisonItems, "Вузы для сравнения пока не выбраны.")}
+      ${renderExportPlan(reportData)}
+
+      <section class="export-section-block export-disclaimer">
+        <h4>Важно</h4>
+        <p>Данные используются для предварительного подбора. Проходные баллы и условия поступления нужно проверять на официальных сайтах вузов.</p>
+      </section>
+    </article>
+  `;
+}
+
+function buildExportReportData() {
+  if (!currentSearch) {
+    return null;
+  }
+
+  return {
+    generatedAt: new Date(),
+    generatedAtText: formatExportDate(new Date()),
+    search: currentSearch,
+    counts: getFilterCounts(lastResults),
+    totalResults: lastResults.length,
+    topResults: lastResults.slice(0, 5),
+    favorites: Array.isArray(favorites) ? [...favorites] : [],
+    comparisonItems: Array.isArray(comparisonItems) ? [...comparisonItems] : [],
+    plan: buildAdmissionPlan(),
+  };
+}
+
+function renderExportSummaryGrid(reportData) {
+  return `
+    <div class="export-grid export-grid--summary">
+      <div><b>Найдено вариантов:</b> ${reportData.totalResults}</div>
+      <div><b>Безопасные:</b> ${reportData.counts.safe}</div>
+      <div><b>Реалистичные:</b> ${reportData.counts.realistic}</div>
+      <div><b>Амбициозные:</b> ${reportData.counts.ambitious}</div>
+      <div><b>Избранные:</b> ${reportData.favorites.length}</div>
+      <div><b>В сравнении:</b> ${reportData.comparisonItems.length}</div>
+    </div>
+  `;
+}
+
+function renderExportItems(title, items, emptyText, limit = null) {
+  const visibleItems = Array.isArray(items)
+    ? items.slice(0, Number.isFinite(limit) ? limit : items.length)
+    : [];
+  const hiddenCount = Array.isArray(items) ? Math.max(0, items.length - visibleItems.length) : 0;
+
+  return `
+    <section class="export-section-block">
+      <h4>${escapeHtml(title)}</h4>
+      ${
+        visibleItems.length
+          ? `<div class="export-item-list">
+              ${visibleItems.map((item, index) => renderExportItem(item, index + 1)).join("")}
+            </div>
+            ${hiddenCount ? `<p class="export-muted">Ещё вариантов: ${hiddenCount}.</p>` : ""}`
+          : `<p class="export-muted">${escapeHtml(emptyText)}</p>`
+      }
+    </section>
+  `;
+}
+
+function renderExportItem(item, index) {
+  const category = getItemCategory(item);
+  const meta = categoryMeta[category] || categoryMeta.ambitious;
+  const subjects = Array.isArray(item.subjects) && item.subjects.length
+    ? item.subjects.join(", ")
+    : "не указаны";
+  const margin = getScoreMargin(item);
+
+  return `
+    <article class="export-item">
+      <div class="export-item__title">
+        <strong>${index}. ${escapeHtml(textValue(item.university, "Вуз"))} — ${escapeHtml(textValue(item.program, "программа не указана"))}</strong>
+        <span class="badge ${meta.className}">${escapeHtml(meta.shortLabel)}</span>
+      </div>
+      <div class="export-item__meta">
+        <span><b>Город:</b> ${escapeHtml(textValue(item.city, "не указано"))}</span>
+        <span><b>Мин. балл:</b> ${escapeHtml(formatValue(getMinScore(item)))}</span>
+        <span><b>Твои баллы:</b> ${escapeHtml(formatValue(getUserScore(item) || currentSearch?.score))}</span>
+        <span><b>Запас/не хватает:</b> ${escapeHtml(formatDelta(margin))}</span>
+        <span><b>Тип:</b> ${escapeHtml(textValue(item.type, "не указано"))}</span>
+        <span><b>Стоимость:</b> ${escapeHtml(formatPrice(item.price))}</span>
+        <span><b>Предметы:</b> ${escapeHtml(subjects)}</span>
+        ${item.url ? `<span><b>Сайт:</b> <a class="site-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.url)}</a></span>` : ""}
+      </div>
+    </article>
+  `;
+}
+
+function renderExportPlan(reportData) {
+  const plan = reportData.plan;
+  if (!plan) {
+    return `
+      <section class="export-section-block">
+        <h4>План поступления</h4>
+        <p class="export-muted">План появится после подбора.</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="export-section-block">
+      <h4>План поступления</h4>
+      <p>${escapeHtml(plan.overview)}</p>
+      <p><b>Готовность:</b> ${plan.completedSteps}/${plan.checklist.length}</p>
+      <div class="export-plan-columns">
+        <div>
+          <b>Что сделать сначала</b>
+          ${renderPlanList(plan.firstSteps.slice(0, 4))}
+        </div>
+        <div>
+          <b>Что проверить</b>
+          ${renderPlanList(plan.checkBeforeSubmit)}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function buildExportPlainText(reportData = buildExportReportData()) {
+  if (!reportData) {
+    return "Пока нечего экспортировать. Сначала выполни подбор вузов.";
+  }
+
+  const lines = [
+    "Аиша — отчёт по подбору вузов",
+    "",
+    `Сформировано: ${reportData.generatedAtText}`,
+    "",
+    "Параметры подбора:",
+    `Регион: ${reportData.search.region}`,
+    `Баллы: ${reportData.search.score}`,
+    `Направление: ${reportData.search.direction}`,
+    `Тип обучения: ${reportData.search.typeLabel}`,
+    "",
+    "Краткий итог:",
+    `Найдено вариантов: ${reportData.totalResults}`,
+    `Безопасные: ${reportData.counts.safe}`,
+    `Реалистичные: ${reportData.counts.realistic}`,
+    `Амбициозные: ${reportData.counts.ambitious}`,
+    `Избранные: ${reportData.favorites.length}`,
+    `В сравнении: ${reportData.comparisonItems.length}`,
+    "",
+    "Найденные варианты:",
+    ...formatExportItemsForText(reportData.topResults, "По текущему подбору варианты не найдены."),
+    "",
+    "Избранные вузы:",
+    ...formatExportItemsForText(reportData.favorites, "Избранные варианты пока не добавлены."),
+    "",
+    "Сравнение:",
+    ...formatExportItemsForText(reportData.comparisonItems, "Вузы для сравнения пока не выбраны."),
+    "",
+    "План поступления:",
+    ...formatExportPlanForText(reportData.plan),
+    "",
+    "Важно: данные используются для предварительного подбора. Проходные баллы и условия поступления нужно проверять на официальных сайтах вузов.",
+  ];
+
+  return lines.join("\n");
+}
+
+function formatExportItemsForText(items, emptyText) {
+  if (!Array.isArray(items) || !items.length) {
+    return [emptyText];
+  }
+
+  return items.map((item, index) => {
+    const parts = [
+      `${index + 1}. ${textValue(item.university, "Вуз")} — ${textValue(item.program, "программа не указана")}`,
+      `Город: ${textValue(item.city, "не указано")}`,
+      `Категория: ${getCategoryLabel(item)}`,
+      `Мин. балл: ${formatValue(getMinScore(item))}`,
+      `Твои баллы: ${formatValue(getUserScore(item) || currentSearch?.score)}`,
+      `Запас/не хватает: ${formatDelta(getScoreMargin(item))}`,
+      `Тип: ${textValue(item.type, "не указано")}`,
+      `Стоимость: ${formatPrice(item.price)}`,
+    ];
+    if (item.url) {
+      parts.push(`Сайт: ${item.url}`);
+    }
+    return parts.join("\n");
+  });
+}
+
+function formatExportPlanForText(plan) {
+  if (!plan) {
+    return ["План появится после подбора."];
+  }
+
+  return [
+    plan.overview,
+    `Готовность: ${plan.completedSteps}/${plan.checklist.length}`,
+    "",
+    "Что сделать сначала:",
+    ...plan.firstSteps.map((item, index) => `${index + 1}. ${item}`),
+    "",
+    "Что проверить перед подачей:",
+    ...plan.checkBeforeSubmit.map((item, index) => `${index + 1}. ${item}`),
+  ];
+}
+
+async function copyExportReport() {
+  const reportData = buildExportReportData();
+  if (!reportData) {
+    showToast("Сначала выполни подбор.", "warning");
+    return;
+  }
+
+  const text = buildExportPlainText(reportData);
+  try {
+    if (!navigator.clipboard?.writeText) {
+      throw new Error("Clipboard is unavailable");
+    }
+    await navigator.clipboard.writeText(text);
+    exportCopyFallbackNode?.classList.add("is-hidden");
+    showToast("Отчёт скопирован.", "success");
+  } catch (error) {
+    if (exportCopyFallbackNode) {
+      exportCopyFallbackNode.value = text;
+      exportCopyFallbackNode.classList.remove("is-hidden");
+      exportCopyFallbackNode.focus();
+      exportCopyFallbackNode.select();
+    }
+    showToast("Не удалось скопировать автоматически. Скопируй текст вручную.", "warning");
+  }
+}
+
+function printExportReport() {
+  if (!currentSearch) {
+    showToast("Сначала выполни подбор.", "warning");
+    return;
+  }
+
+  renderExportPreview();
+  showToast("Откроется системное окно печати. Там можно сохранить отчёт как PDF.", "info");
+  window.setTimeout(() => {
+    window.print();
+  }, 120);
+}
+
+function refreshExportReport() {
+  renderExportPreview();
+  showToast(currentSearch ? "Отчёт обновлён." : "Сначала выполни подбор.", currentSearch ? "success" : "warning");
+}
+
+function formatExportDate(date) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
 }
 
 function renderComparisonSelected() {

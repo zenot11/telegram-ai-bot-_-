@@ -21,6 +21,7 @@
           <button class="tab-button" type="button" data-tab-target="comparison" aria-selected="false">Сравнение <span id="comparison-count">0</span></button>
           <button class="tab-button" type="button" data-tab-target="favorites" aria-selected="false">Избранное <span id="favorites-count">0</span></button>
           <button class="tab-button" type="button" data-tab-target="plan" aria-selected="false">План</button>
+          <button class="tab-button" type="button" data-tab-target="export" aria-selected="false">Экспорт</button>
           <button class="tab-button" type="button" data-tab-target="feedback" aria-selected="false">Поддержка</button>
           <button class="tab-button" type="button" data-tab-target="about" aria-selected="false">О проекте</button>
         </nav>
@@ -160,6 +161,7 @@
             <button class="secondary-button" type="button" data-tab-target="comparison">Сравнение</button>
             <button class="secondary-button" type="button" data-tab-target="favorites">Избранное</button>
             <button class="secondary-button" type="button" data-tab-target="plan">План</button>
+            <button class="secondary-button" type="button" data-tab-target="export">Экспорт</button>
             <button class="secondary-button" type="button" data-tab-target="search">Новый подбор</button>
           </div>
         </article>
@@ -176,6 +178,7 @@
               <button class="secondary-button" type="button" data-tab-target="comparison">К сравнению</button>
               <button class="secondary-button" type="button" data-tab-target="favorites">К избранному</button>
               <button class="secondary-button" type="button" data-tab-target="plan">Открыть план</button>
+              <button class="secondary-button" type="button" data-tab-target="export">Экспорт</button>
             </div>
           </div>
           <div id="results" class="results-grid"></div>
@@ -210,6 +213,7 @@
           <button id="clear-comparison" class="secondary-button danger-button" type="button">Очистить сравнение</button>
           <button class="secondary-button" type="button" data-tab-target="search">Перейти к подбору</button>
           <button class="secondary-button" type="button" data-tab-target="favorites">Открыть избранное</button>
+          <button class="secondary-button" type="button" data-tab-target="export">Экспортировать</button>
         </div>
         <p id="comparison-status" class="panel-status empty-state">Пока нечего сравнивать. Выполни подбор и добавь 2–3 варианта.</p>
         <div id="comparison-selected" class="comparison-selected"></div>
@@ -225,6 +229,7 @@
         <div class="favorites-actions">
           <button id="clear-favorites" class="secondary-button danger-button" type="button">Очистить избранное</button>
           <button class="secondary-button" type="button" data-tab-target="search">Вернуться к подбору</button>
+          <button class="secondary-button" type="button" data-tab-target="export">Экспортировать</button>
         </div>
         <p id="favorites-status" class="panel-status empty-state"></p>
         <div id="favorites-list" class="results-grid"></div>
@@ -238,6 +243,24 @@
         </div>
         <div id="plan-content" class="plan-content" aria-live="polite"></div>
         <textarea id="plan-copy-fallback" class="plan-copy-fallback is-hidden" readonly aria-label="Текст плана для ручного копирования"></textarea>
+      </section>
+
+      <section id="export" class="tab-panel section export-section" aria-labelledby="export-title">
+        <div class="section-heading">
+          <p class="eyebrow">Экспорт</p>
+          <h2 id="export-title">Отчёт по подбору</h2>
+          <p>Собери параметры подбора, найденные варианты, избранное, сравнение и план в один отчёт.</p>
+        </div>
+        <div class="export-actions no-print">
+          <button class="primary-button" type="button" data-export-copy>Скопировать отчёт</button>
+          <button class="secondary-button" type="button" data-export-print>Печать / сохранить PDF</button>
+          <button class="secondary-button" type="button" data-export-refresh>Обновить отчёт</button>
+          <button class="secondary-button" type="button" data-tab-target="plan">Открыть план</button>
+          <button class="secondary-button" type="button" data-tab-target="comparison">Открыть сравнение</button>
+          <button class="secondary-button" type="button" data-tab-target="favorites">Открыть избранное</button>
+        </div>
+        <div id="export-content" class="export-content" aria-live="polite"></div>
+        <textarea id="export-copy-fallback" class="export-copy-fallback is-hidden" readonly aria-label="Текст отчёта для ручного копирования"></textarea>
       </section>
 
       <section id="feedback" class="tab-panel section feedback-section" aria-labelledby="feedback-title">
