@@ -1,0 +1,10 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="420" rx="36" fill="#202152"/>
+  <rect x="48" y="48" width="1104" height="324" rx="28" fill="#F4F1EA"/>
+  <circle cx="945" cy="210" r="118" fill="#8EA2FF" opacity="0.22"/>
+  <path d="M945 128 L1000 210 L945 292 L890 210 Z" fill="#202152" opacity="0.82"/>
+  <circle cx="945" cy="210" r="28" fill="#F4F1EA"/>
+  <text x="96" y="150" fill="#202152" font-family="Arial, sans-serif" font-size="58" font-weight="700">Аиша</text>
+  <text x="96" y="222" fill="#202152" font-family="Arial, sans-serif" font-size="42" font-weight="700">Помощник</text>
+  <text x="96" y="284" fill="#5F6078" font-family="Arial, sans-serif" font-size="28">Советы, следующий шаг и спокойная поддержка</text>
+</svg>

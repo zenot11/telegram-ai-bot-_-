@@ -3,29 +3,74 @@ from html import escape
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 
 from telegram_bot.config import settings
+from telegram_bot.keyboards.compare import (
+    compare_options_keyboard,
+    compare_source_keyboard,
+    empty_compare_keyboard,
+    not_enough_favorites_keyboard,
+)
+from telegram_bot.keyboards.export import empty_export_keyboard, export_menu_keyboard
+from telegram_bot.keyboards.feedback import empty_feedback_keyboard, feedback_categories_keyboard, feedback_created_keyboard
+from telegram_bot.keyboards.filters import empty_filters_keyboard, filters_keyboard
 from telegram_bot.keyboards.menu import (
+    MENU_ABOUT_CALLBACK,
+    MENU_ABOUT_TEXT_CALLBACK,
+    MENU_ADVICE_CALLBACK,
+    MENU_ASSISTANT_CALLBACK,
+    MENU_BOTFATHER_CALLBACK,
+    MENU_CATEGORIES_CALLBACK,
+    MENU_COMPARE_CALLBACK,
+    MENU_DEMO_CALLBACK,
+    MENU_DIRECTIONS_CALLBACK,
+    MENU_EXPORT_CALLBACK,
+    MENU_FAVORITES_CALLBACK,
+    MENU_FEEDBACK_CALLBACK,
+    MENU_FILTERS_CALLBACK,
+    MENU_HISTORY_CALLBACK,
+    MENU_MAIN_CALLBACK,
+    MENU_MY_FEEDBACK_CALLBACK,
+    MENU_NEXT_CALLBACK,
+    MENU_PRIVACY_CALLBACK,
+    MENU_PROFILE_CALLBACK,
+    MENU_REGIONS_CALLBACK,
+    MENU_RESET_CALLBACK,
+    MENU_RESULTS_CALLBACK,
+    MENU_SEARCH_CALLBACK,
+    MENU_SERVICE_CALLBACK,
+    MENU_SUMMARY_CALLBACK,
+    MENU_SUPPORT_CALLBACK,
+    MENU_WEBAPP_CALLBACK,
     about_menu_keyboard,
+    about_menu_inline_keyboard,
     advice_keyboard,
     assistant_menu_keyboard,
+    assistant_menu_inline_keyboard,
     empty_advice_keyboard,
     empty_favorites_keyboard,
     empty_history_keyboard,
     favorites_keyboard_for_count,
     history_keyboard,
     main_menu_keyboard,
+    main_menu_inline_keyboard,
     profile_keyboard,
     results_menu_keyboard,
+    results_menu_inline_keyboard,
     service_menu_keyboard,
+    service_menu_inline_keyboard,
     summary_keyboard,
 )
-from telegram_bot.keyboards.search import no_results_keyboard, search_results_keyboard
+from telegram_bot.keyboards.search import no_results_keyboard, search_results_keyboard, support_keyboard
 from telegram_bot.services.api import UniversityAPIError, fetch_universities
 from telegram_bot.services.advice import build_advice, has_advice_context
+from telegram_bot.services.export import build_export_preview
+from telegram_bot.services.feedback import format_user_feedback
+from telegram_bot.services.filters import EMPTY_FILTERS_TEXT, build_filters_overview_message, get_filter_counts
 from telegram_bot.services.formatters import format_university_card
 from telegram_bot.services.history import format_history_message
+from telegram_bot.services.menu_cards import send_menu_card
 from telegram_bot.services.recommendation import (
     format_categories_explanation,
     group_universities_by_recommendation,
@@ -39,6 +84,9 @@ from telegram_bot.services.validation import (
     education_type_label,
     normalize_education_type,
 )
+from telegram_bot.states.compare_states import CompareStates
+from telegram_bot.states.search_states import SearchStates
+from telegram_bot.storage.feedback_data import get_user_feedback
 from telegram_bot.storage.user_data import user_storage
 
 
@@ -48,85 +96,311 @@ router = Router()
 @router.message(Command("menu"))
 async def cmd_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(_main_menu_text(), reply_markup=main_menu_keyboard())
+    await send_menu_card(message, "main", main_menu_inline_keyboard())
 
 
 @router.message(F.text.in_({"Вернуться в меню", "Главное меню", "Назад"}))
 async def back_to_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(_main_menu_text(), reply_markup=main_menu_keyboard())
+    await send_menu_card(message, "main", main_menu_inline_keyboard())
 
 
 @router.message(F.text == "Мои результаты")
 async def results_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(
-        "Мои результаты.\n\n"
-        "Здесь собраны действия с последним подбором: итог, избранное, история, "
-        "сравнение, фильтры и экспорт.",
-        reply_markup=results_menu_keyboard(),
-    )
+    await send_menu_card(message, "results", results_menu_inline_keyboard())
 
 
 @router.message(F.text == "Помощник")
 async def assistant_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(
-        "Помощник.\n\n"
-        "Здесь можно получить советы по поступлению, посмотреть доступные регионы "
-        "и направления или открыть поддержку, если тревожно и сложно выбрать.",
-        reply_markup=assistant_menu_keyboard(),
-    )
+    await send_menu_card(message, "assistant", assistant_menu_inline_keyboard())
 
 
 @router.message(F.text == "Сервис")
 async def service_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(
-        "Сервис.\n\n"
-        "Здесь профиль, обратная связь, мои обращения, приватность и управление сохранёнными данными.",
-        reply_markup=service_menu_keyboard(),
-    )
+    await send_menu_card(message, "service", service_menu_inline_keyboard())
 
 
 @router.message(F.text == "О проекте")
 async def about_project_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(
-        "О проекте.\n\n"
-        "Информация об Аише, демо-сценарий и настройки BotFather.",
-        reply_markup=about_menu_keyboard(),
-    )
+    await send_menu_card(message, "about", about_menu_inline_keyboard())
 
 
 @router.message(F.text == "Описание проекта")
 async def about_project_text(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(ABOUT_TEXT, reply_markup=about_menu_keyboard())
+    await message.answer(ABOUT_TEXT, reply_markup=about_menu_inline_keyboard())
 
 
 @router.message(F.text == "Демо-сценарий")
 async def demo_text(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(DEMO_TEXT, reply_markup=about_menu_keyboard())
+    await message.answer(DEMO_TEXT, reply_markup=about_menu_inline_keyboard())
 
 
 @router.message(F.text == "BotFather")
 async def botfather_text(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(BOTFATHER_TEXT, reply_markup=about_menu_keyboard())
+    await message.answer(BOTFATHER_TEXT, reply_markup=about_menu_inline_keyboard())
 
 
 @router.message(F.text == "Приватность")
 async def privacy_text(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(PRIVACY_TEXT, reply_markup=service_menu_keyboard())
+    await message.answer(PRIVACY_TEXT, reply_markup=service_menu_inline_keyboard())
 
 
 @router.message(F.text == "Что делать дальше")
 async def next_text(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(NEXT_TEXT, reply_markup=assistant_menu_keyboard())
+    await message.answer(NEXT_TEXT, reply_markup=assistant_menu_inline_keyboard())
+
+
+@router.callback_query(F.data == MENU_MAIN_CALLBACK)
+async def main_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await send_menu_card(callback, "main", main_menu_inline_keyboard())
+
+
+@router.callback_query(F.data == MENU_RESULTS_CALLBACK)
+async def results_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await send_menu_card(callback, "results", results_menu_inline_keyboard())
+
+
+@router.callback_query(F.data == MENU_ASSISTANT_CALLBACK)
+async def assistant_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await send_menu_card(callback, "assistant", assistant_menu_inline_keyboard())
+
+
+@router.callback_query(F.data == MENU_SERVICE_CALLBACK)
+async def service_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await send_menu_card(callback, "service", service_menu_inline_keyboard())
+
+
+@router.callback_query(F.data == MENU_ABOUT_CALLBACK)
+async def about_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await send_menu_card(callback, "about", about_menu_inline_keyboard())
+
+
+@router.callback_query(F.data == MENU_SEARCH_CALLBACK)
+async def search_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.set_state(SearchStates.region)
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(
+            "С какого региона начнём?\n"
+            "Напиши регион, например: Адыгея, Москва или Краснодарский край."
+        )
+
+
+@router.callback_query(F.data == MENU_WEBAPP_CALLBACK)
+async def webapp_menu_callback(callback: CallbackQuery) -> None:
+    await callback.answer()
+    if not callback.message:
+        return
+    if not settings.webapp_url:
+        await callback.message.answer(
+            "Mini App сейчас не подключён.\n"
+            "Добавь WEBAPP_URL в локальный .env и перезапусти бота. "
+            "Без Mini App бот продолжает работать в обычном режиме.",
+            reply_markup=main_menu_inline_keyboard(),
+        )
+        return
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Открыть Mini App", web_app=WebAppInfo(url=settings.webapp_url))]
+        ]
+    )
+    await callback.message.answer("Открой Mini App Аиши:", reply_markup=keyboard)
+
+
+@router.callback_query(F.data == MENU_SUMMARY_CALLBACK)
+async def summary_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await _send_summary(callback.message, callback.from_user.id)
+
+
+@router.callback_query(F.data == MENU_FAVORITES_CALLBACK)
+async def favorites_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await _send_favorites(callback.message, callback.from_user.id)
+
+
+@router.callback_query(F.data == MENU_HISTORY_CALLBACK)
+async def history_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await _send_history(callback.message, callback.from_user.id)
+
+
+@router.callback_query(F.data == MENU_ADVICE_CALLBACK)
+async def advice_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await _send_advice(callback.message, callback.from_user.id)
+
+
+@router.callback_query(F.data == MENU_FILTERS_CALLBACK)
+async def filters_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await _send_filters(callback.message, callback.from_user.id)
+
+
+@router.callback_query(F.data == MENU_EXPORT_CALLBACK)
+async def export_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await _send_export(callback.message, callback.from_user.id)
+
+
+@router.callback_query(F.data == MENU_COMPARE_CALLBACK)
+async def compare_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await _send_compare(callback.message, state, callback.from_user.id)
+
+
+@router.callback_query(F.data == MENU_PROFILE_CALLBACK)
+async def profile_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await _send_profile(callback.message, callback.from_user.id)
+
+
+@router.callback_query(F.data == MENU_FEEDBACK_CALLBACK)
+async def feedback_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(
+            "Выбери тип обращения.\n\n"
+            "Если тебе тревожно из-за поступления, используй /support. "
+            "Если заметил ошибку в сервисе, подборе или Mini App, используй /feedback.",
+            reply_markup=feedback_categories_keyboard(),
+        )
+
+
+@router.callback_query(F.data == MENU_MY_FEEDBACK_CALLBACK)
+async def my_feedback_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await _send_my_feedback(callback.message, callback.from_user.id)
+
+
+@router.callback_query(F.data == MENU_PRIVACY_CALLBACK)
+async def privacy_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(PRIVACY_TEXT, reply_markup=service_menu_inline_keyboard())
+
+
+@router.callback_query(F.data == MENU_RESET_CALLBACK)
+async def reset_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer("Данные сброшены.")
+    user_storage.reset_profile(callback.from_user.id)
+    if callback.message:
+        await callback.message.answer(
+            "Профиль, последний подбор, история и избранное очищены.",
+            reply_markup=main_menu_inline_keyboard(),
+        )
+
+
+@router.callback_query(F.data == MENU_NEXT_CALLBACK)
+async def next_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(NEXT_TEXT, reply_markup=assistant_menu_inline_keyboard())
+
+
+@router.callback_query(F.data == MENU_SUPPORT_CALLBACK)
+async def support_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(
+            "Я рядом. Поступление правда может давить: баллы, выбор, ожидания родителей, страх ошибиться.\n"
+            "Выбери, что ближе к твоей ситуации:",
+            reply_markup=support_keyboard(),
+        )
+
+
+@router.callback_query(F.data == MENU_CATEGORIES_CALLBACK)
+async def categories_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(format_categories_explanation(), reply_markup=assistant_menu_inline_keyboard())
+
+
+@router.callback_query(F.data == MENU_DIRECTIONS_CALLBACK)
+async def directions_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(
+            "Сейчас в демонстрационной базе доступны направления. Можешь использовать одно из них в подборе:\n"
+            + "\n".join(f"- {direction}" for direction in AVAILABLE_DIRECTIONS),
+            reply_markup=assistant_menu_inline_keyboard(),
+        )
+
+
+@router.callback_query(F.data == MENU_REGIONS_CALLBACK)
+async def regions_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(
+            "Сейчас в демонстрационной базе доступны регионы. Для проверки можно использовать:\n"
+            + "\n".join(f"- {region}" for region in AVAILABLE_REGIONS),
+            reply_markup=assistant_menu_inline_keyboard(),
+        )
+
+
+@router.callback_query(F.data == MENU_ABOUT_TEXT_CALLBACK)
+async def about_text_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(ABOUT_TEXT, reply_markup=about_menu_inline_keyboard())
+
+
+@router.callback_query(F.data == MENU_DEMO_CALLBACK)
+async def demo_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(DEMO_TEXT, reply_markup=about_menu_inline_keyboard())
+
+
+@router.callback_query(F.data == MENU_BOTFATHER_CALLBACK)
+async def botfather_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(BOTFATHER_TEXT, reply_markup=about_menu_inline_keyboard())
 
 
 @router.message(F.text == "Мои баллы")
@@ -137,25 +411,7 @@ async def my_profile(message: Message, state: FSMContext) -> None:
         await message.answer("Не удалось определить пользователя.", reply_markup=profile_keyboard())
         return
 
-    summary = user_storage.get_profile_summary(message.from_user.id)
-    if summary["is_empty"]:
-        await message.answer(
-            "Пока профиль пустой. Нажми «Подобрать вуз», и я сохраню данные во время подбора.",
-            reply_markup=profile_keyboard(),
-        )
-        return
-
-    text = (
-        "<b>Мой профиль</b>\n\n"
-        f"Telegram ID: {summary['telegram_id']}\n"
-        f"Регион: {_value(summary.get('region'))}\n"
-        f"Баллы: {_value(summary.get('score'))}\n"
-        f"Направление: {_value(summary.get('direction'))}\n"
-        f"Тип обучения: {education_type_label(str(summary.get('education_type') or ''))}\n"
-        f"Последний подбор: {summary['last_results_count']} {_plural(summary['last_results_count'], 'вариант', 'варианта', 'вариантов')}\n"
-        f"Избранное: {summary['favorites_count']} {_plural(summary['favorites_count'], 'вуз', 'вуза', 'вузов')}"
-    )
-    await message.answer(text, reply_markup=profile_keyboard())
+    await _send_profile(message, message.from_user.id)
 
 
 @router.message(Command("summary"))
@@ -166,12 +422,7 @@ async def search_summary(message: Message, state: FSMContext) -> None:
         await message.answer("Не удалось определить пользователя.", reply_markup=main_menu_keyboard())
         return
 
-    profile = user_storage.get_profile(message.from_user.id)
-    last_results = user_storage.get_last_results(message.from_user.id)
-    favorites_count = len(user_storage.get_favorites(message.from_user.id))
-    text = format_last_search_summary(profile, last_results, favorites_count)
-    reply_markup = summary_keyboard() if text != EMPTY_SUMMARY_TEXT else main_menu_keyboard()
-    await message.answer(text, reply_markup=reply_markup)
+    await _send_summary(message, message.from_user.id)
 
 
 @router.message(Command("advice"))
@@ -182,12 +433,7 @@ async def search_advice(message: Message, state: FSMContext) -> None:
         await message.answer("Не удалось определить пользователя.", reply_markup=main_menu_keyboard())
         return
 
-    profile = user_storage.get_profile(message.from_user.id)
-    last_results = user_storage.get_last_results(message.from_user.id)
-    favorites = user_storage.get_favorites(message.from_user.id)
-    text = build_advice(profile, last_results, favorites)
-    reply_markup = advice_keyboard(has_results=bool(last_results)) if has_advice_context(profile) else empty_advice_keyboard()
-    await message.answer(text, reply_markup=reply_markup)
+    await _send_advice(message, message.from_user.id)
 
 
 @router.message(Command("history"))
@@ -198,9 +444,7 @@ async def search_history(message: Message, state: FSMContext) -> None:
         await message.answer("Не удалось определить пользователя.", reply_markup=main_menu_keyboard())
         return
 
-    history = user_storage.get_search_history(message.from_user.id)
-    reply_markup = history_keyboard() if history else empty_history_keyboard()
-    await message.answer(format_history_message(history), reply_markup=reply_markup)
+    await _send_history(message, message.from_user.id)
 
 
 @router.message(Command("clear_history"))
@@ -301,7 +545,57 @@ async def favorites(message: Message, state: FSMContext) -> None:
         await message.answer("Не удалось определить пользователя.", reply_markup=main_menu_keyboard())
         return
 
-    items = user_storage.get_favorites(message.from_user.id)
+    await _send_favorites(message, message.from_user.id)
+
+
+async def _send_profile(message: Message, telegram_id: int) -> None:
+    summary = user_storage.get_profile_summary(telegram_id)
+    if summary["is_empty"]:
+        await message.answer(
+            "Пока профиль пустой. Нажми «Подобрать вуз», и я сохраню данные во время подбора.",
+            reply_markup=profile_keyboard(),
+        )
+        return
+
+    text = (
+        "<b>Мой профиль</b>\n\n"
+        f"Telegram ID: {summary['telegram_id']}\n"
+        f"Регион: {_value(summary.get('region'))}\n"
+        f"Баллы: {_value(summary.get('score'))}\n"
+        f"Направление: {_value(summary.get('direction'))}\n"
+        f"Тип обучения: {education_type_label(str(summary.get('education_type') or ''))}\n"
+        f"Последний подбор: {summary['last_results_count']} {_plural(summary['last_results_count'], 'вариант', 'варианта', 'вариантов')}\n"
+        f"Избранное: {summary['favorites_count']} {_plural(summary['favorites_count'], 'вуз', 'вуза', 'вузов')}"
+    )
+    await message.answer(text, reply_markup=profile_keyboard())
+
+
+async def _send_summary(message: Message, telegram_id: int) -> None:
+    profile = user_storage.get_profile(telegram_id)
+    last_results = user_storage.get_last_results(telegram_id)
+    favorites_count = len(user_storage.get_favorites(telegram_id))
+    text = format_last_search_summary(profile, last_results, favorites_count)
+    reply_markup = summary_keyboard() if text != EMPTY_SUMMARY_TEXT else main_menu_keyboard()
+    await message.answer(text, reply_markup=reply_markup)
+
+
+async def _send_advice(message: Message, telegram_id: int) -> None:
+    profile = user_storage.get_profile(telegram_id)
+    last_results = user_storage.get_last_results(telegram_id)
+    favorites = user_storage.get_favorites(telegram_id)
+    text = build_advice(profile, last_results, favorites)
+    reply_markup = advice_keyboard(has_results=bool(last_results)) if has_advice_context(profile) else empty_advice_keyboard()
+    await message.answer(text, reply_markup=reply_markup)
+
+
+async def _send_history(message: Message, telegram_id: int) -> None:
+    history = user_storage.get_search_history(telegram_id)
+    reply_markup = history_keyboard() if history else empty_history_keyboard()
+    await message.answer(format_history_message(history), reply_markup=reply_markup)
+
+
+async def _send_favorites(message: Message, telegram_id: int) -> None:
+    items = user_storage.get_favorites(telegram_id)
     if not items:
         await message.answer(
             "Избранное пока пустое.\n"
@@ -312,6 +606,100 @@ async def favorites(message: Message, state: FSMContext) -> None:
 
     cards = "\n\n".join(_format_favorite_card(index, item) for index, item in enumerate(items, start=1))
     await message.answer(cards, reply_markup=favorites_keyboard_for_count(len(items)))
+
+
+async def _send_filters(message: Message, telegram_id: int) -> None:
+    profile = user_storage.get_profile(telegram_id)
+    last_results = user_storage.get_last_results(telegram_id)
+    if not last_results:
+        await message.answer(EMPTY_FILTERS_TEXT, reply_markup=empty_filters_keyboard())
+        return
+
+    counts = get_filter_counts(last_results, _profile_score(profile))
+    await message.answer(
+        build_filters_overview_message(profile, last_results),
+        reply_markup=filters_keyboard(counts),
+    )
+
+
+async def _send_export(message: Message, telegram_id: int) -> None:
+    profile = user_storage.get_profile(telegram_id)
+    results = user_storage.get_last_results(telegram_id)
+    favorites = user_storage.get_favorites(telegram_id)
+    if not results:
+        await message.answer(
+            "Пока нет результата для экспорта.\n"
+            "Сначала сделай подбор через /search.",
+            reply_markup=empty_export_keyboard(),
+        )
+        return
+
+    await message.answer(build_export_preview(profile, results, favorites), reply_markup=export_menu_keyboard())
+
+
+async def _send_compare(message: Message, state: FSMContext, telegram_id: int) -> None:
+    last_results = user_storage.get_last_results(telegram_id)
+    favorites = user_storage.get_favorites(telegram_id)
+
+    has_last_results = bool(last_results)
+    has_favorites = bool(favorites)
+
+    if not has_last_results and not has_favorites:
+        await message.answer(
+            "Пока нечего сравнивать.\n"
+            "Сначала пройди подбор вузов или добавь варианты в избранное.",
+            reply_markup=empty_compare_keyboard(),
+        )
+        return
+
+    if has_last_results and has_favorites:
+        await message.answer(
+            "Что сравним?",
+            reply_markup=compare_source_keyboard(has_last_results=True, has_favorites=True),
+        )
+        return
+
+    source = "last_results" if has_last_results else "favorites"
+    items = last_results if has_last_results else favorites
+    await _send_compare_options(message, state, source, items)
+
+
+async def _send_compare_options(
+    message: Message,
+    state: FSMContext,
+    source: str,
+    items: list[dict],
+) -> None:
+    if len(items) < 2:
+        await state.clear()
+        if source == "favorites":
+            await message.answer(
+                "Для сравнения нужно минимум два избранных вуза. "
+                "Сначала сохрани несколько вариантов после подбора.",
+                reply_markup=not_enough_favorites_keyboard(),
+            )
+        else:
+            await message.answer(
+                "Для сравнения нужно минимум два варианта. "
+                "Пройди подбор ещё раз или сохрани несколько вузов в избранное.",
+                reply_markup=empty_compare_keyboard(),
+            )
+        return
+
+    await state.set_state(CompareStates.choosing_items)
+    await state.update_data(compare_source=source)
+    source_title = "последних результатов" if source == "last_results" else "избранных вузов"
+    scope_hint = " Можно сравнить первые 3 варианта из текущей выдачи." if len(items) > 3 else ""
+    await message.answer(
+        f"Выбери, какие варианты из {source_title} сравнить. Сейчас доступно: {len(items)}.{scope_hint}",
+        reply_markup=compare_options_keyboard(len(items)),
+    )
+
+
+async def _send_my_feedback(message: Message, telegram_id: int) -> None:
+    tickets = get_user_feedback(telegram_id, limit=5)
+    reply_markup = feedback_created_keyboard() if tickets else empty_feedback_keyboard()
+    await message.answer(format_user_feedback(tickets), reply_markup=reply_markup)
 
 
 @router.message(F.text == "Очистить избранное")
@@ -452,6 +840,17 @@ def _history_score(value: object) -> int | None:
         return value
     if isinstance(value, str) and value.strip().isdigit():
         return int(value.strip())
+    return None
+
+
+def _profile_score(profile: dict | None) -> int | None:
+    if not isinstance(profile, dict):
+        return None
+    score = profile.get("score")
+    if isinstance(score, int):
+        return score
+    if isinstance(score, str) and score.strip().isdigit():
+        return int(score.strip())
     return None
 
 

@@ -1,0 +1,11 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="420" rx="36" fill="#202152"/>
+  <rect x="48" y="48" width="1104" height="324" rx="28" fill="#F4F1EA"/>
+  <circle cx="952" cy="210" r="96" fill="#8EA2FF" opacity="0.24"/>
+  <circle cx="952" cy="210" r="48" fill="#202152" opacity="0.82"/>
+  <circle cx="952" cy="210" r="18" fill="#F4F1EA"/>
+  <path d="M952 82 V130 M952 290 V338 M824 210 H872 M1032 210 H1080 M861 119 L895 153 M1005 263 L1039 297 M1039 119 L1005 153 M895 263 L861 297" stroke="#202152" stroke-width="14" stroke-linecap="round" opacity="0.68"/>
+  <text x="96" y="150" fill="#202152" font-family="Arial, sans-serif" font-size="58" font-weight="700">Аиша</text>
+  <text x="96" y="222" fill="#202152" font-family="Arial, sans-serif" font-size="42" font-weight="700">Сервис</text>
+  <text x="96" y="284" fill="#5F6078" font-family="Arial, sans-serif" font-size="28">Профиль, обратная связь, приватность и данные</text>
+</svg>

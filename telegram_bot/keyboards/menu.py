@@ -1,8 +1,36 @@
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, WebAppInfo
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, WebAppInfo
 
 from telegram_bot.config import settings
 
 MAX_FAVORITE_ACTION_BUTTONS = 5
+
+MENU_MAIN_CALLBACK = "menu:main"
+MENU_RESULTS_CALLBACK = "menu:results"
+MENU_ASSISTANT_CALLBACK = "menu:assistant"
+MENU_SERVICE_CALLBACK = "menu:service"
+MENU_ABOUT_CALLBACK = "menu:about"
+MENU_SEARCH_CALLBACK = "menu:search"
+MENU_WEBAPP_CALLBACK = "menu:webapp"
+MENU_SUMMARY_CALLBACK = "menu:summary"
+MENU_FAVORITES_CALLBACK = "menu:favorites"
+MENU_HISTORY_CALLBACK = "menu:history"
+MENU_COMPARE_CALLBACK = "menu:compare"
+MENU_FILTERS_CALLBACK = "menu:filters"
+MENU_EXPORT_CALLBACK = "menu:export"
+MENU_ADVICE_CALLBACK = "menu:advice"
+MENU_NEXT_CALLBACK = "menu:next"
+MENU_SUPPORT_CALLBACK = "menu:support"
+MENU_CATEGORIES_CALLBACK = "menu:categories"
+MENU_DIRECTIONS_CALLBACK = "menu:directions"
+MENU_REGIONS_CALLBACK = "menu:regions"
+MENU_PROFILE_CALLBACK = "menu:profile"
+MENU_FEEDBACK_CALLBACK = "menu:feedback"
+MENU_MY_FEEDBACK_CALLBACK = "menu:my_feedback"
+MENU_PRIVACY_CALLBACK = "menu:privacy"
+MENU_RESET_CALLBACK = "menu:reset"
+MENU_ABOUT_TEXT_CALLBACK = "menu:about_text"
+MENU_DEMO_CALLBACK = "menu:demo"
+MENU_BOTFATHER_CALLBACK = "menu:botfather"
 
 
 def main_menu_keyboard() -> ReplyKeyboardMarkup:
@@ -16,6 +44,94 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
         keyboard=keyboard,
         resize_keyboard=True,
         input_field_placeholder="Выбери раздел",
+    )
+
+
+def main_menu_inline_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Подобрать вуз", callback_data=MENU_SEARCH_CALLBACK),
+                _mini_app_inline_button("Mini App"),
+            ],
+            [
+                InlineKeyboardButton(text="Мои результаты", callback_data=MENU_RESULTS_CALLBACK),
+                InlineKeyboardButton(text="Помощник", callback_data=MENU_ASSISTANT_CALLBACK),
+            ],
+            [
+                InlineKeyboardButton(text="Сервис", callback_data=MENU_SERVICE_CALLBACK),
+                InlineKeyboardButton(text="О проекте", callback_data=MENU_ABOUT_CALLBACK),
+            ],
+        ]
+    )
+
+
+def results_menu_inline_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Итог подбора", callback_data=MENU_SUMMARY_CALLBACK),
+                InlineKeyboardButton(text="Избранные вузы", callback_data=MENU_FAVORITES_CALLBACK),
+            ],
+            [
+                InlineKeyboardButton(text="История подборов", callback_data=MENU_HISTORY_CALLBACK),
+                InlineKeyboardButton(text="Сравнить вузы", callback_data=MENU_COMPARE_CALLBACK),
+            ],
+            [
+                InlineKeyboardButton(text="Фильтры результатов", callback_data=MENU_FILTERS_CALLBACK),
+                InlineKeyboardButton(text="Экспорт результата", callback_data=MENU_EXPORT_CALLBACK),
+            ],
+            [InlineKeyboardButton(text="Назад", callback_data=MENU_MAIN_CALLBACK)],
+        ]
+    )
+
+
+def assistant_menu_inline_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Советы по подбору", callback_data=MENU_ADVICE_CALLBACK),
+                InlineKeyboardButton(text="Что делать дальше", callback_data=MENU_NEXT_CALLBACK),
+            ],
+            [InlineKeyboardButton(text="Как читать категории", callback_data=MENU_CATEGORIES_CALLBACK)],
+            [
+                InlineKeyboardButton(text="Направления", callback_data=MENU_DIRECTIONS_CALLBACK),
+                InlineKeyboardButton(text="Регионы", callback_data=MENU_REGIONS_CALLBACK),
+            ],
+            [InlineKeyboardButton(text="Психологическая поддержка", callback_data=MENU_SUPPORT_CALLBACK)],
+            [_mini_app_inline_button("Mini App")],
+            [InlineKeyboardButton(text="Назад", callback_data=MENU_MAIN_CALLBACK)],
+        ]
+    )
+
+
+def service_menu_inline_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Мой профиль", callback_data=MENU_PROFILE_CALLBACK)],
+            [
+                InlineKeyboardButton(text="Обратная связь", callback_data=MENU_FEEDBACK_CALLBACK),
+                InlineKeyboardButton(text="Мои обращения", callback_data=MENU_MY_FEEDBACK_CALLBACK),
+            ],
+            [
+                InlineKeyboardButton(text="Приватность", callback_data=MENU_PRIVACY_CALLBACK),
+                InlineKeyboardButton(text="Сбросить данные", callback_data=MENU_RESET_CALLBACK),
+            ],
+            [InlineKeyboardButton(text="Назад", callback_data=MENU_MAIN_CALLBACK)],
+        ]
+    )
+
+
+def about_menu_inline_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="О проекте", callback_data=MENU_ABOUT_TEXT_CALLBACK),
+                InlineKeyboardButton(text="Демо-сценарий", callback_data=MENU_DEMO_CALLBACK),
+            ],
+            [InlineKeyboardButton(text="BotFather", callback_data=MENU_BOTFATHER_CALLBACK)],
+            [InlineKeyboardButton(text="Назад", callback_data=MENU_MAIN_CALLBACK)],
+        ]
     )
 
 
@@ -220,3 +336,9 @@ def _mini_app_button(text: str = "Mini App") -> KeyboardButton:
     if settings.webapp_url:
         return KeyboardButton(text=text, web_app=WebAppInfo(url=settings.webapp_url))
     return KeyboardButton(text=text)
+
+
+def _mini_app_inline_button(text: str = "Mini App") -> InlineKeyboardButton:
+    if settings.webapp_url:
+        return InlineKeyboardButton(text=text, web_app=WebAppInfo(url=settings.webapp_url))
+    return InlineKeyboardButton(text=text, callback_data=MENU_WEBAPP_CALLBACK)

@@ -1,0 +1,10 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="420" rx="36" fill="#202152"/>
+  <rect x="48" y="48" width="1104" height="324" rx="28" fill="#F4F1EA"/>
+  <circle cx="1040" cy="112" r="86" fill="#8EA2FF" opacity="0.28"/>
+  <circle cx="980" cy="310" r="120" fill="#2E8B57" opacity="0.14"/>
+  <path d="M90 300 C210 230, 300 275, 440 205 S725 140, 880 220" stroke="#202152" stroke-width="12" stroke-linecap="round" opacity="0.18"/>
+  <text x="96" y="150" fill="#202152" font-family="Arial, sans-serif" font-size="58" font-weight="700">Аиша</text>
+  <text x="96" y="222" fill="#202152" font-family="Arial, sans-serif" font-size="42" font-weight="700">Главное меню</text>
+  <text x="96" y="284" fill="#5F6078" font-family="Arial, sans-serif" font-size="28">Подбор вузов, результаты, помощник и Mini App</text>
+</svg>

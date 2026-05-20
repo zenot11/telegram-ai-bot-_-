@@ -4,7 +4,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 
 from telegram_bot.config import settings
-from telegram_bot.keyboards.menu import main_menu_keyboard
+from telegram_bot.keyboards.menu import main_menu_inline_keyboard, main_menu_keyboard
+from telegram_bot.services.menu_cards import send_menu_card
 from telegram_bot.services.texts import (
     ABOUT_TEXT,
     BOTFATHER_TEXT,
@@ -22,13 +23,7 @@ router = Router()
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(
-        "Привет! Я Аиша — помощник абитуриента.\n"
-        "Я помогу спокойно подобрать варианты вузов по региону, баллам, направлению и типу обучения.\n"
-        "А если из-за поступления тревожно или сложно выбрать — помогу разложить задачу на маленькие шаги.\n\n"
-        "В меню ниже только основные разделы: подбор, Mini App, результаты, помощник, сервис и информация о проекте.",
-        reply_markup=main_menu_keyboard(),
-    )
+    await send_menu_card(message, "main", main_menu_inline_keyboard())
 
 
 @router.message(Command("help"))

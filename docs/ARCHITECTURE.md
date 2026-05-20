@@ -54,8 +54,9 @@ Mini App
 - `main.py` - точка входа, создание `Bot`, `Dispatcher`, подключение роутеров и BotCommand.
 - `config.py` - чтение настроек из `.env`: токен Telegram, OpenAI key, backend URL, WebApp URL.
 - `handlers/` - обработчики команд, кнопок и сценариев.
-- `keyboards/` - reply-клавиатуры для меню, поиска, сравнения и профиля. Главное меню разделено на 6 основных разделов: подбор, Mini App, результаты, помощник, сервис и информация о проекте.
-- `services/` - чистая логика: API-клиент, OpenAI wrapper, safety, validation, formatting, comparison, summary, history, advice, filters, export, feedback.
+- `keyboards/` - reply-клавиатуры для старых сценариев и inline-клавиатуры карточного меню. Главное меню разделено на 6 основных разделов: подбор, Mini App, результаты, помощник, сервис и информация о проекте.
+- `services/` - чистая логика: API-клиент, OpenAI wrapper, safety, validation, formatting, comparison, summary, history, advice, filters, export, feedback, menu cards.
+- `assets/menu/` - локальные SVG-баннеры для главного меню и основных подменю.
 - `states/` - FSM-состояния для поиска и сравнения.
 - `storage/` - локальное JSON-хранилище пользователя.
 
@@ -86,6 +87,7 @@ Mini App
 - `filters.py` - фильтрация последних результатов по категориям и типу обучения.
 - `export.py` - plain text отчёт по `last_results` и `favorites`, split длинных сообщений и безопасное имя `.txt`.
 - `feedback.py` - категории обращений, валидация текста и форматирование заявок.
+- `menu_cards.py` - отправка визуальных меню-карточек с локальными баннерами и fallback на обычный текст, если Telegram не принял изображение.
 - `texts.py` - тексты команд `/help`, `/demo`, `/privacy`, `/botfather`.
 
 ## `telegram_bot/storage/`

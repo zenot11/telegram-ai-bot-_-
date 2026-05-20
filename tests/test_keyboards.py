@@ -1,15 +1,26 @@
 from aiogram.types import ReplyKeyboardMarkup
 
 from telegram_bot.keyboards.menu import (
+    MENU_ABOUT_CALLBACK,
+    MENU_ASSISTANT_CALLBACK,
+    MENU_MAIN_CALLBACK,
+    MENU_RESULTS_CALLBACK,
+    MENU_SEARCH_CALLBACK,
+    MENU_SERVICE_CALLBACK,
     about_menu_keyboard,
+    about_menu_inline_keyboard,
     advice_keyboard,
     assistant_menu_keyboard,
+    assistant_menu_inline_keyboard,
     empty_history_keyboard,
     favorites_keyboard_for_count,
     history_keyboard,
     main_menu_keyboard,
+    main_menu_inline_keyboard,
     results_menu_keyboard,
+    results_menu_inline_keyboard,
     service_menu_keyboard,
+    service_menu_inline_keyboard,
 )
 from telegram_bot.keyboards.compare import compare_options_keyboard
 from telegram_bot.keyboards.export import empty_export_keyboard, export_menu_keyboard
@@ -19,6 +30,14 @@ from telegram_bot.keyboards.search import search_results_keyboard
 
 def keyboard_texts(markup: ReplyKeyboardMarkup) -> list[str]:
     return [button.text for row in markup.keyboard for button in row]
+
+
+def inline_keyboard_texts(markup) -> list[str]:
+    return [button.text for row in markup.inline_keyboard for button in row]
+
+
+def inline_callback_data(markup) -> set[str | None]:
+    return {button.callback_data for row in markup.inline_keyboard for button in row}
 
 
 def test_search_save_buttons_match_results_count() -> None:
@@ -77,6 +96,26 @@ def test_main_menu_is_compact_and_contains_sections() -> None:
     assert "Мой профиль" not in texts
 
 
+def test_main_menu_inline_keyboard_contains_card_sections() -> None:
+    markup = main_menu_inline_keyboard()
+    texts = inline_keyboard_texts(markup)
+    callbacks = inline_callback_data(markup)
+
+    assert texts == [
+        "Подобрать вуз",
+        "Mini App",
+        "Мои результаты",
+        "Помощник",
+        "Сервис",
+        "О проекте",
+    ]
+    assert MENU_SEARCH_CALLBACK in callbacks
+    assert MENU_RESULTS_CALLBACK in callbacks
+    assert MENU_ASSISTANT_CALLBACK in callbacks
+    assert MENU_SERVICE_CALLBACK in callbacks
+    assert MENU_ABOUT_CALLBACK in callbacks
+
+
 def test_results_submenu_contains_result_actions() -> None:
     texts = keyboard_texts(results_menu_keyboard())
 
@@ -87,6 +126,16 @@ def test_results_submenu_contains_result_actions() -> None:
     assert "Фильтры результатов" in texts
     assert "Экспорт результата" in texts
     assert "Назад" in texts
+
+
+def test_results_inline_submenu_contains_back_callback() -> None:
+    markup = results_menu_inline_keyboard()
+    texts = inline_keyboard_texts(markup)
+    callbacks = inline_callback_data(markup)
+
+    assert "Итог подбора" in texts
+    assert "Экспорт результата" in texts
+    assert MENU_MAIN_CALLBACK in callbacks
 
 
 def test_assistant_submenu_contains_help_actions() -> None:
@@ -100,6 +149,16 @@ def test_assistant_submenu_contains_help_actions() -> None:
     assert "Назад" in texts
 
 
+def test_assistant_inline_submenu_contains_back_callback() -> None:
+    markup = assistant_menu_inline_keyboard()
+    texts = inline_keyboard_texts(markup)
+    callbacks = inline_callback_data(markup)
+
+    assert "Советы по подбору" in texts
+    assert "Психологическая поддержка" in texts
+    assert MENU_MAIN_CALLBACK in callbacks
+
+
 def test_service_submenu_contains_profile_feedback_and_privacy() -> None:
     texts = keyboard_texts(service_menu_keyboard())
 
@@ -111,6 +170,16 @@ def test_service_submenu_contains_profile_feedback_and_privacy() -> None:
     assert "Назад" in texts
 
 
+def test_service_inline_submenu_contains_back_callback() -> None:
+    markup = service_menu_inline_keyboard()
+    texts = inline_keyboard_texts(markup)
+    callbacks = inline_callback_data(markup)
+
+    assert "Мой профиль" in texts
+    assert "Обратная связь" in texts
+    assert MENU_MAIN_CALLBACK in callbacks
+
+
 def test_about_submenu_contains_project_info() -> None:
     texts = keyboard_texts(about_menu_keyboard())
 
@@ -118,6 +187,16 @@ def test_about_submenu_contains_project_info() -> None:
     assert "Демо-сценарий" in texts
     assert "BotFather" in texts
     assert "Назад" in texts
+
+
+def test_about_inline_submenu_contains_back_callback() -> None:
+    markup = about_menu_inline_keyboard()
+    texts = inline_keyboard_texts(markup)
+    callbacks = inline_callback_data(markup)
+
+    assert "О проекте" in texts
+    assert "Демо-сценарий" in texts
+    assert MENU_MAIN_CALLBACK in callbacks
 
 
 def test_history_keyboard_actions() -> None:
