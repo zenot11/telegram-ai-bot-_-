@@ -36,6 +36,13 @@
       <section id="home" class="tab-panel is-active hero-section" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="eyebrow">Telegram Mini App</p>
+          <div class="aisha-brand-logo" role="img" aria-label="Aisha">
+            <span class="brand-letter brand-letter-a" style="--letter-index: 0" aria-hidden="true">A</span>
+            <span class="brand-letter brand-letter-i" style="--letter-index: 1" aria-hidden="true">i</span>
+            <span class="brand-letter brand-letter-s" style="--letter-index: 2" aria-hidden="true">s</span>
+            <span class="brand-letter brand-letter-h" style="--letter-index: 3" aria-hidden="true">h</span>
+            <span class="brand-letter brand-letter-a2" style="--letter-index: 4" aria-hidden="true">a</span>
+          </div>
           <h1 id="hero-title">Построй будущее уже сегодня</h1>
           <p class="hero-text">
             Аиша помогает подобрать вуз по региону, баллам, направлению и типу обучения.
@@ -69,6 +76,21 @@
           </div>
         </aside>
       </section>
+
+      <aside id="aisha-hint" class="aisha-hint" data-hint-tone="idle" aria-live="polite">
+        <div class="aisha-orb" aria-hidden="true">A</div>
+        <div class="aisha-hint__body">
+          <p class="aisha-hint__label">Aisha советует</p>
+          <p id="aisha-hint-text">Начни с подбора: выбери регион, баллы, направление и тип обучения.</p>
+        </div>
+        <div class="aisha-hint__actions">
+          <button id="aisha-hint-action" class="hint-action" type="button" data-action-tab="search">К подбору</button>
+          <button id="aisha-hint-refresh" class="hint-secondary" type="button">Обновить совет</button>
+          <button id="aisha-hint-hide" class="hint-secondary" type="button">Скрыть</button>
+        </div>
+      </aside>
+
+      <button id="aisha-hint-show" class="aisha-hint-show is-hidden" type="button">Показать подсказки</button>
 
       <section id="search" class="tab-panel section search-section" aria-labelledby="search-title">
         <div class="section-heading">

@@ -35,6 +35,12 @@ const feedbackStatusNode = document.querySelector("#feedback-status");
 const feedbackResultNode = document.querySelector("#feedback-result");
 const feedbackHistoryStatusNode = document.querySelector("#feedback-history-status");
 const feedbackListNode = document.querySelector("#feedback-list");
+const aishaHintNode = document.querySelector("#aisha-hint");
+const aishaHintTextNode = document.querySelector("#aisha-hint-text");
+const aishaHintActionButton = document.querySelector("#aisha-hint-action");
+const aishaHintRefreshButton = document.querySelector("#aisha-hint-refresh");
+const aishaHintHideButton = document.querySelector("#aisha-hint-hide");
+const aishaHintShowButton = document.querySelector("#aisha-hint-show");
 const clearFavoritesButton = document.querySelector("#clear-favorites");
 const clearComparisonButton = document.querySelector("#clear-comparison");
 const themeToggleButton = document.querySelector("#theme-toggle");
@@ -50,14 +56,18 @@ const FAVORITES_KEY = "aisha_favorites";
 const LEGACY_FAVORITES_KEY = "aishaMiniAppFavorites";
 const THEME_KEY = "aisha_theme";
 const COMPARISON_KEY = "aisha_compare";
+const HINTS_HIDDEN_KEY = "aisha_hints_hidden";
 const MAX_COMPARISON_ITEMS = 3;
 
 let lastResults = [];
 let displayedResults = [];
 let activeFilter = "all";
+let activeTab = "home";
+let isSearchLoading = false;
 let currentSearch = null;
 let favorites = loadFavorites();
 let comparisonItems = loadComparisonItems();
+let aishaHintsHidden = loadAishaHintsHidden();
 let comparisonNotice = "";
 let favoritesSyncNotice = "";
 let feedbackTickets = [];
@@ -174,6 +184,26 @@ refreshFeedbackButton?.addEventListener("click", () => {
   loadMyFeedback();
 });
 
+aishaHintActionButton?.addEventListener("click", () => {
+  const actionTab = aishaHintActionButton.dataset.actionTab;
+  if (actionTab) {
+    activateTab(actionTab);
+  }
+});
+
+aishaHintRefreshButton?.addEventListener("click", () => {
+  updateAishaHint();
+  showToast("Совет обновлён.", "info");
+});
+
+aishaHintHideButton?.addEventListener("click", () => {
+  hideAishaHints();
+});
+
+aishaHintShowButton?.addEventListener("click", () => {
+  showAishaHints();
+});
+
 async function performSearch() {
   const formData = new FormData(form);
   const scoreValue = String(formData.get("score") || "").trim();
@@ -226,6 +256,8 @@ async function performSearch() {
   showStatus("Ищу варианты...");
   resultsNode.innerHTML = "";
   filterResultsNode.innerHTML = "";
+  isSearchLoading = true;
+  updateAishaHint();
 
   try {
     const response = await fetch(`/api/universities?${params.toString()}`);
@@ -246,6 +278,7 @@ async function performSearch() {
         saved_score: score,
       }));
     activeFilter = "all";
+    isSearchLoading = false;
     renderAll();
 
     if (!lastResults.length) {
@@ -258,6 +291,7 @@ async function performSearch() {
 
     scrollToResults();
   } catch (error) {
+    isSearchLoading = false;
     lastResults = [];
     displayedResults = [];
     renderAll();
@@ -445,6 +479,7 @@ function toggleTheme() {
   const nextTheme = currentTheme === "dark" ? "light" : "dark";
   applyTheme(nextTheme);
   saveTheme(nextTheme);
+  updateAishaHint();
   showToast(nextTheme === "dark" ? "Тёмная тема включена." : "Светлая тема включена.", "info");
 
   if (telegramWebApp?.HapticFeedback) {
@@ -454,6 +489,7 @@ function toggleTheme() {
 
 function activateTab(tabName) {
   const safeTabName = tabName || "home";
+  activeTab = safeTabName;
   tabPanels.forEach((panel) => {
     panel.classList.toggle("is-active", panel.id === safeTabName);
   });
@@ -462,6 +498,7 @@ function activateTab(tabName) {
     button.classList.toggle("is-active", isActive);
     button.setAttribute("aria-selected", String(isActive));
   });
+  updateAishaHint();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -497,6 +534,221 @@ function renderAll() {
   renderExportPreview();
   renderFeedbackStatus();
   renderMyFeedback();
+  renderAishaHint();
+}
+
+function getAishaHintContext() {
+  return {
+    activeTab,
+    isSearchLoading,
+    hasSearch: Boolean(currentSearch),
+    hasResults: lastResults.length > 0,
+    resultsCount: lastResults.length,
+    counts: getFilterCounts(lastResults),
+    favoritesCount: favorites.length,
+    comparisonCount: comparisonItems.length,
+  };
+}
+
+function buildAishaHint() {
+  const context = getAishaHintContext();
+
+  if (context.isSearchLoading) {
+    return {
+      title: "Aisha советует",
+      text: "Я ищу подходящие варианты. После выдачи лучше сначала посмотреть безопасные и реалистичные варианты.",
+      actionLabel: "К результатам",
+      actionTab: "search",
+      tone: "search",
+    };
+  }
+
+  if (context.activeTab === "plan") {
+    return {
+      title: "Aisha советует",
+      text: "План помогает не потеряться: сначала запасные варианты, потом реалистичные, затем амбициозные.",
+      actionLabel: context.hasResults ? "К экспорту" : "К подбору",
+      actionTab: context.hasResults ? "export" : "search",
+      tone: "plan",
+    };
+  }
+
+  if (context.activeTab === "export") {
+    return {
+      title: "Aisha советует",
+      text: context.hasResults
+        ? "Когда определишься, сохрани отчёт или распечатай его через системное окно печати."
+        : "Сначала выполни подбор, и здесь появится отчёт для копирования или печати.",
+      actionLabel: context.hasResults ? "Открыть план" : "К подбору",
+      actionTab: context.hasResults ? "plan" : "search",
+      tone: "export",
+    };
+  }
+
+  if (context.activeTab === "feedback") {
+    return {
+      title: "Aisha советует",
+      text: "Если заметил ошибку в данных или Mini App, отправь обращение — я сохраню его с номером заявки.",
+      actionLabel: "К форме",
+      actionTab: "feedback",
+      tone: "support",
+    };
+  }
+
+  if (context.activeTab === "comparison") {
+    if (context.comparisonCount >= 2) {
+      return {
+        title: "Aisha советует",
+        text: "Проверь баллы, стоимость, город и сайт в таблице сравнения.",
+        actionLabel: "К плану",
+        actionTab: "plan",
+        tone: "compare",
+      };
+    }
+    return {
+      title: "Aisha советует",
+      text: context.comparisonCount === 1
+        ? "Для сравнения нужно минимум 2 вуза. Добавь ещё один вариант."
+        : "Добавь 2–3 вуза к сравнению, чтобы быстрее увидеть различия между программами.",
+      actionLabel: context.hasResults ? "К подбору" : "Начать подбор",
+      actionTab: "search",
+      tone: "compare",
+    };
+  }
+
+  if (context.activeTab === "favorites") {
+    if (!context.favoritesCount) {
+      return {
+        title: "Aisha советует",
+        text: "Пока избранное пустое. Сохрани 2–3 варианта из результатов, чтобы не потерять их.",
+        actionLabel: context.hasResults ? "К результатам" : "К подбору",
+        actionTab: "search",
+        tone: "favorite",
+      };
+    }
+    return {
+      title: "Aisha советует",
+      text: "Теперь добавь 2–3 вуза в сравнение: так легче выбрать между программами.",
+      actionLabel: "К сравнению",
+      actionTab: "comparison",
+      tone: "favorite",
+    };
+  }
+
+  if (!context.hasSearch) {
+    return {
+      title: "Aisha советует",
+      text: "Начни с подбора: выбери регион, баллы, направление и тип обучения.",
+      actionLabel: "К подбору",
+      actionTab: "search",
+      tone: "idle",
+    };
+  }
+
+  if (!context.hasResults) {
+    return {
+      title: "Aisha советует",
+      text: "По текущим параметрам ничего не найдено. Попробуй соседний регион, платное обучение или более широкое направление.",
+      actionLabel: "Изменить поиск",
+      actionTab: "search",
+      tone: "empty",
+    };
+  }
+
+  if (!context.favoritesCount) {
+    const categoryPart = context.counts.safe || context.counts.realistic
+      ? `В выдаче: безопасные — ${context.counts.safe}, реалистичные — ${context.counts.realistic}. `
+      : "";
+    return {
+      title: "Aisha советует",
+      text: `${categoryPart}Сохрани 2–3 варианта в избранное, чтобы не потерять их и потом сравнить.`,
+      actionLabel: "К результатам",
+      actionTab: "search",
+      tone: "success",
+    };
+  }
+
+  if (context.comparisonCount < 2) {
+    return {
+      title: "Aisha советует",
+      text: "У тебя уже есть избранное. Добавь минимум 2 вуза в сравнение, чтобы увидеть различия в таблице.",
+      actionLabel: "К сравнению",
+      actionTab: "comparison",
+      tone: "compare",
+    };
+  }
+
+  return {
+    title: "Aisha советует",
+    text: "Проверь таблицу сравнения, план поступления и официальные сайты вузов перед подачей документов.",
+    actionLabel: "Открыть план",
+    actionTab: "plan",
+    tone: "plan",
+  };
+}
+
+function renderAishaHint() {
+  if (!aishaHintNode || !aishaHintTextNode) {
+    return;
+  }
+
+  if (aishaHintsHidden) {
+    aishaHintNode.classList.add("is-hidden");
+    aishaHintShowButton?.classList.remove("is-hidden");
+    return;
+  }
+
+  const hint = buildAishaHint();
+  aishaHintNode.classList.remove("is-hidden");
+  aishaHintNode.dataset.hintTone = hint.tone || "idle";
+  aishaHintTextNode.textContent = hint.text;
+  aishaHintShowButton?.classList.add("is-hidden");
+
+  if (aishaHintActionButton && hint.actionLabel && hint.actionTab) {
+    aishaHintActionButton.textContent = hint.actionLabel;
+    aishaHintActionButton.dataset.actionTab = hint.actionTab;
+    aishaHintActionButton.classList.remove("is-hidden");
+  } else {
+    aishaHintActionButton?.classList.add("is-hidden");
+  }
+}
+
+function updateAishaHint() {
+  renderAishaHint();
+}
+
+function hideAishaHints() {
+  aishaHintsHidden = true;
+  saveAishaHintsHidden(true);
+  renderAishaHint();
+  showToast("Подсказки скрыты.", "info");
+}
+
+function showAishaHints() {
+  aishaHintsHidden = false;
+  saveAishaHintsHidden(false);
+  renderAishaHint();
+  showToast("Подсказки снова включены.", "info");
+}
+
+function loadAishaHintsHidden() {
+  try {
+    return window.localStorage.getItem(HINTS_HIDDEN_KEY) === "true";
+  } catch (error) {
+    return false;
+  }
+}
+
+function saveAishaHintsHidden(value) {
+  try {
+    if (value) {
+      window.localStorage.setItem(HINTS_HIDDEN_KEY, "true");
+    } else {
+      window.localStorage.removeItem(HINTS_HIDDEN_KEY);
+    }
+  } catch (error) {
+    // The current in-memory setting is enough when localStorage is unavailable.
+  }
 }
 
 function getTelegramInitData() {
