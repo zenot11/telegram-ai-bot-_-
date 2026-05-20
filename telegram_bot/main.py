@@ -32,7 +32,7 @@ async def set_bot_commands(bot: Bot) -> None:
             BotCommand(command="about", description="О проекте"),
             BotCommand(command="demo", description="Сценарий демонстрации"),
             BotCommand(command="privacy", description="Приватность"),
-            BotCommand(command="next", description="Что подготовить перед сдачей"),
+            BotCommand(command="next", description="Следующий шаг после подбора"),
             BotCommand(command="botfather", description="Настройки BotFather"),
             BotCommand(command="reset", description="Сброс введённых данных"),
             BotCommand(command="help", description="Помощь"),

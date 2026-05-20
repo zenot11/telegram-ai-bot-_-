@@ -359,22 +359,26 @@ main,
 .aisha-brand-logo {
   display: inline-flex;
   align-items: baseline;
-  gap: 2px;
-  margin: 2px 0 18px;
+  gap: 1px;
+  margin: 0;
   color: var(--aisha-brand);
-  font-size: clamp(3.1rem, 9vw, 6.8rem);
-  line-height: 0.9;
+  font-size: 1.22rem;
+  line-height: 1;
   letter-spacing: 0;
-  filter: drop-shadow(0 18px 34px var(--aisha-glow));
+  filter: drop-shadow(0 9px 18px var(--aisha-glow));
+}
+
+.aisha-brand-logo--topbar {
+  min-width: 56px;
 }
 
 .brand-letter {
   display: inline-block;
   opacity: 0;
-  transform: translateY(16px) scale(0.92);
-  animation: aishaLetterIn 0.72s cubic-bezier(0.18, 0.9, 0.28, 1.16) forwards;
-  animation-delay: calc(var(--letter-index) * 0.13s);
-  text-shadow: 0 10px 30px var(--aisha-glow);
+  transform: translateY(8px) scale(0.94);
+  animation: aishaLetterIn 0.58s cubic-bezier(0.18, 0.9, 0.28, 1.16) forwards;
+  animation-delay: calc(var(--letter-index) * 0.09s);
+  text-shadow: 0 6px 18px var(--aisha-glow);
 }
 
 .brand-letter-a {
@@ -414,13 +418,13 @@ main,
 @keyframes aishaLetterIn {
   0% {
     opacity: 0;
-    transform: translateY(16px) scale(0.92);
-    filter: blur(4px);
+    transform: translateY(8px) scale(0.94);
+    filter: blur(3px);
   }
 
   70% {
     opacity: 1;
-    transform: translateY(-3px) scale(1.02);
+    transform: translateY(-2px) scale(1.02);
     filter: blur(0);
   }
 
@@ -1988,9 +1992,8 @@ select:focus {
     padding: 28px 0 18px;
   }
 
-  .aisha-brand-logo {
-    font-size: 3.4rem;
-    margin-bottom: 14px;
+  .brand .aisha-brand-logo {
+    font-size: 1.12rem;
   }
 
   h1 {

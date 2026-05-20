@@ -105,6 +105,19 @@ def assistant_menu_inline_keyboard() -> InlineKeyboardMarkup:
     )
 
 
+def next_steps_inline_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Подобрать вуз", callback_data=MENU_SEARCH_CALLBACK),
+                InlineKeyboardButton(text="Советы по подбору", callback_data=MENU_ADVICE_CALLBACK),
+            ],
+            [_mini_app_inline_button("Mini App")],
+            [InlineKeyboardButton(text="Вернуться в меню", callback_data=MENU_MAIN_CALLBACK)],
+        ]
+    )
+
+
 def service_menu_inline_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[

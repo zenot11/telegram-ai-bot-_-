@@ -55,6 +55,7 @@ from telegram_bot.keyboards.menu import (
     history_keyboard,
     main_menu_keyboard,
     main_menu_inline_keyboard,
+    next_steps_inline_keyboard,
     profile_keyboard,
     results_menu_keyboard,
     results_menu_inline_keyboard,
@@ -71,13 +72,14 @@ from telegram_bot.services.filters import EMPTY_FILTERS_TEXT, build_filters_over
 from telegram_bot.services.formatters import format_university_card
 from telegram_bot.services.history import format_history_message
 from telegram_bot.services.menu_cards import send_menu_card
+from telegram_bot.services.next_steps import build_next_steps_text
 from telegram_bot.services.recommendation import (
     format_categories_explanation,
     group_universities_by_recommendation,
     visible_recommendations,
 )
 from telegram_bot.services.summary import EMPTY_SUMMARY_TEXT, format_last_search_summary, format_search_brief_summary
-from telegram_bot.services.texts import ABOUT_TEXT, BOTFATHER_TEXT, DEMO_TEXT, HELP_TEXT, NEXT_TEXT, PRIVACY_TEXT
+from telegram_bot.services.texts import ABOUT_TEXT, BOTFATHER_TEXT, DEMO_TEXT, HELP_TEXT, PRIVACY_TEXT
 from telegram_bot.services.validation import (
     AVAILABLE_DIRECTIONS,
     AVAILABLE_REGIONS,
@@ -156,7 +158,10 @@ async def privacy_text(message: Message, state: FSMContext) -> None:
 @router.message(F.text == "Что делать дальше")
 async def next_text(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(NEXT_TEXT, reply_markup=assistant_menu_inline_keyboard())
+    user_id = message.from_user.id if message.from_user else 0
+    profile = user_storage.get_profile(user_id) if user_id else None
+    results = user_storage.get_last_results(user_id) if user_id else []
+    await message.answer(build_next_steps_text(profile, results), reply_markup=next_steps_inline_keyboard())
 
 
 @router.callback_query(F.data == MENU_MAIN_CALLBACK)
@@ -208,8 +213,8 @@ async def webapp_menu_callback(callback: CallbackQuery) -> None:
     if not settings.webapp_url:
         await callback.message.answer(
             "Mini App сейчас не подключён.\n"
-            "Добавь WEBAPP_URL в локальный .env и перезапусти бота. "
-            "Без Mini App бот продолжает работать в обычном режиме.",
+            "Пока можно продолжить в обычном режиме: сделай подбор через /search "
+            "или открой главное меню.",
             reply_markup=main_menu_inline_keyboard(),
         )
         return
@@ -332,7 +337,12 @@ async def next_menu_callback(callback: CallbackQuery, state: FSMContext) -> None
     await state.clear()
     await callback.answer()
     if callback.message:
-        await callback.message.answer(NEXT_TEXT, reply_markup=assistant_menu_inline_keyboard())
+        profile = user_storage.get_profile(callback.from_user.id)
+        results = user_storage.get_last_results(callback.from_user.id)
+        await callback.message.answer(
+            build_next_steps_text(profile, results),
+            reply_markup=next_steps_inline_keyboard(),
+        )
 
 
 @router.callback_query(F.data == MENU_SUPPORT_CALLBACK)
@@ -490,7 +500,7 @@ async def repeat_last_search(message: Message, state: FSMContext) -> None:
         )
     except UniversityAPIError:
         await message.answer(
-            "Сейчас не получилось повторить подбор. Проверь, что backend-заглушка запущена.",
+            "Сейчас не получилось повторить подбор. Попробуй позже или начни новый поиск.",
             reply_markup=history_keyboard(),
         )
         return

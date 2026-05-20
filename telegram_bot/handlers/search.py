@@ -128,7 +128,7 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
     except UniversityAPIError:
         await state.clear()
         await message.answer(
-            "Сейчас не получилось получить список вузов. Проверь, что backend-заглушка запущена.",
+            "Сейчас не получилось получить список вузов. Попробуй позже или вернись в меню.",
             reply_markup=main_menu_keyboard(),
         )
         return

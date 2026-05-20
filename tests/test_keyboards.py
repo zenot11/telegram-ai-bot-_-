@@ -2,6 +2,7 @@ from aiogram.types import ReplyKeyboardMarkup
 
 from telegram_bot.keyboards.menu import (
     MENU_ABOUT_CALLBACK,
+    MENU_ADVICE_CALLBACK,
     MENU_ASSISTANT_CALLBACK,
     MENU_MAIN_CALLBACK,
     MENU_RESULTS_CALLBACK,
@@ -17,6 +18,7 @@ from telegram_bot.keyboards.menu import (
     history_keyboard,
     main_menu_keyboard,
     main_menu_inline_keyboard,
+    next_steps_inline_keyboard,
     results_menu_keyboard,
     results_menu_inline_keyboard,
     service_menu_keyboard,
@@ -156,6 +158,20 @@ def test_assistant_inline_submenu_contains_back_callback() -> None:
 
     assert "Советы по подбору" in texts
     assert "Психологическая поддержка" in texts
+    assert MENU_MAIN_CALLBACK in callbacks
+
+
+def test_next_steps_inline_keyboard_contains_user_actions() -> None:
+    markup = next_steps_inline_keyboard()
+    texts = inline_keyboard_texts(markup)
+    callbacks = inline_callback_data(markup)
+
+    assert "Подобрать вуз" in texts
+    assert "Советы по подбору" in texts
+    assert "Mini App" in texts
+    assert "Вернуться в меню" in texts
+    assert MENU_SEARCH_CALLBACK in callbacks
+    assert MENU_ADVICE_CALLBACK in callbacks
     assert MENU_MAIN_CALLBACK in callbacks
 
 

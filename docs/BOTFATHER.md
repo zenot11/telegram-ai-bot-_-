@@ -24,7 +24,7 @@ webapp - Открыть Mini App
 about - О проекте
 demo - Сценарий демонстрации
 privacy - Приватность
-next - Что подготовить перед сдачей
+next - Следующий шаг после подбора
 botfather - Настройки BotFather
 clear_history - Очистить историю подборов
 reset - Сброс введённых данных
@@ -70,7 +70,7 @@ Mini Apps -> Menu Button
 Настройки:
 
 ```text
-URL = WEBAPP_URL из .env
+URL = публичная HTTPS-ссылка Mini App
 Label = Mini App
 ```
 
@@ -91,7 +91,7 @@ Mini Apps -> Main App
 Настройки:
 
 ```text
-URL = WEBAPP_URL из .env
+URL = публичная HTTPS-ссылка Mini App
 Launch mode = fullsize
 ```
 

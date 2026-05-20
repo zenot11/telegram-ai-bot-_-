@@ -9,9 +9,15 @@
   </head>
   <body>
     <header class="topbar">
-      <button class="brand" type="button" data-tab-target="home" aria-label="Аиша">
-        <span class="brand__mark">А</span>
-        <span>Аиша</span>
+      <button class="brand" type="button" data-tab-target="home" aria-label="Aisha">
+        <span class="brand__mark" aria-hidden="true">А</span>
+        <span class="aisha-brand-logo aisha-brand-logo--topbar" aria-hidden="true">
+          <span class="brand-letter brand-letter-a" style="--letter-index: 0">A</span>
+          <span class="brand-letter brand-letter-i" style="--letter-index: 1">i</span>
+          <span class="brand-letter brand-letter-s" style="--letter-index: 2">s</span>
+          <span class="brand-letter brand-letter-h" style="--letter-index: 3">h</span>
+          <span class="brand-letter brand-letter-a2" style="--letter-index: 4">a</span>
+        </span>
       </button>
       <div class="topbar__actions">
         <nav class="tabs nav-tabs" aria-label="Разделы Mini App">
@@ -36,13 +42,6 @@
       <section id="home" class="tab-panel is-active hero-section" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="eyebrow">Telegram Mini App</p>
-          <div class="aisha-brand-logo" role="img" aria-label="Aisha">
-            <span class="brand-letter brand-letter-a" style="--letter-index: 0" aria-hidden="true">A</span>
-            <span class="brand-letter brand-letter-i" style="--letter-index: 1" aria-hidden="true">i</span>
-            <span class="brand-letter brand-letter-s" style="--letter-index: 2" aria-hidden="true">s</span>
-            <span class="brand-letter brand-letter-h" style="--letter-index: 3" aria-hidden="true">h</span>
-            <span class="brand-letter brand-letter-a2" style="--letter-index: 4" aria-hidden="true">a</span>
-          </div>
           <h1 id="hero-title">Построй будущее уже сегодня</h1>
           <p class="hero-text">
             Аиша помогает подобрать вуз по региону, баллам, направлению и типу обучения.
@@ -211,7 +210,7 @@
         <div class="section-heading">
           <p class="eyebrow">Фильтры</p>
           <h2 id="filters-title">Фильтры результатов</h2>
-          <p>Фильтры работают локально по последнему подбору и не отправляют новый запрос к backend.</p>
+          <p>Фильтры работают локально по последнему подбору и не отправляют новый запрос к серверу.</p>
         </div>
         <div id="filter-controls" class="filter-controls" aria-label="Фильтры результатов"></div>
         <p id="filter-status" class="panel-status empty-state">Сначала сделай подбор, чтобы включить фильтры.</p>

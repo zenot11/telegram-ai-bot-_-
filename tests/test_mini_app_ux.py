@@ -66,7 +66,7 @@ def test_app_js_improves_empty_states() -> None:
     assert "В этом фильтре вариантов нет" in js
     assert "Пока здесь пусто" in js
     assert "Добавь 2–3 вуза к сравнению" in js
-    assert "Проверь, запущен ли backend" in js
+    assert "Проверь подключение или попробуй позже" in js
 
 
 def test_styles_include_ux_blocks_toasts_and_dark_support() -> None:

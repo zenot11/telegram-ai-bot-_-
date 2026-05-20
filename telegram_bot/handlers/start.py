@@ -4,14 +4,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 
 from telegram_bot.config import settings
-from telegram_bot.keyboards.menu import main_menu_inline_keyboard, main_menu_keyboard
+from telegram_bot.keyboards.menu import main_menu_inline_keyboard, main_menu_keyboard, next_steps_inline_keyboard
 from telegram_bot.services.menu_cards import send_menu_card
+from telegram_bot.services.next_steps import build_next_steps_text
 from telegram_bot.services.texts import (
     ABOUT_TEXT,
     BOTFATHER_TEXT,
     DEMO_TEXT,
     HELP_TEXT,
-    NEXT_TEXT,
     PRIVACY_TEXT,
 )
 from telegram_bot.storage.user_data import user_storage
@@ -48,7 +48,13 @@ async def cmd_privacy(message: Message) -> None:
 
 @router.message(Command("next"))
 async def cmd_next(message: Message) -> None:
-    await message.answer(NEXT_TEXT, reply_markup=main_menu_keyboard())
+    user_id = message.from_user.id if message.from_user else 0
+    profile = user_storage.get_profile(user_id) if user_id else None
+    results = user_storage.get_last_results(user_id) if user_id else []
+    await message.answer(
+        build_next_steps_text(profile, results),
+        reply_markup=next_steps_inline_keyboard(),
+    )
 
 
 @router.message(Command("botfather"))
@@ -62,8 +68,8 @@ async def cmd_webapp(message: Message) -> None:
     if not settings.webapp_url:
         await message.answer(
             "Mini App сейчас не подключён.\n"
-            "Добавь WEBAPP_URL в локальный .env и перезапусти бота. "
-            "Без Mini App бот продолжает работать в обычном режиме.",
+            "Пока можно продолжить в обычном режиме: сделай подбор через /search "
+            "или открой главное меню.",
             reply_markup=main_menu_keyboard(),
         )
         return

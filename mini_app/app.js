@@ -295,8 +295,8 @@ async function performSearch() {
     lastResults = [];
     displayedResults = [];
     renderAll();
-    showStatus("Не удалось получить данные. Проверь, запущен ли backend.", true);
-    showToast("Не удалось получить данные. Проверь backend.", "error");
+    showStatus("Не удалось получить данные. Проверь подключение или попробуй позже.", true);
+    showToast("Не удалось получить данные. Попробуй позже.", "error");
     scrollToResults();
   }
 }
@@ -810,12 +810,12 @@ async function checkWebAppSession() {
     }
 
     sessionState = {
-      status: payload.error === "bot_token_not_configured" ? "backend_unavailable" : "invalid",
+      status: payload.error === "bot_token_not_configured" ? "service_unavailable" : "invalid",
       mode: "telegram",
       authenticated: false,
       user: null,
       message: payload.error === "bot_token_not_configured"
-        ? "Backend не настроен для проверки Telegram-сессии. Избранное сохранится локально."
+        ? "Проверка Telegram-сессии сейчас недоступна. Избранное сохранится локально."
         : "Telegram-сессия не прошла проверку. Синхронизация отключена, избранное сохранится локально.",
     };
     favoritesSyncNotice = "Синхронизация отключена, избранное сохранится локально.";
@@ -823,13 +823,13 @@ async function checkWebAppSession() {
     renderAll();
   } catch (error) {
     sessionState = {
-      status: "backend_unavailable",
+      status: "service_unavailable",
       mode: hasTelegramInitData() ? "telegram" : "local",
       authenticated: false,
       user: null,
-      message: "Backend недоступен. Mini App работает в локальном режиме.",
+      message: "Сервис сейчас недоступен. Mini App работает в локальном режиме.",
     };
-    favoritesSyncNotice = "Backend недоступен. Избранное сохранится локально.";
+    favoritesSyncNotice = "Сервис сейчас недоступен. Избранное сохранится локально.";
     feedbackTickets = latestLocalFeedbackTicket ? [latestLocalFeedbackTicket] : [];
     renderAll();
   }
@@ -862,7 +862,7 @@ function getSessionMeta(status) {
     telegram_verified: { className: "success", badge: "Telegram ✓" },
     local: { className: "local", badge: "Локальный режим" },
     invalid: { className: "error", badge: "Сессия не проверена" },
-    backend_unavailable: { className: "warning", badge: "Backend недоступен" },
+    service_unavailable: { className: "warning", badge: "Сервис недоступен" },
   };
   return statuses[status] || statuses.checking;
 }
@@ -977,7 +977,7 @@ async function loadMyFeedback() {
       renderMyFeedback();
       return;
     }
-    feedbackHistoryStatusNode.textContent = "Не удалось обновить обращения. Проверь backend или открой Mini App через Telegram.";
+    feedbackHistoryStatusNode.textContent = "Не удалось обновить обращения. Проверь подключение или открой Mini App через Telegram.";
     showToast("Не удалось обновить обращения.", "warning");
   }
 }
@@ -1092,7 +1092,7 @@ function feedbackErrorMessage(error) {
   if (message.includes("invalid_init_data")) {
     return "Telegram-сессия не прошла проверку. Открой Mini App через /webapp и попробуй снова.";
   }
-  return "Не удалось отправить обращение. Проверь backend или попробуй позже.";
+  return "Не удалось отправить обращение. Проверь подключение или попробуй позже.";
 }
 
 function renderSearchResults() {

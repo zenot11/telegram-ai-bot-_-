@@ -1,6 +1,19 @@
 from telegram_bot.services.texts import BOTFATHER_TEXT, HELP_TEXT, TEXTS_FOR_TESTS
 
 
+DEV_ONLY_TERMS = (
+    "universities.json",
+    "OPENAI_API_KEY",
+    "WEBAPP_URL",
+    "ngrok",
+    "backend",
+    ".env",
+    "перед финальной сдачей",
+    "перед сдачей",
+    "финальные данные будут подставлены",
+)
+
+
 def test_information_texts_are_importable_without_telegram() -> None:
     assert "демонстрационный Telegram-сервис" in TEXTS_FOR_TESTS["about"]
     assert "Демо-сценарий для защиты" in TEXTS_FOR_TESTS["demo"]
@@ -11,7 +24,7 @@ def test_information_texts_are_importable_without_telegram() -> None:
     assert "/advice" in TEXTS_FOR_TESTS["demo"]
     assert "/history" in TEXTS_FOR_TESTS["demo"]
     assert "Приватность" in TEXTS_FOR_TESTS["privacy"]
-    assert "финальную базу вузов" in TEXTS_FOR_TESTS["next"]
+    assert "Сначала выполни подбор вузов" in TEXTS_FOR_TESTS["next"]
     assert "Команды для /setcommands" in TEXTS_FOR_TESTS["botfather"]
 
 
@@ -69,7 +82,7 @@ def test_botfather_text_contains_current_commands() -> None:
         "about - о проекте",
         "demo - сценарий демонстрации",
         "privacy - приватность",
-        "next - что подготовить перед сдачей",
+        "next - следующий шаг после подбора",
         "botfather - настройки BotFather",
         "reset - сброс введённых данных",
         "help - помощь",
@@ -79,3 +92,13 @@ def test_botfather_text_contains_current_commands() -> None:
 
 def test_user_facing_texts_do_not_use_mvp_label() -> None:
     assert all("MVP" not in text for text in TEXTS_FOR_TESTS.values())
+
+
+def test_user_facing_information_texts_do_not_show_dev_checklist() -> None:
+    combined = "\n".join(TEXTS_FOR_TESTS.values())
+
+    for term in DEV_ONLY_TERMS:
+        assert term not in combined
+
+    assert "/next — следующий шаг после подбора" in HELP_TEXT
+    assert "next - следующий шаг после подбора" in BOTFATHER_TEXT

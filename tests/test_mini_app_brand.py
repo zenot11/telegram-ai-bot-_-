@@ -12,6 +12,7 @@ def test_index_contains_animated_aisha_brand_logo() -> None:
     html = read_mini_app_file("index.html")
 
     assert "aisha-brand-logo" in html
+    assert "aisha-brand-logo--topbar" in html
     assert 'aria-label="Aisha"' in html
     assert "brand-letter-a" in html
     assert "brand-letter-i" in html
@@ -20,6 +21,9 @@ def test_index_contains_animated_aisha_brand_logo() -> None:
     assert "brand-letter-a2" in html
     assert "--letter-index: 0" in html
     assert "--letter-index: 4" in html
+    assert html.index("aisha-brand-logo") < html.index("<main>")
+    hero_before_title = html[html.index('<section id="home"'):html.index('<h1 id="hero-title"')]
+    assert "aisha-brand-logo" not in hero_before_title
     assert "fonts.googleapis" not in html
     assert "cdn" not in html.lower()
 
