@@ -2,7 +2,7 @@
 
 `backend_stub` - временный backend API проекта “Аиша”. Он используется Telegram-ботом и Mini App.
 
-Backend читает данные из JSON-базы `backend_stub/data/universities.json`. Формат базы описан в [docs/DATA.md](DATA.md).
+По умолчанию backend читает данные из JSON-базы `backend_stub/data/universities.json`. При `USE_POSTGRES=true` он читает каталог вузов из PostgreSQL по `DATABASE_URL`. Формат ответа `/api/universities` одинаковый в обоих режимах.
 
 ## GET `/health`
 
@@ -20,10 +20,25 @@ GET /health
 {
   "status": "ok",
   "service": "backend_stub",
+  "storage": "json",
   "universities_count": 45,
   "data_source": "backend_stub/data/universities.json"
 }
 ```
+
+В PostgreSQL mode:
+
+```json
+{
+  "status": "ok",
+  "service": "backend_stub",
+  "storage": "postgresql",
+  "data_source": "postgresql",
+  "universities_count": 94
+}
+```
+
+Если база расширена дополнительным seed-файлом, `universities_count` будет больше.
 
 ## GET `/api/universities`
 
@@ -88,15 +103,15 @@ Backend мягко нормализует ввод:
 ]
 ```
 
-## Структура `universities.json`
+## Контракт записи в ответе
 
-Файл находится здесь:
+В JSON fallback данные берутся из файла:
 
 ```text
 backend_stub/data/universities.json
 ```
 
-Структура ответа `/api/universities` совпадает с записью в JSON-базе. Ожидаемые поля:
+Структура ответа `/api/universities` совпадает с записью в JSON-базе и сохраняется в PostgreSQL mode. Ожидаемые поля:
 
 - `university` - название вуза;
 - `city` - город;
@@ -116,7 +131,7 @@ backend_stub/data/universities.json
 
 `note` используется для пометки демонстрационных данных.
 
-Если структура полей сохранится, финальную базу можно подставить перед сдачей без переписывания основной логики поиска, карточек, сравнения, экспорта и Mini App.
+Если структура полей сохранится, источник данных можно заменить без переписывания Telegram-бота, карточек, сравнения, экспорта и Mini App. PostgreSQL-настройка описана в [docs/POSTGRES.md](POSTGRES.md).
 
 Подробный контракт и проверка базы описаны в [docs/DATA.md](DATA.md).
 

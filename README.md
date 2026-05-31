@@ -6,7 +6,7 @@
 
 В проекте также есть Telegram Mini App на HTML, CSS и JS. Интерфейс Mini App приведён к стилю общего сайта команды “Аиша”: крупный hero-блок, анимированный бренд Aisha в верхней панели, карточка “Привет, я Аиша!”, тёмно-синие кнопки, вкладки, быстрые демо-сценарии, контекстные подсказки “Aisha советует”, локальные фильтры, визуальное сравнение вузов, персональный план поступления, экспорт отчёта, обратная связь, избранное в браузере, светлая и тёмная тема. Mini App проверяет Telegram WebApp-сессию через backend и синхронизирует избранное с ботом только после подтверждённого `initData`. OpenAI подключён опционально и используется только как дополнительный слой для мягких объяснений и поддержки в Telegram-боте.
 
-Сейчас используются демонстрационные данные. Финальная база вузов будет подставлена перед сдачей, а логика проекта подготовлена к замене демонстрационного JSON на финальные данные без переписывания основного кода.
+По умолчанию используются демонстрационные JSON-данные. На 37 этапе добавлен PostgreSQL-режим для базы вузов: при `USE_POSTGRES=true` backend читает каталог из PostgreSQL по `DATABASE_URL`, но Telegram-бот и Mini App продолжают обращаться к тому же `/api/universities` и получают тот же формат ответа.
 
 Старый C++ Telegram-модуль сохранён как архив в `archive/cpp_telegram_module/`.
 
@@ -16,6 +16,7 @@
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - архитектура;
 - [docs/API.md](docs/API.md) - backend API;
 - [docs/DATA.md](docs/DATA.md) - формат и проверка базы вузов;
+- [docs/POSTGRES.md](docs/POSTGRES.md) - PostgreSQL-режим и JSON fallback;
 - [docs/BOTFATHER.md](docs/BOTFATHER.md) - настройка Telegram Mini App;
 - [docs/DEFENSE.md](docs/DEFENSE.md) - сценарий защиты;
 - [DEMO.md](DEMO.md) - подробная демонстрация;
@@ -26,6 +27,7 @@
 - подбор вузов по региону, баллам, направлению и типу обучения;
 - пошаговый сценарий через FSM;
 - backend-заглушка `backend_stub` с HTTP endpoint `/api/universities`;
+- PostgreSQL-источник данных для вузов при `USE_POSTGRES=true` с JSON fallback по умолчанию;
 - расширенная демонстрационная база регионов и направлений;
 - мягкая нормализация ввода: регистр, лишние пробелы, частые синонимы и некоторые опечатки в регионах, направлениях и типе обучения;
 - карточки результатов с категорией, предметами, баллами, формой, сроком, стоимостью и ссылкой;
@@ -71,13 +73,13 @@
 Основной поток подбора:
 
 ```text
-Пользователь -> Telegram Bot -> backend_stub/API -> JSON-данные -> Telegram Bot -> Пользователь
+Пользователь -> Telegram Bot -> backend_stub/API -> JSON/PostgreSQL -> Telegram Bot -> Пользователь
 ```
 
 Mini App использует тот же endpoint:
 
 ```text
-Mini App -> backend_stub/API -> JSON-данные -> Mini App
+Mini App -> backend_stub/API -> JSON/PostgreSQL -> Mini App
 ```
 
 OpenAI используется отдельно:
@@ -102,7 +104,9 @@ telegram_bot/
   storage/                 # локальное JSON-хранилище
 
 backend_stub/
-  main.py                  # временный backend API и раздача Mini App
+  main.py                  # backend API и раздача Mini App
+  db.py                    # опциональное подключение PostgreSQL
+  university_repository.py # JSON/PostgreSQL source layer для вузов
   data/universities.json   # демонстрационные данные вузов
 
 mini_app/
@@ -123,7 +127,9 @@ docs/                      # расширенная документация
 
 ## Временная демонстрационная база вузов
 
-Сейчас используется демонстрационная база `backend_stub/data/universities.json`. Она нужна для показа логики поиска, категорий, избранного, сравнения и Mini App.
+По умолчанию используется демонстрационная база `backend_stub/data/universities.json`. Она нужна для показа логики поиска, категорий, избранного, сравнения и Mini App без настройки внешней БД.
+
+PostgreSQL можно включить отдельно через `USE_POSTGRES=true`. Подробный порядок применения SQL-файлов из `finalproj.zip` описан в [docs/POSTGRES.md](docs/POSTGRES.md).
 
 База содержит несколько регионов и направлений:
 
@@ -162,7 +168,7 @@ python scripts/check_data.py
 
 ## Как заменить данные перед сдачей
 
-Перед сдачей можно заменить временный файл `backend_stub/data/universities.json` на финальную базу вузов, сохранив структуру полей. Основная логика подбора, категорий, сравнения, избранного и Mini App уже работает через этот JSON и не требует переписывания.
+Перед сдачей можно оставить JSON fallback и заменить временный файл `backend_stub/data/universities.json`, сохранив структуру полей. Альтернативно можно поднять PostgreSQL по `docs/POSTGRES.md`. В обоих режимах основной endpoint `/api/universities` сохраняет прежний контракт.
 
 После замены файла нужно выполнить:
 
@@ -196,6 +202,9 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 OPENAI_API_KEY=your_openai_api_key_here
 BACKEND_BASE_URL=http://localhost:8000
 WEBAPP_URL=
+USE_POSTGRES=false
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/tgbot
+USE_POSTGRES_TESTS=false
 ```
 
 `TELEGRAM_BOT_TOKEN` обязателен для запуска Telegram-бота.
@@ -203,6 +212,8 @@ WEBAPP_URL=
 `OPENAI_API_KEY` можно оставить пустым. Тогда бот работает через fallback.
 
 `WEBAPP_URL` можно оставить пустым. Тогда кнопка `Mini App` в меню остаётся обычной текстовой кнопкой и показывает подсказку, а обычный бот работает как раньше.
+
+`USE_POSTGRES=false` оставляет JSON fallback. Для PostgreSQL-режима задайте `USE_POSTGRES=true` и `DATABASE_URL`, как описано в `docs/POSTGRES.md`.
 
 Настоящий `.env` не должен попадать в Git.
 
@@ -225,6 +236,12 @@ bash scripts/run_backend.sh
 
 ```bash
 curl "http://localhost:8000/api/universities?region=Адыгея&score=230&direction=IT&type=budget"
+```
+
+Проверка режима хранения:
+
+```bash
+curl "http://localhost:8000/health"
 ```
 
 ## Запуск Telegram-бота

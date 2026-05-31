@@ -14,6 +14,9 @@ fi
 "$PYTHON_BIN" -m compileall telegram_bot backend_stub tests
 "$PYTHON_BIN" -m json.tool backend_stub/data/universities.json > /tmp/universities_check.json
 "$PYTHON_BIN" scripts/check_data.py
+if [ "${USE_POSTGRES_TESTS:-false}" = "true" ]; then
+  "$PYTHON_BIN" scripts/check_postgres.py
+fi
 "$PYTHON_BIN" -m pytest
 
 echo "Project check completed successfully."

@@ -1,0 +1,115 @@
+# PostgreSQL data source
+
+На 37 этапе `backend_stub` получил второй источник данных для вузов:
+
+- по умолчанию работает JSON fallback `backend_stub/data/universities.json`;
+- при `USE_POSTGRES=true` endpoint `/api/universities` читает данные из PostgreSQL по `DATABASE_URL`;
+- контракт ответа `/api/universities` не меняется для Telegram-бота и Mini App.
+
+PostgreSQL используется только для базы вузов. Избранное, feedback и локальные пользовательские данные остаются в JSON-хранилищах проекта.
+
+## SQL из `finalproj.zip`
+
+В архиве найдены SQL-файлы:
+
+- `finalproj/backend/db/sql/01_schema.sql` - схема и enum-типы;
+- `finalproj/backend/db/sql/02_seed_universities.sql` - вузы;
+- `finalproj/backend/db/sql/03_seed_directions_and_scores.sql` - факультеты, направления и проходные баллы;
+- `finalproj/backend/db/sql/04_seed_achievements.sql` - справочник достижений;
+- `finalproj/backend/db/sql/05_example_queries.sql` - примеры запросов, не миграция;
+- `finalproj/backend/db/sql/06_seed_supplement_universities.sql` - дополнительное расширение каталога.
+
+Используемые таблицы для `/api/universities`:
+
+- `universities`: `name`, `short_name`, `city`, `region`, `website`;
+- `directions`: `name`, `profile`, `study_form`;
+- `passing_scores`: `year`, `admission_type`, `min_score`, `note`;
+- `faculties`: `name` для дополнительного поиска по направлению.
+
+`admission_type='budget'` отдаётся как `type='бюджет'`, `admission_type='paid'` как `type='платное'`. Форма обучения переводится из `full_time`, `part_time`, `evening` в человекочитаемые значения.
+
+## Создание базы
+
+Пример локальной базы:
+
+```bash
+createdb tgbot
+```
+
+Распакуйте только SQL-файлы во временную папку, не добавляя архив или распаковку в Git:
+
+```bash
+mkdir -p /tmp/finalproj-sql
+unzip -j /Users/macbook/Downloads/finalproj.zip 'finalproj/backend/db/sql/*.sql' -d /tmp/finalproj-sql
+```
+
+Примените файлы в таком порядке:
+
+```bash
+psql -d tgbot -f /tmp/finalproj-sql/01_schema.sql
+psql -d tgbot -f /tmp/finalproj-sql/02_seed_universities.sql
+psql -d tgbot -f /tmp/finalproj-sql/03_seed_directions_and_scores.sql
+psql -d tgbot -f /tmp/finalproj-sql/04_seed_achievements.sql
+psql -d tgbot -f /tmp/finalproj-sql/06_seed_supplement_universities.sql
+```
+
+`05_example_queries.sql` запускать не нужно.
+
+## Запуск backend в PostgreSQL mode
+
+```bash
+export USE_POSTGRES=true
+export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/tgbot
+bash scripts/run_backend.sh
+```
+
+Проверить health:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Ожидаемый ответ:
+
+```json
+{
+  "status": "ok",
+  "service": "backend_stub",
+  "storage": "postgresql",
+  "data_source": "postgresql",
+  "universities_count": 94
+}
+```
+
+Если применён `06_seed_supplement_universities.sql`, количество будет больше базовых 94 вузов.
+
+Проверить выдачу:
+
+```bash
+curl "http://localhost:8000/api/universities?region=Москва&score=260&direction=информатика&type=budget&limit=5"
+```
+
+## Проверка PostgreSQL
+
+Опциональная ручная проверка:
+
+```bash
+export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/tgbot
+python scripts/check_postgres.py
+```
+
+Общий проектный чек по умолчанию не требует PostgreSQL. Чтобы включить проверку в `scripts/check_project.sh`:
+
+```bash
+export USE_POSTGRES_TESTS=true
+bash scripts/check_project.sh
+```
+
+## Возврат на JSON fallback
+
+```bash
+export USE_POSTGRES=false
+bash scripts/run_backend.sh
+```
+
+Или просто не задавайте `USE_POSTGRES`: JSON fallback остаётся режимом по умолчанию.

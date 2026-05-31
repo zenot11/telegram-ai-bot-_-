@@ -39,6 +39,9 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 OPENAI_API_KEY=
 BACKEND_BASE_URL=http://localhost:8000
 WEBAPP_URL=
+USE_POSTGRES=false
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/tgbot
+USE_POSTGRES_TESTS=false
 ```
 
 Пояснения:
@@ -47,10 +50,14 @@ WEBAPP_URL=
 - `OPENAI_API_KEY` опционален. Если он пустой, бот работает через fallback.
 - `BACKEND_BASE_URL=http://localhost:8000` подходит для локального запуска.
 - `WEBAPP_URL` нужен только для открытия Mini App внутри Telegram через публичный HTTPS URL.
+- `USE_POSTGRES=false` оставляет JSON fallback.
+- `DATABASE_URL` используется только при `USE_POSTGRES=true`.
 
 Настоящие токены нельзя хранить в коде и коммитить в Git.
 
 ## 5. Запуск backend
+
+По умолчанию backend работает через JSON fallback `backend_stub/data/universities.json`.
 
 Перед запуском можно проверить структуру базы вузов:
 
@@ -83,6 +90,8 @@ http://localhost:8000
 http://localhost:8000/health
 ```
 
+PostgreSQL-режим включается отдельно через `USE_POSTGRES=true`; порядок подготовки базы описан в [POSTGRES.md](POSTGRES.md).
+
 ## 6. Запуск Telegram-бота
 
 Во втором терминале:
@@ -111,6 +120,7 @@ bash scripts/check_project.sh
 - `compileall` для Python-кода;
 - проверку JSON-файла `universities.json`;
 - проверку структуры базы через `scripts/check_data.py`;
+- опциональную PostgreSQL-проверку через `scripts/check_postgres.py`, только если `USE_POSTGRES_TESTS=true`;
 - весь набор `pytest`.
 
 ## 8. Mini App локально

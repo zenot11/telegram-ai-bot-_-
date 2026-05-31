@@ -8,6 +8,10 @@ main_mock
 *.log
 .DS_Store
 .vscode/
+finalproj/
+finalproj.zip
+*.dump
+*.sql.local
 build/
 cmake-build-*/
 
