@@ -80,10 +80,12 @@ def test_formatted_text_contains_demo_warning() -> None:
     assert "не гарантия поступления" in text
 
 
-def test_missing_price_is_rendered_as_not_specified() -> None:
+def test_missing_price_line_is_hidden_in_comparison_cards() -> None:
     text = format_comparison([university("АГУ", 185), university("МГТУ", 172)])
 
-    assert "Стоимость: не указана" in text
+    assert "Стоимость: не указана" not in text
+    assert "None" not in text
+    assert "null" not in text
 
 
 def test_study_form_and_duration_are_rendered() -> None:

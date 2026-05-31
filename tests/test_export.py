@@ -90,15 +90,37 @@ def test_build_export_report_handles_missing_optional_fields() -> None:
         "subjects": [],
         "min_score": 180,
         "type": "бюджет",
+        "source": "postgresql",
     }
     report = build_export_report(profile(), [item])
 
-    assert "Стоимость: не указана" in report
-    assert "Предметы: не указаны" in report
+    assert "Стоимость:" not in report
+    assert "Предметы:" not in report
     assert "Вуз <А> — Программа & тест" in report
+    assert "source" not in report
+    assert "postgresql" not in report
     assert "None" not in report
     assert "null" not in report
     assert "undefined" not in report
+
+
+def test_build_export_report_includes_postgres_metadata_when_available() -> None:
+    item = university("Вуз", 210)
+    item.update(
+        {
+            "year": 2025,
+            "faculty": "Институт цифровых технологий",
+            "admission_type": "special_quota",
+            "source": "postgresql",
+        }
+    )
+    report = build_export_report(profile(), [item])
+
+    assert "Год данных: 2025" in report
+    assert "Факультет: Институт цифровых технологий" in report
+    assert "Конкурс: особая квота" in report
+    assert "source" not in report
+    assert "postgresql" not in report
 
 
 def test_build_export_preview_contains_counts() -> None:

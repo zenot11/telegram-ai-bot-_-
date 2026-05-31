@@ -2,7 +2,15 @@ from datetime import datetime
 from typing import Any
 
 from telegram_bot.services.advice import build_next_steps
-from telegram_bot.services.formatters import format_price, subjects_text, text_value, title_short
+from telegram_bot.services.formatters import (
+    admission_type_text,
+    format_price,
+    has_display_value,
+    normalize_label,
+    subjects_text,
+    text_value,
+    title_short,
+)
 from telegram_bot.services.recommendation import (
     CATEGORY_AMBITIOUS,
     CATEGORY_REALISTIC,
@@ -141,24 +149,30 @@ def _format_items(items: list[dict[str, Any]], score: int | None) -> list[str]:
             f"{index}. {title_short(item)}",
             f"Город: {text_value(item.get('city'))}",
             f"Категория: {category}",
-            f"Предметы: {subjects_text(item)}",
             f"Мин. балл: {text_value(item.get('min_score'))}",
         ]
+        subjects = subjects_text(item)
+        if subjects:
+            block.insert(4, f"Предметы: {subjects}")
         if score is not None:
             block.append(f"Твои баллы: {score}")
             block.append(format_score_delta(score, item))
 
-        block.extend(
-            [
-                f"Тип: {text_value(item.get('type'))}",
-                f"Стоимость: {format_price(item.get('price'))}",
-            ]
-        )
-        if item.get("study_form"):
+        block.append(f"Тип: {text_value(item.get('type'))}")
+        admission_type = admission_type_text(item.get("admission_type"))
+        if admission_type and admission_type not in {normalize_label(item.get("type")), "бюджет", "платное"}:
+            block.append(f"Конкурс: {admission_type}")
+        if has_display_value(item.get("price")):
+            block.append(f"Стоимость: {format_price(item.get('price'))}")
+        if has_display_value(item.get("study_form")):
             block.append(f"Форма: {item['study_form']}")
-        if item.get("duration"):
+        if has_display_value(item.get("duration")):
             block.append(f"Срок: {item['duration']}")
-        if item.get("url"):
+        if has_display_value(item.get("faculty")):
+            block.append(f"Факультет: {item['faculty']}")
+        if has_display_value(item.get("year")):
+            block.append(f"Год данных: {item['year']}")
+        if has_display_value(item.get("url")):
             block.append(f"Сайт: {item['url']}")
         blocks.append("\n".join(str(line) for line in block))
     return blocks

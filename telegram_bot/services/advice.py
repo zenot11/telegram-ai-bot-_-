@@ -118,7 +118,10 @@ def build_next_steps(
     if education_type == "budget" and balance["total"] <= 2:
         steps.append("Для запаса можно рассмотреть платное обучение.")
     elif education_type == "paid":
-        steps.append("Проверь стоимость, скидки и условия оплаты на сайте вуза.")
+        if any(_has_price(item) for item in results if isinstance(item, dict)):
+            steps.append("Проверь стоимость, скидки и условия оплаты на сайте вуза.")
+        else:
+            steps.append("Проверь стоимость, скидки и условия оплаты на официальном сайте вуза.")
 
     direction_step = _direction_step(profile.get("direction"))
     if direction_step:
@@ -178,6 +181,11 @@ def _score(value: Any) -> int | None:
     if isinstance(value, str) and value.strip().isdigit():
         return int(value.strip())
     return None
+
+
+def _has_price(item: dict[str, Any]) -> bool:
+    value = item.get("price")
+    return value is not None and str(value).strip() != ""
 
 
 def _education_type_text(value: Any) -> str:

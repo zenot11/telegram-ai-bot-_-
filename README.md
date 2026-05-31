@@ -169,9 +169,13 @@ python scripts/check_data.py
 
 Поля `study_form`, `duration`, `note` и `price` могут отсутствовать или быть пустыми. Код должен показывать аккуратные fallback-значения, а не технические `None` или `null`.
 
+В PostgreSQL mode backend дополнительно может вернуть `year`, `faculty`, `admission_type`, `university_short_name` и диагностическое поле `source`. Карточки, сравнение, экспорт и Mini App показывают `year` как `Год данных`, `faculty` как `Факультет`, а внутренний `source` не выводят пользователю. Подробный аудит совместимости описан в [docs/DATA_COMPATIBILITY.md](docs/DATA_COMPATIBILITY.md).
+
 ## Как заменить данные перед сдачей
 
 Перед сдачей можно оставить JSON fallback и заменить временный файл `backend_stub/data/universities.json`, сохранив структуру полей. Альтернативно можно поднять PostgreSQL по `docs/POSTGRES.md`. В обоих режимах основной endpoint `/api/universities` сохраняет прежний контракт.
+
+Поиск намеренно возвращает также амбициозные варианты: `min_score <= score + 20`. Это поведение сохранено от JSON-прототипа и одинаково работает в JSON и PostgreSQL mode.
 
 После замены файла нужно выполнить:
 

@@ -1311,9 +1311,8 @@ function renderCards(items, score) {
 function renderCard(item, score, index) {
   const category = getItemCategory(item, score);
   const meta = categoryMeta[category] || categoryMeta.ambitious;
-  const subjects = Array.isArray(item.subjects) && item.subjects.length
-    ? item.subjects.join(", ")
-    : "не указаны";
+  const subjects = formatSubjects(item.subjects);
+  const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type) : "";
   const minScore = getMinScore(item);
   const delta = minScore === null ? null : score - minScore;
   const key = makeFavoriteKey(item);
@@ -1329,16 +1328,19 @@ function renderCard(item, score, index) {
       </div>
       <div class="result-meta">
         <div><b>Город:</b> ${escapeHtml(textValue(item.city, "не указан"))}</div>
-        <div><b>Предметы:</b> ${escapeHtml(subjects)}</div>
+        ${subjects ? `<div><b>Предметы:</b> ${escapeHtml(subjects)}</div>` : ""}
         <div><b>Мин. балл:</b> ${escapeHtml(formatValue(minScore))}</div>
         <div><b>Твои баллы:</b> ${score}</div>
         <div><b>${delta === null ? "Запас" : delta >= 0 ? "Запас" : "Не хватает"}:</b> ${escapeHtml(formatDelta(delta))}</div>
         <div><b>Тип:</b> ${escapeHtml(textValue(item.type, "не указан"))}</div>
-        <div><b>Стоимость:</b> ${escapeHtml(formatPrice(item.price))}</div>
-        ${item.study_form ? `<div><b>Форма:</b> ${escapeHtml(item.study_form)}</div>` : ""}
-        ${item.duration ? `<div><b>Срок:</b> ${escapeHtml(item.duration)}</div>` : ""}
-        ${item.url ? `<div><b>Сайт:</b> <a class="site-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.url)}</a></div>` : ""}
-        <div><b>Пометка:</b> демонстрационные данные</div>
+        ${admissionType ? `<div><b>Конкурс:</b> ${escapeHtml(admissionType)}</div>` : ""}
+        ${hasValue(item.price) ? `<div><b>Стоимость:</b> ${escapeHtml(formatPrice(item.price))}</div>` : ""}
+        ${hasValue(item.study_form) ? `<div><b>Форма:</b> ${escapeHtml(item.study_form)}</div>` : ""}
+        ${hasValue(item.duration) ? `<div><b>Срок:</b> ${escapeHtml(item.duration)}</div>` : ""}
+        ${hasValue(item.faculty) ? `<div><b>Факультет:</b> ${escapeHtml(item.faculty)}</div>` : ""}
+        ${hasValue(item.year) ? `<div><b>Год данных:</b> ${escapeHtml(item.year)}</div>` : ""}
+        ${hasValue(item.url) ? `<div><b>Сайт:</b> <a class="site-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.url)}</a></div>` : ""}
+        ${hasValue(item.note) ? `<div><b>Пометка:</b> ${escapeHtml(item.note)}</div>` : ""}
       </div>
       <div class="card-actions">
         <button class="favorite-button ${alreadyFavorite ? "is-added" : ""}" type="button" data-add-favorite data-favorite-key="${escapeAttribute(key)}">
@@ -1949,9 +1951,8 @@ function renderExportItems(title, items, emptyText, limit = null) {
 function renderExportItem(item, index) {
   const category = getItemCategory(item);
   const meta = categoryMeta[category] || categoryMeta.ambitious;
-  const subjects = Array.isArray(item.subjects) && item.subjects.length
-    ? item.subjects.join(", ")
-    : "не указаны";
+  const subjects = formatSubjects(item.subjects);
+  const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type) : "";
   const margin = getScoreMargin(item);
 
   return `
@@ -1966,9 +1967,14 @@ function renderExportItem(item, index) {
         <span><b>Твои баллы:</b> ${escapeHtml(formatValue(getUserScore(item) || currentSearch?.score))}</span>
         <span><b>Запас/не хватает:</b> ${escapeHtml(formatDelta(margin))}</span>
         <span><b>Тип:</b> ${escapeHtml(textValue(item.type, "не указано"))}</span>
-        <span><b>Стоимость:</b> ${escapeHtml(formatPrice(item.price))}</span>
-        <span><b>Предметы:</b> ${escapeHtml(subjects)}</span>
-        ${item.url ? `<span><b>Сайт:</b> <a class="site-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.url)}</a></span>` : ""}
+        ${admissionType ? `<span><b>Конкурс:</b> ${escapeHtml(admissionType)}</span>` : ""}
+        ${hasValue(item.price) ? `<span><b>Стоимость:</b> ${escapeHtml(formatPrice(item.price))}</span>` : ""}
+        ${subjects ? `<span><b>Предметы:</b> ${escapeHtml(subjects)}</span>` : ""}
+        ${hasValue(item.study_form) ? `<span><b>Форма:</b> ${escapeHtml(item.study_form)}</span>` : ""}
+        ${hasValue(item.duration) ? `<span><b>Срок:</b> ${escapeHtml(item.duration)}</span>` : ""}
+        ${hasValue(item.faculty) ? `<span><b>Факультет:</b> ${escapeHtml(item.faculty)}</span>` : ""}
+        ${hasValue(item.year) ? `<span><b>Год данных:</b> ${escapeHtml(item.year)}</span>` : ""}
+        ${hasValue(item.url) ? `<span><b>Сайт:</b> <a class="site-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.url)}</a></span>` : ""}
       </div>
     </article>
   `;
@@ -2052,6 +2058,8 @@ function formatExportItemsForText(items, emptyText) {
   }
 
   return items.map((item, index) => {
+    const subjects = formatSubjects(item.subjects);
+    const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type) : "";
     const parts = [
       `${index + 1}. ${textValue(item.university, "Вуз")} — ${textValue(item.program, "программа не указана")}`,
       `Город: ${textValue(item.city, "не указано")}`,
@@ -2060,9 +2068,29 @@ function formatExportItemsForText(items, emptyText) {
       `Твои баллы: ${formatValue(getUserScore(item) || currentSearch?.score)}`,
       `Запас/не хватает: ${formatDelta(getScoreMargin(item))}`,
       `Тип: ${textValue(item.type, "не указано")}`,
-      `Стоимость: ${formatPrice(item.price)}`,
     ];
-    if (item.url) {
+    if (admissionType) {
+      parts.push(`Конкурс: ${admissionType}`);
+    }
+    if (hasValue(item.price)) {
+      parts.push(`Стоимость: ${formatPrice(item.price)}`);
+    }
+    if (subjects) {
+      parts.push(`Предметы: ${subjects}`);
+    }
+    if (hasValue(item.study_form)) {
+      parts.push(`Форма: ${item.study_form}`);
+    }
+    if (hasValue(item.duration)) {
+      parts.push(`Срок: ${item.duration}`);
+    }
+    if (hasValue(item.faculty)) {
+      parts.push(`Факультет: ${item.faculty}`);
+    }
+    if (hasValue(item.year)) {
+      parts.push(`Год данных: ${item.year}`);
+    }
+    if (hasValue(item.url)) {
       parts.push(`Сайт: ${item.url}`);
     }
     return parts.join("\n");
@@ -2169,12 +2197,37 @@ function renderComparisonTable(items) {
     { label: "Твои баллы", value: (item) => formatValue(getUserScore(item)) },
     { label: "Запас/не хватает", highlight: "margin", value: (item) => formatDelta(getScoreMargin(item)) },
     { label: "Тип обучения", highlight: "type", value: (item) => textValue(item.type, "не указано") },
-    { label: "Стоимость", highlight: "price", value: (item) => formatPrice(item.price) },
-    { label: "Форма", value: (item) => textValue(item.study_form, "не указано") },
-    { label: "Срок", value: (item) => textValue(item.duration, "не указано") },
-    { label: "Предметы", value: (item) => Array.isArray(item.subjects) && item.subjects.length ? item.subjects.join(", ") : "не указаны" },
-    { label: "Сайт", html: (item) => item.url ? `<a class="site-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noopener noreferrer">Открыть сайт</a>` : "не указано" },
   ];
+  if (items.some((item) => shouldShowAdmissionType(item))) {
+    rows.push({
+      label: "Конкурс",
+      value: (item) => shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type) : "не указано",
+    });
+  }
+  if (items.some((item) => hasValue(item.price))) {
+    rows.push({ label: "Стоимость", highlight: "price", value: (item) => hasValue(item.price) ? formatPrice(item.price) : "не указано" });
+  }
+  if (items.some((item) => hasValue(item.study_form))) {
+    rows.push({ label: "Форма", value: (item) => textValue(item.study_form, "не указано") });
+  }
+  if (items.some((item) => hasValue(item.duration))) {
+    rows.push({ label: "Срок", value: (item) => textValue(item.duration, "не указано") });
+  }
+  if (items.some((item) => hasValue(item.faculty))) {
+    rows.push({ label: "Факультет", value: (item) => textValue(item.faculty, "не указано") });
+  }
+  if (items.some((item) => hasValue(item.year))) {
+    rows.push({ label: "Год данных", value: (item) => textValue(item.year, "не указано") });
+  }
+  if (items.some((item) => formatSubjects(item.subjects))) {
+    rows.push({ label: "Предметы", value: (item) => formatSubjects(item.subjects) || "не указано" });
+  }
+  if (items.some((item) => hasValue(item.url))) {
+    rows.push({
+      label: "Сайт",
+      html: (item) => hasValue(item.url) ? `<a class="site-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noopener noreferrer">Открыть сайт</a>` : "не указано",
+    });
+  }
 
   return `
     <div class="comparison-table-scroll">
@@ -2451,8 +2504,52 @@ function formatDelta(delta) {
   return `${Math.abs(delta)} баллов`;
 }
 
+function hasValue(value) {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.some((item) => hasValue(item));
+  }
+  if (typeof value === "string") {
+    return value.trim() !== "";
+  }
+  return true;
+}
+
+function formatSubjects(subjects) {
+  if (Array.isArray(subjects)) {
+    return subjects
+      .map((subject) => String(subject).trim())
+      .filter(Boolean)
+      .join(", ");
+  }
+  if (typeof subjects === "string" && subjects.trim()) {
+    return subjects.trim();
+  }
+  return "";
+}
+
+function formatAdmissionType(value) {
+  const normalized = String(value || "").trim().toLowerCase().replaceAll(" ", "_").replaceAll("-", "_");
+  const labels = {
+    budget: "бюджет",
+    paid: "платное",
+    target: "целевая квота",
+    special_quota: "особая квота",
+    separate_quota: "отдельная квота",
+    additional: "дополнительный набор",
+  };
+  return labels[normalized] || (hasValue(value) ? String(value).trim() : "");
+}
+
+function shouldShowAdmissionType(item) {
+  const label = formatAdmissionType(item?.admission_type);
+  return Boolean(label) && !["бюджет", "платное"].includes(label);
+}
+
 function formatPrice(price) {
-  if (price === null || price === undefined || price === "") {
+  if (!hasValue(price)) {
     return "не указана";
   }
   const numericPrice = Number(price);
@@ -2463,14 +2560,14 @@ function formatPrice(price) {
 }
 
 function formatValue(value) {
-  if (value === null || value === undefined || value === "") {
+  if (!hasValue(value)) {
     return "не указано";
   }
   return String(value);
 }
 
 function textValue(value, fallback) {
-  if (value === null || value === undefined || value === "") {
+  if (!hasValue(value)) {
     return fallback;
   }
   return String(value);
