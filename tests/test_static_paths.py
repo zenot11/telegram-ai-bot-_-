@@ -9,6 +9,11 @@ def test_backend_registers_mini_app_static_paths() -> None:
     paths = {resource.canonical for resource in app.router.resources()}
 
     assert "/api/universities" in paths
+    assert "/api/regions" in paths
+    assert "/api/cities" in paths
+    assert "/api/directions" in paths
+    assert "/api/study-forms" in paths
+    assert "/api/admission-types" in paths
     assert "/api/favorites" in paths
     assert "/api/favorites/add" in paths
     assert "/api/favorites/remove" in paths

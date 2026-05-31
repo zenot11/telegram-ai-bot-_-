@@ -64,7 +64,7 @@ from telegram_bot.keyboards.menu import (
     summary_keyboard,
 )
 from telegram_bot.keyboards.search import no_results_keyboard, search_results_keyboard, support_keyboard
-from telegram_bot.services.api import UniversityAPIError, fetch_universities
+from telegram_bot.services.api import UniversityAPIError, fetch_directory_items, fetch_universities
 from telegram_bot.services.advice import build_advice, has_advice_context
 from telegram_bot.services.export import build_export_preview
 from telegram_bot.services.feedback import format_user_feedback
@@ -370,11 +370,7 @@ async def directions_menu_callback(callback: CallbackQuery, state: FSMContext) -
     await state.clear()
     await callback.answer()
     if callback.message:
-        await callback.message.answer(
-            "Сейчас в демонстрационной базе доступны направления. Можешь использовать одно из них в подборе:\n"
-            + "\n".join(f"- {direction}" for direction in AVAILABLE_DIRECTIONS),
-            reply_markup=assistant_menu_inline_keyboard(),
-        )
+        await _send_directions_list(callback.message, assistant_menu_inline_keyboard())
 
 
 @router.callback_query(F.data == MENU_REGIONS_CALLBACK)
@@ -382,11 +378,7 @@ async def regions_menu_callback(callback: CallbackQuery, state: FSMContext) -> N
     await state.clear()
     await callback.answer()
     if callback.message:
-        await callback.message.answer(
-            "Сейчас в демонстрационной базе доступны регионы. Для проверки можно использовать:\n"
-            + "\n".join(f"- {region}" for region in AVAILABLE_REGIONS),
-            reply_markup=assistant_menu_inline_keyboard(),
-        )
+        await _send_regions_list(callback.message, assistant_menu_inline_keyboard())
 
 
 @router.callback_query(F.data == MENU_ABOUT_TEXT_CALLBACK)
@@ -758,21 +750,41 @@ async def remove_favorite(message: Message, state: FSMContext) -> None:
 @router.message(F.text == "Направления")
 async def directions(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(
-        "Сейчас в демонстрационной базе доступны направления. Можешь использовать одно из них в подборе:\n"
-        + "\n".join(f"- {direction}" for direction in AVAILABLE_DIRECTIONS),
-        reply_markup=main_menu_keyboard(),
-    )
+    await _send_directions_list(message, main_menu_keyboard())
 
 
 @router.message(F.text == "Регионы")
 async def regions(message: Message, state: FSMContext) -> None:
     await state.clear()
+    await _send_regions_list(message, main_menu_keyboard())
+
+
+async def _send_directions_list(message: Message, reply_markup) -> None:
+    items = await _load_directory_items("/api/directions", list(AVAILABLE_DIRECTIONS), limit=20)
+    suffix = "\n\nСписок короткий, поэтому можно также написать близкое название направления своими словами."
     await message.answer(
-        "Сейчас в демонстрационной базе доступны регионы. Для проверки можно использовать:\n"
-        + "\n".join(f"- {region}" for region in AVAILABLE_REGIONS),
-        reply_markup=main_menu_keyboard(),
+        "Сейчас доступны направления. Можешь использовать одно из них в подборе:\n"
+        + "\n".join(f"- {item}" for item in items)
+        + suffix,
+        reply_markup=reply_markup,
     )
+
+
+async def _send_regions_list(message: Message, reply_markup) -> None:
+    items = await _load_directory_items("/api/regions", list(AVAILABLE_REGIONS), limit=20)
+    await message.answer(
+        "Сейчас доступны регионы. Для проверки можно использовать:\n"
+        + "\n".join(f"- {item}" for item in items),
+        reply_markup=reply_markup,
+    )
+
+
+async def _load_directory_items(endpoint: str, fallback: list[str], limit: int) -> list[str]:
+    try:
+        items = await fetch_directory_items(settings.backend_base_url, endpoint, limit=limit)
+    except UniversityAPIError:
+        return fallback[:limit]
+    return items or fallback[:limit]
 
 
 @router.message(F.text == "Помощь")

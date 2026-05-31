@@ -320,12 +320,14 @@ function setFormValues({ region, score, direction, type }) {
   const typeInput = form.querySelector(`input[name="education-type"][value="${type}"]`);
 
   if (regionInput) {
+    ensureSelectOption(regionInput, region);
     regionInput.value = region;
   }
   if (scoreInput) {
     scoreInput.value = String(score);
   }
   if (directionInput) {
+    ensureSelectOption(directionInput, direction);
     directionInput.value = direction;
   }
   if (typeInput) {
@@ -346,6 +348,80 @@ function clearSearchForm() {
   }
   showStatus("Форма очищена. Последние результаты остались ниже.");
   showToast("Форма очищена.", "info");
+}
+
+async function loadBackendDirectories() {
+  const [regions, directions] = await Promise.all([
+    fetchDirectoryItems("/api/regions"),
+    fetchDirectoryItems("/api/directions"),
+  ]);
+
+  if (regions.length) {
+    replaceSelectOptions(form.elements.region, regions, "Выбери регион");
+  }
+  if (directions.length) {
+    replaceSelectOptions(form.elements.direction, directions, "Выбери направление");
+  }
+}
+
+async function fetchDirectoryItems(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return [];
+    }
+    const payload = await response.json();
+    if (!Array.isArray(payload.items)) {
+      return [];
+    }
+    return payload.items
+      .map((item) => String(item || "").trim())
+      .filter(Boolean)
+      .slice(0, 200);
+  } catch (error) {
+    return [];
+  }
+}
+
+function replaceSelectOptions(select, items, placeholder) {
+  if (!select) {
+    return;
+  }
+  const currentValue = select.value;
+  const uniqueItems = [...new Set(items)];
+  const placeholderOption = document.createElement("option");
+  placeholderOption.value = "";
+  placeholderOption.disabled = true;
+  placeholderOption.textContent = placeholder;
+
+  select.replaceChildren(placeholderOption);
+  uniqueItems.forEach((item) => {
+    const option = document.createElement("option");
+    option.value = item;
+    option.textContent = item;
+    select.appendChild(option);
+  });
+
+  if (currentValue) {
+    ensureSelectOption(select, currentValue);
+    select.value = currentValue;
+  } else {
+    placeholderOption.selected = true;
+  }
+}
+
+function ensureSelectOption(select, value) {
+  if (!select || !value) {
+    return;
+  }
+  const exists = Array.from(select.options).some((option) => option.value === value);
+  if (exists) {
+    return;
+  }
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = value;
+  select.appendChild(option);
 }
 
 document.addEventListener("click", (event) => {
@@ -432,6 +508,7 @@ themeToggleButton?.addEventListener("click", () => {
 
 renderAll();
 checkWebAppSession();
+loadBackendDirectories();
 
 function initTheme() {
   applyTheme(getPreferredTheme());

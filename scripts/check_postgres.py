@@ -10,7 +10,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend_stub.university_repository import fetch_postgres_universities  # noqa: E402
+from backend_stub.university_repository import (  # noqa: E402
+    build_university_filters,
+    fetch_directions_postgres,
+    fetch_regions_postgres,
+    fetch_universities_postgres,
+)
 
 
 REQUIRED_TABLES = ("universities", "directions", "passing_scores")
@@ -52,13 +57,20 @@ async def main_async() -> int:
             directions_count = await connection.fetchval("SELECT COUNT(*) FROM directions")
             scores_count = await connection.fetchval("SELECT COUNT(*) FROM passing_scores")
 
-        sample = await fetch_postgres_universities(
+        regions = await fetch_regions_postgres(pool)
+        directions = await fetch_directions_postgres(pool, build_university_filters({}))
+        sample = await fetch_universities_postgres(
             pool,
-            region="Москва",
-            score=260,
-            direction="информатика",
-            education_type="budget",
-            limit=3,
+            build_university_filters(
+                {
+                    "region": "Москва",
+                    "score": "260",
+                    "direction": "информатика",
+                    "type": "budget",
+                    "limit": "3",
+                    "sort": "min_score_asc",
+                }
+            ),
         )
     except Exception:
         print("PostgreSQL check failed: connection or query failed. Check DATABASE_URL, schema and seed data.")
@@ -69,7 +81,9 @@ async def main_async() -> int:
 
     print("PostgreSQL check passed.")
     print(f"Universities: {universities_count}")
+    print(f"Regions: {len(regions)}")
     print(f"Directions: {directions_count}")
+    print(f"Directory directions: {len(directions)}")
     print(f"Passing scores: {scores_count}")
     print(f"Sample /api/universities-like rows: {len(sample)}")
     return 0

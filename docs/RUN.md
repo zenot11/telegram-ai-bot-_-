@@ -92,6 +92,14 @@ http://localhost:8000/health
 
 PostgreSQL-режим включается отдельно через `USE_POSTGRES=true`; порядок подготовки базы описан в [POSTGRES.md](POSTGRES.md).
 
+Быстрые проверки API:
+
+```bash
+curl "http://localhost:8000/api/regions"
+curl "http://localhost:8000/api/directions"
+curl "http://localhost:8000/api/universities?score=230&limit=5&sort=min_score_desc"
+```
+
 ## 6. Запуск Telegram-бота
 
 Во втором терминале:

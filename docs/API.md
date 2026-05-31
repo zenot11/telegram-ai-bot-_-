@@ -22,7 +22,8 @@ GET /health
   "service": "backend_stub",
   "storage": "json",
   "universities_count": 45,
-  "data_source": "backend_stub/data/universities.json"
+  "data_source": "backend_stub/data/universities.json",
+  "features": ["universities", "regions", "cities", "directions", "study_forms", "admission_types", "filters", "sorting"]
 }
 ```
 
@@ -34,7 +35,8 @@ GET /health
   "service": "backend_stub",
   "storage": "postgresql",
   "data_source": "postgresql",
-  "universities_count": 94
+  "universities_count": 94,
+  "features": ["universities", "regions", "cities", "directions", "study_forms", "admission_types", "filters", "sorting"]
 }
 ```
 
@@ -50,7 +52,12 @@ GET /health
 - `score` - сумма баллов ЕГЭ.
 - `direction` - направление.
 - `type` - тип обучения.
-- `limit` - максимальное количество результатов.
+- `city` - город.
+- `study_form` - форма обучения.
+- `year` - год проходных баллов.
+- `q` - общий поиск по вузу, городу, региону, направлению, профилю и факультету.
+- `limit` - максимальное количество результатов, максимум 200.
+- `sort` - сортировка: `min_score_asc`, `min_score_desc`, `university`, `city`, `direction`, `year_desc`.
 
 Пример запроса:
 
@@ -69,6 +76,9 @@ Backend мягко нормализует ввод:
 - `Адыгеая` -> `Адыгея`;
 - `айти` -> `IT`;
 - `Бюджет` -> `бюджет`.
+- `контракт` -> `платное`.
+
+Некорректные `score` и `limit` не ломают endpoint: `score` игнорируется, а `limit` возвращается к безопасному значению.
 
 ### Логика фильтрации
 
@@ -77,6 +87,8 @@ Backend мягко нормализует ввод:
 - регион совпадает после нормализации;
 - направление совпадает или распознано через синонимы;
 - тип обучения совпадает;
+- город совпадает, если передан `city`;
+- общий поиск `q` найден в одном из текстовых полей;
 - `min_score <= score + 20`.
 
 Варианты выше `score + 20` не возвращаются в основной выдаче.
@@ -98,10 +110,59 @@ Backend мягко нормализует ввод:
     "url": "https://www.adygnet.ru",
     "study_form": "очная",
     "duration": "4 года",
-    "note": "демонстрационные данные"
+    "note": "демонстрационные данные",
+    "year": 2025,
+    "faculty": "",
+    "admission_type": "budget",
+    "university_short_name": "АГУ",
+    "source": "postgresql"
   }
 ]
 ```
+
+Поля `year`, `faculty`, `admission_type`, `university_short_name`, `source` могут присутствовать в PostgreSQL mode. Старые клиенты могут их игнорировать.
+
+## Directory endpoints
+
+Все справочники работают и в JSON fallback, и в PostgreSQL mode. Если данных нет, возвращается пустой список.
+
+### GET `/api/regions`
+
+Возвращает регионы:
+
+```json
+{
+  "storage": "json",
+  "count": 8,
+  "items": ["Адыгея", "Москва"]
+}
+```
+
+### GET `/api/cities`
+
+Параметры:
+
+- `region` - опциональный фильтр по региону.
+
+### GET `/api/directions`
+
+Параметры:
+
+- `region`;
+- `city`;
+- `study_form`;
+- `type`;
+- `year`.
+
+Возвращает направления и программы, доступные при выбранных фильтрах.
+
+### GET `/api/study-forms`
+
+Возвращает формы обучения в пользовательском виде, например `очная`, `заочная`.
+
+### GET `/api/admission-types`
+
+Возвращает нормализованные типы: `бюджет`, `платное`.
 
 ## Контракт записи в ответе
 

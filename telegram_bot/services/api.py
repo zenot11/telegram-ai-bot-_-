@@ -39,3 +39,24 @@ async def fetch_universities(
         raise UniversityAPIError("Backend response must be a JSON list")
 
     return payload[:limit]
+
+
+async def fetch_directory_items(base_url: str, endpoint: str, limit: int = 30) -> list[str]:
+    safe_endpoint = endpoint if endpoint.startswith("/") else f"/{endpoint}"
+    url = f"{base_url.rstrip('/')}{safe_endpoint}"
+
+    timeout = aiohttp.ClientTimeout(total=5)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    raise UniversityAPIError(f"Backend returned HTTP {response.status}")
+                payload = await response.json(content_type=None)
+    except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+        raise UniversityAPIError("Backend is unavailable") from exc
+
+    if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
+        raise UniversityAPIError("Backend directory response must contain items")
+
+    items = [str(item).strip() for item in payload["items"] if item is not None and str(item).strip()]
+    return items[:limit]

@@ -1,9 +1,10 @@
 # PostgreSQL data source
 
-На 37 этапе `backend_stub` получил второй источник данных для вузов:
+На 37 этапе `backend_stub` получил второй источник данных для вузов, а на 38 этапе PostgreSQL-режим расширен справочниками, фильтрами и сортировкой:
 
 - по умолчанию работает JSON fallback `backend_stub/data/universities.json`;
 - при `USE_POSTGRES=true` endpoint `/api/universities` читает данные из PostgreSQL по `DATABASE_URL`;
+- справочники `/api/regions`, `/api/cities`, `/api/directions`, `/api/study-forms`, `/api/admission-types` строятся из текущего источника;
 - контракт ответа `/api/universities` не меняется для Telegram-бота и Mini App.
 
 PostgreSQL используется только для базы вузов. Избранное, feedback и локальные пользовательские данные остаются в JSON-хранилищах проекта.
@@ -87,6 +88,9 @@ curl http://localhost:8000/health
 
 ```bash
 curl "http://localhost:8000/api/universities?region=Москва&score=260&direction=информатика&type=budget&limit=5"
+curl "http://localhost:8000/api/universities?score=230&limit=5&sort=min_score_desc&q=информатика"
+curl "http://localhost:8000/api/regions"
+curl "http://localhost:8000/api/directions"
 ```
 
 ## Проверка PostgreSQL
@@ -97,6 +101,8 @@ curl "http://localhost:8000/api/universities?region=Москва&score=260&direc
 export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/tgbot
 python scripts/check_postgres.py
 ```
+
+Скрипт проверяет таблицы, количество вузов, число регионов, число направлений и sample-запрос, похожий на `/api/universities`.
 
 Общий проектный чек по умолчанию не требует PostgreSQL. Чтобы включить проверку в `scripts/check_project.sh`:
 

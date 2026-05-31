@@ -4,7 +4,7 @@
 
 “Аиша” - Telegram-сервис для абитуриентов. Он помогает подобрать вуз по региону, баллам ЕГЭ, направлению и типу обучения, а также показывает категории поступления, фильтры результатов, избранное, историю подборов, советы по последнему подбору, сравнение, итог последнего подбора и обратную связь.
 
-Проект сделан как демонстрационный прототип: JSON-база вузов остаётся fallback по умолчанию, а на 37 этапе добавлен PostgreSQL-режим для каталога вузов без изменения внешнего API.
+Проект сделан как демонстрационный прототип: JSON-база вузов остаётся fallback по умолчанию, на 37 этапе добавлен PostgreSQL-режим для каталога вузов, а на 38 этапе backend начал использовать PostgreSQL для справочников, расширенных фильтров и сортировки без изменения старого API-контракта.
 
 ## Основные части
 
@@ -13,6 +13,7 @@
 - Mini App - веб-интерфейс внутри Telegram или браузера.
 - JSON-база вузов - демонстрационный fallback с программами.
 - PostgreSQL source - опциональный источник вузов для `backend_stub`.
+- Directory API - справочники регионов, городов, направлений, форм обучения и типов конкурса.
 - Data Loader - загрузка и проверка структуры JSON-базы.
 - Tests - pytest-проверки логики проекта.
 - Scripts - скрипты запуска и проверки.
@@ -118,7 +119,7 @@ Mini App
 
 - `main.py` - aiohttp-приложение, выбор JSON/PostgreSQL storage, static routes Mini App.
 - `db.py` - чтение `USE_POSTGRES`/`DATABASE_URL`, создание и закрытие asyncpg pool.
-- `university_repository.py` - фильтрация JSON fallback, SQL-запросы PostgreSQL и нормализация ответа к API contract.
+- `university_repository.py` - фильтрация JSON fallback, SQL-запросы PostgreSQL, справочники, сортировка и нормализация ответа к API contract.
 - `data_loader.py` - загрузка, нормализация и валидация `universities.json`.
 - `telegram_auth.py` - проверка Telegram WebApp `initData`, извлечение Telegram ID и безопасных полей пользователя.
 - `webapp_session.py` - endpoint `/api/webapp/session` для диагностики режима Mini App.
@@ -126,6 +127,7 @@ Mini App
 - `feedback_api.py` - endpoints обратной связи Mini App: local mode и Telegram mode через проверенный `initData`.
 - `/health` - проверка, что backend работает.
 - `/api/universities` - основной endpoint подбора вузов.
+- `/api/regions`, `/api/cities`, `/api/directions`, `/api/study-forms`, `/api/admission-types` - справочники для backend, Mini App и Telegram-бота.
 - `/api/webapp/session` - проверка Telegram WebApp-сессии или local mode.
 - `/api/feedback` и `/api/feedback/my` - создание обращения и последние обращения пользователя.
 - `/miniapp` и `/miniapp/` - отдача `mini_app/index.html`.
@@ -133,7 +135,7 @@ Mini App
 - `/favicon.ico` - favicon для браузера.
 - `data/universities.json` - демонстрационная база вузов и fallback по умолчанию.
 
-В JSON mode backend загружает базу при создании приложения. Если JSON некорректный или структура записей не соответствует контракту, backend завершает запуск с понятной ошибкой. В PostgreSQL mode backend создаёт pool при старте и не скрывает ошибку подключения, если `USE_POSTGRES=true`. Формат JSON описан в `docs/DATA.md`, PostgreSQL-запуск - в `docs/POSTGRES.md`.
+В JSON mode backend загружает базу при создании приложения. Если JSON некорректный или структура записей не соответствует контракту, backend завершает запуск с понятной ошибкой. В PostgreSQL mode backend создаёт pool при старте и не скрывает ошибку подключения, если `USE_POSTGRES=true`. `/api/universities` поддерживает `region`, `city`, `score`, `direction`, `type`, `study_form`, `year`, `q`, `limit` и `sort`. Формат JSON описан в `docs/DATA.md`, PostgreSQL-запуск - в `docs/POSTGRES.md`.
 
 ## `mini_app/`
 
@@ -141,7 +143,7 @@ Mini App остается простым HTML + CSS + JS без сборки.
 
 - `index.html` - структура страницы.
 - `styles.css` - стиль в духе командного сайта “Аиша”, CSS-переменные для светлой/тёмной темы, анимированный бренд в верхней панели без внешних шрифтов, адаптивные вкладки, фильтры, карточки, таблица сравнения, быстрый старт, контекстные подсказки, план поступления, экспортный отчёт, print CSS, форма поддержки и toast-уведомления.
-- `app.js` - вкладки, быстрые сценарии, автозаполнение формы, очистка формы, toast notification layer, переключение темы, контекстные подсказки `Aisha советует`, валидация формы, запрос к `/api/universities`, проверка `/api/webapp/session`, локальные фильтры, итог подбора, синхронизация избранного или localStorage fallback, локальное сравнение, персональный план поступления, экспорт отчёта, форма обратной связи, отрисовка карточек и таблицы сравнения.
+- `app.js` - вкладки, быстрые сценарии, автозаполнение формы, очистка формы, загрузка справочников `/api/regions` и `/api/directions`, toast notification layer, переключение темы, контекстные подсказки `Aisha советует`, валидация формы, запрос к `/api/universities`, проверка `/api/webapp/session`, локальные фильтры, итог подбора, синхронизация избранного или localStorage fallback, локальное сравнение, персональный план поступления, экспорт отчёта, форма обратной связи, отрисовка карточек и таблицы сравнения.
 - `favicon.svg` - favicon.
 
 Mini App не использует OpenAI и не хранит токены. Выбранная тема и выбранные вузы для сравнения хранятся локально в браузере через `localStorage`. Сравнение не синхронизируется с Telegram-ботом.
@@ -202,6 +204,7 @@ Feedback API:
 
 - JSON можно заменить на финальную базу вузов, если сохранить структуру полей.
 - PostgreSQL можно включить через `USE_POSTGRES=true`, не меняя Telegram-бот и Mini App.
+- Справочники строятся из текущего источника данных: PostgreSQL или JSON fallback.
 - `backend_stub` можно заменить на полноценный backend без переписывания Telegram-бота.
 - Mini App использует тот же API, что и бот.
 - Фильтры Mini App работают локально по уже полученным результатам и не требуют изменения backend API.

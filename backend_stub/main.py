@@ -10,13 +10,25 @@ from backend_stub.data_loader import DataLoadError, get_universities_data_path, 
 from backend_stub.favorites_api import setup_favorites_routes
 from backend_stub.feedback_api import setup_feedback_routes
 from backend_stub.university_repository import (
+    build_university_filters,
     count_json_universities,
     count_postgres_universities,
     direction_matches,
+    fetch_admission_types_json,
+    fetch_admission_types_postgres,
+    fetch_cities_json,
+    fetch_cities_postgres,
+    fetch_directions_json,
+    fetch_directions_postgres,
     fetch_postgres_universities,
+    fetch_regions_json,
+    fetch_regions_postgres,
+    fetch_study_forms_json,
+    fetch_study_forms_postgres,
+    fetch_universities_json,
+    fetch_universities_postgres,
     filter_json_universities,
     normalize,
-    normalize_limit,
     normalize_type,
 )
 from backend_stub.webapp_session import setup_webapp_session_routes
@@ -28,6 +40,16 @@ DATA_PATH_KEY = web.AppKey("data_path", Path)
 STORAGE_KEY = web.AppKey("storage", str)
 DATA_SOURCE_KEY = web.AppKey("data_source", str)
 DB_POOL_KEY = web.AppKey("db_pool", Any)
+FEATURES = [
+    "universities",
+    "regions",
+    "cities",
+    "directions",
+    "study_forms",
+    "admission_types",
+    "filters",
+    "sorting",
+]
 
 
 filter_universities = filter_json_universities
@@ -45,6 +67,7 @@ async def health(request: web.Request) -> web.Response:
                     "service": "backend_stub",
                     "storage": "postgresql",
                     "data_source": "postgresql",
+                    "features": FEATURES,
                     "error": "postgres_pool_not_initialized",
                 },
                 status=503,
@@ -59,6 +82,7 @@ async def health(request: web.Request) -> web.Response:
                     "service": "backend_stub",
                     "storage": "postgresql",
                     "data_source": "postgresql",
+                    "features": FEATURES,
                     "error": "postgres_health_check_failed",
                 },
                 status=503,
@@ -71,6 +95,7 @@ async def health(request: web.Request) -> web.Response:
                 "storage": "postgresql",
                 "data_source": data_source,
                 "universities_count": count,
+                "features": FEATURES,
             },
             dumps=_json_dumps,
         )
@@ -83,37 +108,67 @@ async def health(request: web.Request) -> web.Response:
             "storage": "json",
             "data_source": data_source,
             "universities_count": count_json_universities(universities),
+            "features": FEATURES,
         },
         dumps=_json_dumps,
     )
 
 
 async def universities(request: web.Request) -> web.Response:
-    region = request.query.get("region", "")
-    direction = request.query.get("direction", "")
-    education_type = normalize_type(request.query.get("type", ""))
-
-    try:
-        limit = normalize_limit(int(request.query.get("limit", "5")))
-    except ValueError:
-        limit = 5
-
-    try:
-        score = int(request.query.get("score", "0"))
-    except ValueError:
-        return web.json_response({"error": "score must be an integer"}, status=400)
-
+    filters = build_university_filters(request.query)
     if request.app[STORAGE_KEY] == "postgresql":
         pool = request.app.get(DB_POOL_KEY)
         if pool is None:
             return web.json_response({"error": "postgres pool is not initialized"}, status=503)
         try:
-            results = await fetch_postgres_universities(pool, region, score, direction, education_type, limit)
+            results = await fetch_universities_postgres(pool, filters)
         except Exception:
             return web.json_response({"error": "postgres query failed"}, status=503)
     else:
-        results = filter_universities(request.app[UNIVERSITIES_KEY], region, score, direction, education_type, limit)
-    return web.json_response(results[:limit], dumps=_json_dumps)
+        results = fetch_universities_json(request.app[UNIVERSITIES_KEY], filters)
+    return web.json_response(results, dumps=_json_dumps)
+
+
+async def regions(request: web.Request) -> web.Response:
+    if request.app[STORAGE_KEY] == "postgresql":
+        items = await fetch_regions_postgres(request.app[DB_POOL_KEY])
+    else:
+        items = fetch_regions_json(request.app[UNIVERSITIES_KEY])
+    return _directory_response(request, items)
+
+
+async def cities(request: web.Request) -> web.Response:
+    region = request.query.get("region", "")
+    if request.app[STORAGE_KEY] == "postgresql":
+        items = await fetch_cities_postgres(request.app[DB_POOL_KEY], region)
+    else:
+        items = fetch_cities_json(request.app[UNIVERSITIES_KEY], region)
+    return _directory_response(request, items)
+
+
+async def directions(request: web.Request) -> web.Response:
+    filters = build_university_filters(request.query)
+    if request.app[STORAGE_KEY] == "postgresql":
+        items = await fetch_directions_postgres(request.app[DB_POOL_KEY], filters)
+    else:
+        items = fetch_directions_json(request.app[UNIVERSITIES_KEY], filters)
+    return _directory_response(request, items)
+
+
+async def study_forms(request: web.Request) -> web.Response:
+    if request.app[STORAGE_KEY] == "postgresql":
+        items = await fetch_study_forms_postgres(request.app[DB_POOL_KEY])
+    else:
+        items = fetch_study_forms_json(request.app[UNIVERSITIES_KEY])
+    return _directory_response(request, items)
+
+
+async def admission_types(request: web.Request) -> web.Response:
+    if request.app[STORAGE_KEY] == "postgresql":
+        items = await fetch_admission_types_postgres(request.app[DB_POOL_KEY])
+    else:
+        items = fetch_admission_types_json(request.app[UNIVERSITIES_KEY])
+    return _directory_response(request, items)
 
 
 async def miniapp_index(_: web.Request) -> web.FileResponse:
@@ -133,6 +188,17 @@ async def favicon(_: web.Request) -> web.FileResponse:
 
 def _json_dumps(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False)
+
+
+def _directory_response(request: web.Request, items: list[str]) -> web.Response:
+    return web.json_response(
+        {
+            "storage": request.app[STORAGE_KEY],
+            "count": len(items),
+            "items": items,
+        },
+        dumps=_json_dumps,
+    )
 
 
 def create_app(
@@ -162,6 +228,11 @@ def create_app(
     app[STORAGE_KEY] = storage
     app.router.add_get("/health", health)
     app.router.add_get("/api/universities", universities)
+    app.router.add_get("/api/regions", regions)
+    app.router.add_get("/api/cities", cities)
+    app.router.add_get("/api/directions", directions)
+    app.router.add_get("/api/study-forms", study_forms)
+    app.router.add_get("/api/admission-types", admission_types)
     setup_webapp_session_routes(app)
     setup_favorites_routes(app, favorites_storage)
     setup_feedback_routes(app)

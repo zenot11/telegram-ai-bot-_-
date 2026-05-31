@@ -23,6 +23,7 @@
 - fallback без OpenAI;
 - опциональную OpenAI-интеграцию при наличии `OPENAI_API_KEY`;
 - PostgreSQL-режим для базы вузов с JSON fallback;
+- backend-справочники регионов, городов, направлений, форм обучения и типов конкурса;
 - сохранённый контракт `/api/universities` для Telegram-бота и Mini App.
 
 ## 2. Подготовка
@@ -117,6 +118,13 @@ python -m telegram_bot.main
 Важно сказать на демонстрации:
 
 > Сейчас JSON остаётся fallback по умолчанию. При необходимости backend можно переключить на PostgreSQL через `USE_POSTGRES=true`, не меняя Telegram-бот и Mini App.
+
+Можно также показать, что справочники строятся через backend:
+
+```bash
+curl "http://localhost:8000/api/regions"
+curl "http://localhost:8000/api/directions"
+```
 
 ## 6. Сценарии для проверки базы
 
