@@ -17,6 +17,7 @@ from telegram_bot.services.validation import (
 DEFAULT_LIMIT = 5
 MAX_LIMIT = 200
 ACHIEVEMENTS_DEFAULT_LIMIT = 20
+DIRECTION_CODE_RE = re.compile(r"\b\d{2}\.\d{2}\.\d{2}\b")
 
 STUDY_FORM_LABELS = {
     "full_time": "очная",
@@ -598,11 +599,14 @@ def postgres_direction_terms(value: str) -> list[str]:
 
 
 def direction_search_terms(value: Any) -> list[str]:
-    requested = normalize_direction(str(value or ""))
+    raw_value = str(value or "").strip()
+    requested = normalize_direction(raw_value)
     if not requested:
         return []
 
-    terms = {requested, str(value or "")}
+    code_stripped = DIRECTION_CODE_RE.sub(" ", raw_value)
+    code_stripped = " ".join(code_stripped.split())
+    terms = {requested, raw_value, code_stripped}
     for direction, synonyms in DIRECTION_SYNONYMS.items():
         if normalize_direction(requested) == direction or normalize(requested) == normalize(direction):
             terms.add(direction)
@@ -618,6 +622,10 @@ def direction_search_terms(value: Any) -> list[str]:
         if cleaned and cleaned not in result:
             result.append(cleaned)
     return result[:24]
+
+
+def direction_code_terms(value: Any) -> list[str]:
+    return _dedupe_text(DIRECTION_CODE_RE.findall(str(value or "")))
 
 
 def region_search_terms(value: Any) -> list[str]:
@@ -806,7 +814,9 @@ def _append_postgres_common_filters(
         where_parts.append("FALSE")
 
     if include_direction:
-        direction_terms = postgres_direction_terms(str(filters.get("direction", "") or ""))
+        direction_value = str(filters.get("direction", "") or "")
+        direction_terms = postgres_direction_terms(direction_value)
+        code_terms = direction_code_terms(direction_value)
         if direction_terms:
             direction_conditions = []
             for term in direction_terms:
@@ -817,6 +827,9 @@ def _append_postgres_common_filters(
                     f"OR COALESCE(d.profile, '') ILIKE {term_param}"
                     ")"
                 )
+            for code in code_terms:
+                code_param = add_param(code)
+                direction_conditions.append(f"COALESCE(d.code, '') = {code_param}")
             where_parts.append("(" + " OR ".join(direction_conditions) + ")")
 
     q = str(filters.get("q", "") or "").strip()

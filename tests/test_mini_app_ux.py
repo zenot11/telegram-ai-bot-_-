@@ -86,6 +86,20 @@ def test_mini_app_uses_clean_financing_study_form_and_contest_labels() -> None:
     assert "function getContestLabel" in js
 
 
+def test_mini_app_uses_postgres_aware_copy_and_expanded_result_limit() -> None:
+    html = read_mini_app_file("index.html")
+    js = read_mini_app_file("app.js")
+
+    assert "до 12 программ" in html
+    assert "MINI_APP_RESULT_LIMIT = 12" in js
+    assert "limit: String(MINI_APP_RESULT_LIMIT)" in js
+    assert "PostgreSQL-базы проекта" in js
+    assert "Локальный режим без PostgreSQL" in js
+    assert "backend" not in html
+    assert "временная демонстрационная база" not in html
+    assert "будут заменены" not in html
+
+
 def test_styles_include_ux_blocks_toasts_and_dark_support() -> None:
     css = read_mini_app_file("styles.css")
 

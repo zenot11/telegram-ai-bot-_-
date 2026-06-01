@@ -46,7 +46,7 @@ def format_comparison(items: list[dict[str, Any]], user_score: int | None = None
         f"{cards}\n\n"
         "<b>Вывод:</b>\n"
         f"{conclusion}\n"
-        "\nВажно: данные демонстрационные, это не гарантия поступления."
+        "\nВажно: это не гарантия поступления. Проверь условия на официальных сайтах вузов."
     )
 
 

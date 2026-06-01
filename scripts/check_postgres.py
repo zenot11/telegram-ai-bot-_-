@@ -5,18 +5,19 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend_stub.university_repository import (  # noqa: E402
     build_university_filters,
+    direction_code_terms,
     fetch_achievements_postgres,
     fetch_directions_postgres,
     fetch_regions_postgres,
     fetch_universities_postgres,
 )
+from telegram_bot.services.recommendation import AMBITIOUS_SCORE_MARGIN  # noqa: E402
 
 
 REQUIRED_TABLES = ("universities", "directions", "passing_scores", "achievements")
@@ -94,13 +95,115 @@ async def main_async() -> int:
                   ps.note,
                   ps.year
                 FROM universities u
-                LEFT JOIN faculties f ON f.university_id = u.id
-                LEFT JOIN directions d ON d.faculty_id = f.id
+                LEFT JOIN directions d ON d.university_id = u.id
+                LEFT JOIN faculties f ON f.id = d.faculty_id
                 LEFT JOIN passing_scores ps ON ps.direction_id = d.id
                 WHERE u.name ILIKE '%Региональный центр технологий%'
                    OR u.short_name ILIKE 'РЦТИ%'
                 ORDER BY u.id, d.id, ps.year DESC
                 LIMIT 20
+                """
+            )
+            moscow_diagnostics = await connection.fetchrow(
+                """
+                WITH backend_rows AS (
+                    SELECT
+                      u.name AS university_name,
+                      u.short_name,
+                      u.city,
+                      u.region,
+                      d.code,
+                      d.name AS direction_name,
+                      d.profile,
+                      d.study_form::TEXT AS study_form,
+                      ps.admission_type::TEXT AS admission_type,
+                      ps.min_score,
+                      ps.year
+                    FROM passing_scores ps
+                    JOIN directions d ON d.id = ps.direction_id
+                    JOIN universities u ON u.id = d.university_id
+                    WHERE NOT (
+                      u.name ILIKE '%Региональный центр технологий и инженерии%'
+                      OR u.name ILIKE '%Институт социальных и цифровых профессий%'
+                      OR COALESCE(u.short_name, '') ~* '^(РЦТИ|ИСЦП)-[0-9]+$'
+                    )
+                )
+                SELECT
+                  COUNT(*) FILTER (
+                    WHERE region ILIKE '%Москва%' OR city ILIKE '%Москва%'
+                  ) AS moscow_all_count,
+                  COUNT(*) FILTER (
+                    WHERE (region ILIKE '%Москва%' OR city ILIKE '%Москва%')
+                      AND (
+                        direction_name ILIKE '%Программная инженерия%'
+                        OR COALESCE(profile, '') ILIKE '%Программная инженерия%'
+                        OR COALESCE(code, '') = '09.03.04'
+                      )
+                  ) AS moscow_software_count,
+                  COUNT(*) FILTER (
+                    WHERE (region ILIKE '%Москва%' OR city ILIKE '%Москва%')
+                      AND (
+                        direction_name ILIKE '%Программная инженерия%'
+                        OR COALESCE(profile, '') ILIKE '%Программная инженерия%'
+                        OR COALESCE(code, '') = '09.03.04'
+                      )
+                      AND study_form = 'part_time'
+                  ) AS moscow_software_part_time_count,
+                  COUNT(*) FILTER (
+                    WHERE (region ILIKE '%Москва%' OR city ILIKE '%Москва%')
+                      AND (
+                        direction_name ILIKE '%Программная инженерия%'
+                        OR COALESCE(profile, '') ILIKE '%Программная инженерия%'
+                        OR COALESCE(code, '') = '09.03.04'
+                      )
+                      AND study_form = 'part_time'
+                      AND admission_type = 'paid'
+                  ) AS moscow_software_part_time_paid_count,
+                  COUNT(*) FILTER (
+                    WHERE (region ILIKE '%Москва%' OR city ILIKE '%Москва%')
+                      AND (
+                        direction_name ILIKE '%Программная инженерия%'
+                        OR COALESCE(profile, '') ILIKE '%Программная инженерия%'
+                        OR COALESCE(code, '') = '09.03.04'
+                      )
+                      AND study_form = 'part_time'
+                      AND admission_type = 'paid'
+                      AND min_score <= $1
+                  ) AS moscow_software_part_time_paid_score_count
+                FROM backend_rows
+                """,
+                276 + AMBITIOUS_SCORE_MARGIN,
+            )
+            moscow_software_sample_rows = await connection.fetch(
+                """
+                SELECT
+                  u.name AS university_name,
+                  u.city,
+                  u.region,
+                  d.code,
+                  d.name AS direction_name,
+                  d.profile,
+                  d.study_form::TEXT AS study_form,
+                  ps.admission_type::TEXT AS admission_type,
+                  ps.min_score,
+                  ps.year
+                FROM passing_scores ps
+                JOIN directions d ON d.id = ps.direction_id
+                JOIN universities u ON u.id = d.university_id
+                LEFT JOIN faculties f ON f.id = d.faculty_id
+                WHERE (u.region ILIKE '%Москва%' OR u.city ILIKE '%Москва%')
+                  AND (
+                    d.name ILIKE '%Программная инженерия%'
+                    OR COALESCE(d.profile, '') ILIKE '%Программная инженерия%'
+                    OR COALESCE(d.code, '') = '09.03.04'
+                  )
+                  AND NOT (
+                    u.name ILIKE '%Региональный центр технологий и инженерии%'
+                    OR u.name ILIKE '%Институт социальных и цифровых профессий%'
+                    OR COALESCE(u.short_name, '') ~* '^(РЦТИ|ИСЦП)-[0-9]+$'
+                  )
+                ORDER BY ps.year DESC NULLS LAST, ps.min_score DESC NULLS LAST
+                LIMIT 10
                 """
             )
 
@@ -138,6 +241,33 @@ async def main_async() -> int:
                 }
             ),
         )
+        moscow_api_default = await fetch_universities_postgres(
+            pool,
+            build_university_filters(
+                {
+                    "region": "Москва",
+                    "city": "Москва",
+                    "direction": "09.03.04 Программная инженерия",
+                    "study_form": "заочная",
+                    "type": "paid",
+                    "score": "276",
+                }
+            ),
+        )
+        moscow_api_limit20 = await fetch_universities_postgres(
+            pool,
+            build_university_filters(
+                {
+                    "region": "Москва",
+                    "city": "Москва",
+                    "direction": "09.03.04 Программная инженерия",
+                    "study_form": "заочная",
+                    "type": "paid",
+                    "score": "276",
+                    "limit": "20",
+                }
+            ),
+        )
         achievements = await fetch_achievements_postgres(pool, limit=3)
     except Exception:
         print("PostgreSQL check failed: connection or query failed. Check DATABASE_URL, schema and seed data.")
@@ -155,6 +285,28 @@ async def main_async() -> int:
     print(f"Suspicious join sample rows: {len(suspicious_join_rows)}")
     print(f"Default API excludes synthetic records: {'yes' if not default_synthetic_sample else 'no'}")
     print(f"include_synthetic works: {'yes' if include_synthetic_sample else 'no'}")
+    print(f"Direction code terms for 09.03.04 Программная инженерия: {direction_code_terms('09.03.04 Программная инженерия')}")
+    print(f"Moscow all backend score rows: {moscow_diagnostics['moscow_all_count']}")
+    print(f"Moscow software engineering rows: {moscow_diagnostics['moscow_software_count']}")
+    print(f"Moscow software engineering part-time rows: {moscow_diagnostics['moscow_software_part_time_count']}")
+    print(
+        "Moscow software engineering part-time paid rows: "
+        f"{moscow_diagnostics['moscow_software_part_time_paid_count']}"
+    )
+    print(
+        f"Moscow software engineering part-time paid rows for score 276 (+{AMBITIOUS_SCORE_MARGIN} margin): "
+        f"{moscow_diagnostics['moscow_software_part_time_paid_score_count']}"
+    )
+    print(f"Moscow API default rows: {len(moscow_api_default)}")
+    print(f"Moscow API limit=20 rows: {len(moscow_api_limit20)}")
+    print("Moscow software sample:")
+    for row in moscow_software_sample_rows[:5]:
+        print(
+            "  - "
+            f"{row['university_name']} | {row['code'] or ''} {row['direction_name'] or ''} | "
+            f"{row['study_form'] or ''} | {row['admission_type'] or ''} | "
+            f"{row['min_score']} | {row['year']}"
+        )
     print(f"Regions: {len(regions)}")
     print(f"Directions: {directions_count}")
     print(f"Directory directions: {len(directions)}")

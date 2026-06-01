@@ -103,7 +103,7 @@
 
 ## База вузов
 
-Данные в `backend_stub/data/universities.json` нужны для демонстрации логики и fallback-запуска без PostgreSQL. Перед сдачей файл можно заменить на финальную JSON-базу, сохранив структуру полей, либо загрузить SQL из `finalproj.zip` в PostgreSQL по `docs/POSTGRES.md`.
+Данные в `backend_stub/data/universities.json` нужны для fallback-запуска без PostgreSQL. Основной PostgreSQL-режим подключается через SQL из `finalproj.zip` по `docs/POSTGRES.md`; JSON fallback можно обновить отдельно, если сохранить структуру полей.
 
 - `university`;
 - `city`;
@@ -128,6 +128,8 @@
 Статус этапа 41: PostgreSQL result card and score display polish. Значения `min_score=0/1` теперь остаются в API как исходные данные, но получают `score_is_valid=false`, `score_display="не указан"` и не используются для расчёта запаса или категорий safe/realistic/ambitious. Telegram-карточки, Mini App, экспорт, сравнение, summary и advice показывают контекст конкурса, года и пометки вместо `Запас: +279/+280`. Длинные карточки Mini App разделяют название вуза и программу, а short_name выводится только для нормальных аббревиатур, не для технических кодов.
 
 Статус этапа 42: PostgreSQL mapping verification and label cleanup. Проверено, что `Региональный центр технологий и инженерии (...)` приходит из реальных строк `universities.name` supplemental seed, а не из ошибки JOIN/mapping. Обычная выдача скрывает synthetic/demo records по умолчанию, `include_synthetic=true`/`include_demo=true` оставлены для диагностики. Backend добавляет `financing_label`, `study_form_label`, `contest_label`; Mini App, Telegram-карточки, compare, export, summary и advice используют подписи `Финансирование`, `Форма обучения`, `Конкурс` и не показывают `Конкурс: бюджет` как дубль.
+
+Статус этапа 43: PostgreSQL data correctness, result coverage and Mini App UX polish. Backend ищет направление не только по названию и профилю, но и по коду формата `09.03.04`, сохраняя старый alias `IT`. `scripts/check_postgres.py` теперь диагностирует московскую связку `09.03.04 Программная инженерия + заочная + платное + 276` через тот же JOIN-путь, что и backend. Mini App запрашивает до 12 результатов, не дублирует `Москва, Москва`, показывает storage-aware текст для PostgreSQL/локального режима и использует фильтр `Конкурс/квота` без дубля финансирования.
 
 ## Текущая архитектура
 
@@ -164,13 +166,13 @@ Safety-фильтр стоит до OpenAI: сообщения про самоп
 - история подборов хранится локально в JSON и ограничена последними 5 записями;
 - export-файлы не хранятся постоянно и формируются только для отправки пользователю;
 - обращения хранятся локально в `telegram_bot/storage/feedback.json`, файл не попадает в Git;
-- JSON-базу перед сдачей нужно проверить через `python scripts/check_data.py`;
+- JSON fallback при обновлении нужно проверить через `python scripts/check_data.py`;
 - PostgreSQL-режим требует настроенной БД и `DATABASE_URL`;
 - продакшен-деплой не входит в текущий этап.
 
 ## Что можно улучшить дальше
 
-- подставить финальную базу вузов перед сдачей или включить PostgreSQL-режим;
+- расширить PostgreSQL-данные и при необходимости обновить JSON fallback;
 - проверить реальные регионы, направления, баллы и ссылки;
 - расширить список полей для сравнения;
 - добавить сравнение по общежитию;

@@ -50,9 +50,12 @@ const clearFeedbackButton = document.querySelector("#feedback-clear");
 const refreshFeedbackButton = document.querySelector("#feedback-refresh");
 const quickScenarioButtons = document.querySelectorAll("[data-quick-scenario]");
 const toastContainerNode = document.querySelector("#toast-container");
+const aboutDataSourceNode = document.querySelector("#about-data-source");
+const footerDataSourceNode = document.querySelector("#footer-data-source");
 
 const SAFE_MARGIN = 25;
 const AMBITIOUS_MARGIN = 20;
+const MINI_APP_RESULT_LIMIT = 12;
 const FAVORITES_KEY = "aisha_favorites";
 const LEGACY_FAVORITES_KEY = "aishaMiniAppFavorites";
 const THEME_KEY = "aisha_theme";
@@ -301,7 +304,7 @@ async function performSearch() {
     score: String(score),
     direction: currentSearch.direction,
     type,
-    limit: "5",
+    limit: String(MINI_APP_RESULT_LIMIT),
   });
   if (city) {
     params.set("city", city);
@@ -467,7 +470,7 @@ async function loadBackendDirectories() {
   const regions = regionsPayload.items;
   const directions = directionsPayload.items;
   const studyForms = studyFormsPayload.items;
-  const admissionTypes = admissionTypesPayload.items;
+  const admissionTypes = buildContestOptions(admissionTypesPayload.items);
   const backendLoaded = [regionsPayload, directionsPayload, studyFormsPayload, admissionTypesPayload]
     .some((payload) => payload.ok && payload.items.length > 0);
 
@@ -481,7 +484,7 @@ async function loadBackendDirectories() {
     replaceSelectOptions(form.elements["study-form"], studyForms, "Любая форма", { optional: true });
   }
   if (admissionTypes.length) {
-    replaceSelectOptions(form.elements["admission-type"], admissionTypes, "Любой конкурс", { optional: true });
+    replaceSelectOptions(form.elements["admission-type"], admissionTypes, "Любой конкурс/квота", { optional: true });
   }
 
   directoryState = {
@@ -495,6 +498,7 @@ async function loadBackendDirectories() {
     achievements: achievementsPayload.items,
   };
   renderDirectoryStatus();
+  renderDataSourceCopy();
   renderAll();
   if (form.elements.region?.value) {
     await loadCitiesForRegion(form.elements.region.value);
@@ -554,6 +558,15 @@ async function loadCitiesForRegion(region) {
   renderDirectoryStatus();
 }
 
+function buildContestOptions(items) {
+  const sourceItems = Array.isArray(items) ? items : [];
+  return [...new Set(sourceItems
+    .map((item) => formatAdmissionType(item))
+    .filter((item) => item && !["бюджет", "платное"].includes(item))
+    .map((item) => item === "общий конкурс" ? "" : item)
+    .filter(Boolean))];
+}
+
 function replaceSelectOptions(select, items, placeholder, options = {}) {
   if (!select) {
     return;
@@ -591,12 +604,36 @@ function renderDirectoryStatus() {
     return;
   }
   if (directoryState.status === "database") {
-    directoryStatusNode.textContent = `Данные из базы: регионов ${directoryState.regions.length}, направлений ${directoryState.directions.length}.`;
+    const source = directoryState.storage === "postgresql" ? "PostgreSQL-базы проекта" : "подключённой базы проекта";
+    directoryStatusNode.textContent = `Данные из ${source}: регионов ${directoryState.regions.length}, направлений ${directoryState.directions.length}.`;
     directoryStatusNode.className = "directory-status directory-status--database";
     return;
   }
-  directoryStatusNode.textContent = "Локальный fallback: сервис данных сейчас недоступен, показан базовый список.";
+  directoryStatusNode.textContent = "Локальный режим без PostgreSQL: сервис данных сейчас недоступен, показан базовый список.";
   directoryStatusNode.className = "directory-status directory-status--fallback";
+}
+
+function renderDataSourceCopy() {
+  if (!aboutDataSourceNode && !footerDataSourceNode) {
+    return;
+  }
+  const isPostgres = directoryState.storage === "postgresql";
+  const isDatabase = directoryState.status === "database";
+  const text = isPostgres
+    ? "Aisha — учебный прототип сервиса для абитуриентов. В текущем режиме данные загружаются из PostgreSQL-базы проекта; результаты нужно перепроверять на сайтах вузов."
+    : isDatabase
+      ? "Aisha — учебный прототип сервиса для абитуриентов. Данные загружаются из подключённой базы проекта; результаты нужно перепроверять на сайтах вузов."
+      : "Aisha — учебный прототип сервиса для абитуриентов. Локальный режим без PostgreSQL: используется базовый JSON-набор.";
+  if (aboutDataSourceNode) {
+    aboutDataSourceNode.textContent = text;
+  }
+  if (footerDataSourceNode) {
+    footerDataSourceNode.textContent = isPostgres
+      ? "Аиша · Telegram Mini App · PostgreSQL-база проекта"
+      : isDatabase
+        ? "Аиша · Telegram Mini App · подключённая база проекта"
+        : "Аиша · Telegram Mini App · локальный режим";
+  }
 }
 
 function ensureSelectOption(select, value) {
@@ -1386,7 +1423,7 @@ function renderEmptySearchState() {
       <p>Проверь применённые фильтры и попробуй расширить поиск.</p>
       <div class="empty-search-details">
         ${renderSearchDetail("Регион", describeRegionFilter(currentSearch.region))}
-        ${currentSearch.city ? renderSearchDetail("Город", currentSearch.city) : ""}
+        ${shouldShowSearchCity(currentSearch) ? renderSearchDetail("Город", currentSearch.city) : ""}
         ${renderSearchDetail("Направление", describeDirectionFilter(currentSearch.originalDirection || currentSearch.direction))}
         ${renderSearchDetail("Финансирование", currentSearch.typeLabel)}
         ${currentSearch.studyForm ? renderSearchDetail("Форма обучения", currentSearch.studyForm) : ""}
@@ -1438,7 +1475,7 @@ function renderSummary() {
   summaryCard.classList.remove("is-hidden");
   summaryContentNode.innerHTML = `
     <div><b>Регион:</b> ${escapeHtml(describeRegionFilter(currentSearch.region))}</div>
-    ${currentSearch.city ? `<div><b>Город:</b> ${escapeHtml(currentSearch.city)}</div>` : ""}
+    ${shouldShowSearchCity(currentSearch) ? `<div><b>Город:</b> ${escapeHtml(currentSearch.city)}</div>` : ""}
     <div><b>Направление:</b> ${escapeHtml(describeDirectionFilter(currentSearch.originalDirection || currentSearch.direction))}</div>
     <div><b>Финансирование:</b> ${escapeHtml(currentSearch.typeLabel)}</div>
     ${currentSearch.studyForm ? `<div><b>Форма обучения:</b> ${escapeHtml(currentSearch.studyForm)}</div>` : ""}
@@ -1867,7 +1904,7 @@ function renderAdmissionPlan() {
         <span class="plan-badge plan-badge--next">Краткий итог</span>
         <div class="plan-summary">
           <div><b>Регион:</b> ${escapeHtml(currentSearch.region)}</div>
-          ${currentSearch.city ? `<div><b>Город:</b> ${escapeHtml(currentSearch.city)}</div>` : ""}
+          ${shouldShowSearchCity(currentSearch) ? `<div><b>Город:</b> ${escapeHtml(currentSearch.city)}</div>` : ""}
           <div><b>Направление:</b> ${escapeHtml(currentSearch.originalDirection || currentSearch.direction)}</div>
           <div><b>Финансирование:</b> ${escapeHtml(currentSearch.typeLabel)}</div>
           ${currentSearch.studyForm ? `<div><b>Форма обучения:</b> ${escapeHtml(currentSearch.studyForm)}</div>` : ""}
@@ -2113,7 +2150,7 @@ function buildAdmissionPlanText(plan) {
     "",
     "Краткий итог:",
     `Регион: ${currentSearch.region}`,
-    ...(currentSearch.city ? [`Город: ${currentSearch.city}`] : []),
+    ...(shouldShowSearchCity(currentSearch) ? [`Город: ${currentSearch.city}`] : []),
     `Направление: ${currentSearch.originalDirection || currentSearch.direction}`,
     `Финансирование: ${currentSearch.typeLabel}`,
     ...(currentSearch.studyForm ? [`Форма обучения: ${currentSearch.studyForm}`] : []),
@@ -2176,7 +2213,7 @@ function renderExportPreview() {
         <h4>Параметры подбора</h4>
         <div class="export-grid">
           <div><b>Регион:</b> ${escapeHtml(reportData.search.region)}</div>
-          ${reportData.search.city ? `<div><b>Город:</b> ${escapeHtml(reportData.search.city)}</div>` : ""}
+          ${shouldShowSearchCity(reportData.search) ? `<div><b>Город:</b> ${escapeHtml(reportData.search.city)}</div>` : ""}
           <div><b>Баллы:</b> ${escapeHtml(formatValue(reportData.search.score))}</div>
           <div><b>Направление:</b> ${escapeHtml(reportData.search.originalDirection || reportData.search.direction)}</div>
           <div><b>Финансирование:</b> ${escapeHtml(reportData.search.typeLabel)}</div>
@@ -2338,7 +2375,7 @@ function buildExportPlainText(reportData = buildExportReportData()) {
     "",
     "Параметры подбора:",
     `Регион: ${reportData.search.region}`,
-    ...(reportData.search.city ? [`Город: ${reportData.search.city}`] : []),
+    ...(shouldShowSearchCity(reportData.search) ? [`Город: ${reportData.search.city}`] : []),
     `Баллы: ${reportData.search.score}`,
     `Направление: ${reportData.search.originalDirection || reportData.search.direction}`,
     `Финансирование: ${reportData.search.typeLabel}`,
@@ -2908,6 +2945,10 @@ function describeRegionFilter(value) {
   return alias !== value ? `${value} → ${alias}` : value;
 }
 
+function shouldShowSearchCity(search) {
+  return Boolean(search?.city) && !isSameLocationName(search.region, search.city);
+}
+
 function getUniversityDisplayName(item) {
   const candidates = [item.university_full_name, item.university_name, item.university, item.university_short_name];
   for (const value of candidates) {
@@ -2949,10 +2990,27 @@ function isTechnicalUniversityName(value) {
 function formatLocation(item) {
   const city = textValue(item.city, "");
   const region = textValue(item.region, "");
-  if (city && region && city !== region) {
+  if (city && region && !isSameLocationName(city, region)) {
     return `${city}, ${region}`;
   }
   return city || region;
+}
+
+function isSameLocationName(left, right) {
+  const leftText = normalizeLocationName(left);
+  const rightText = normalizeLocationName(right);
+  return Boolean(leftText && rightText && leftText === rightText);
+}
+
+function normalizeLocationName(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replaceAll("ё", "е")
+    .replace(/^г\.\s*/, "")
+    .replace(/^город\s+/, "")
+    .replace(/^республика\s+/, "")
+    .replace(/\s+/g, " ");
 }
 
 function formatDelta(delta) {

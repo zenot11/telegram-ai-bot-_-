@@ -157,8 +157,8 @@ main,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 18px 0;
+  gap: 22px;
+  padding: 20px 0;
 }
 
 .topbar__actions {
@@ -499,10 +499,10 @@ h3 {
 
 .quick-start {
   display: grid;
-  gap: 16px;
+  gap: 18px;
   max-width: 620px;
-  margin-top: 28px;
-  padding: 20px;
+  margin-top: 34px;
+  padding: 22px;
 }
 
 .quick-start h2,
@@ -521,7 +521,7 @@ h3 {
 .quick-scenarios {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
 }
 
 .quick-scenarios--compact {
@@ -788,12 +788,12 @@ h3 {
 }
 
 .section {
-  margin: 22px 0;
-  padding: 28px;
+  margin: 26px 0;
+  padding: 30px;
 }
 
 .section-heading {
-  margin-bottom: 22px;
+  margin-bottom: 26px;
 }
 
 .section-heading--compact {
@@ -808,20 +808,20 @@ h3 {
 .search-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 22px 20px;
 }
 
 .example-panel {
   display: grid;
-  gap: 12px;
-  margin-bottom: 18px;
-  padding: 18px;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 20px;
 }
 
 label,
 fieldset {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   margin: 0;
   color: var(--ink);
   font-weight: 800;
@@ -842,10 +842,11 @@ legend {
 }
 
 .field-helper {
+  display: block;
   color: var(--muted);
   font-weight: 700;
   font-size: 0.84rem;
-  line-height: 1.35;
+  line-height: 1.45;
 }
 
 input,
@@ -874,7 +875,7 @@ select:focus {
   min-height: 52px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 10px;
 }
 
 .segmented label {
@@ -908,7 +909,8 @@ select:focus {
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
+  margin-top: 4px;
 }
 
 .summary-card,
@@ -939,13 +941,14 @@ select:focus {
 .results-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
 }
 
 .card-actions {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 8px;
+  gap: 10px;
+  margin-top: 2px;
 }
 
 .advice-card h3 {
@@ -1018,21 +1021,21 @@ select:focus {
 .empty-search-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
 }
 
 .results-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
-  gap: 16px;
+  gap: 18px;
 }
 
 .result-card {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 18px;
+  padding: 20px;
   background: var(--card);
   box-shadow: var(--shadow-soft);
 }
@@ -1060,7 +1063,7 @@ select:focus {
 
 .result-meta {
   display: grid;
-  gap: 8px;
+  gap: 9px;
   color: var(--muted);
   font-size: 0.94rem;
   line-height: 1.38;

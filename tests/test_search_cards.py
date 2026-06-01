@@ -44,6 +44,24 @@ def test_search_card_hides_missing_price_and_renders_available_metadata() -> Non
     assert "Конкурс: бюджет" not in text
 
 
+def test_search_card_does_not_duplicate_same_city_and_region() -> None:
+    text = _format_university_card(
+        1,
+        {
+            "university": "Московский тестовый вуз",
+            "city": "Москва",
+            "region": "Москва",
+            "program": "Программная инженерия",
+            "min_score": 240,
+            "type": "платное",
+        },
+        276,
+    )
+
+    assert "📍 Москва" in text
+    assert "Москва, Москва" not in text
+
+
 def test_search_card_does_not_render_none_or_null_values() -> None:
     text = _format_university_card(
         1,

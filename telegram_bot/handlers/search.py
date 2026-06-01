@@ -168,7 +168,7 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
         f"Финансирование: {education_type_label(profile['education_type'])}\n\n"
         f"{cards}\n\n"
         f"{summary}\n\n"
-        "Сейчас используются демонстрационные данные.",
+        "Источник данных определяется подключённой базой. Проверь условия на официальных сайтах вузов.",
         reply_markup=search_results_keyboard(len(display_results)),
     )
 

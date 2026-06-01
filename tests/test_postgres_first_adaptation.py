@@ -5,6 +5,7 @@ from backend_stub.main import achievements, create_app, universities
 from backend_stub.university_repository import (
     admission_type_label,
     contest_label,
+    direction_code_terms,
     direction_matches,
     fetch_universities_json,
     fetch_universities_postgres,
@@ -49,6 +50,14 @@ def test_direction_alias_it_expands_to_real_postgres_directions() -> None:
     assert "Информационная безопасность" in terms
     assert "Программная инженерия" in terms
     assert direction_matches(_record(direction="Информационные системы и технологии"), "информационные технологии")
+
+
+def test_direction_with_code_searches_by_code_and_name() -> None:
+    terms = postgres_direction_terms("09.03.04 Программная инженерия")
+
+    assert direction_code_terms("09.03.04 Программная инженерия") == ["09.03.04"]
+    assert "Программная инженерия" in terms
+    assert "09.03.04 Программная инженерия" in terms
 
 
 def test_multiword_direction_alias_does_not_match_single_generic_word() -> None:

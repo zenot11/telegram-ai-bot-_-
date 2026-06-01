@@ -34,7 +34,8 @@ def format_search_brief_summary(results: list[dict[str, Any]], user_score: int) 
         f"{_format_category_counts(count_categories(results, user_score))}\n\n"
         f"{_format_unclear_scores_note(results)}"
         "Лучше начать с безопасных и реалистичных вариантов, а амбициозные оставить как цель.\n\n"
-        "Это не гарантия поступления: данные демонстрационные, а реальные проходные баллы меняются каждый год."
+        "Это не гарантия поступления: проходные баллы меняются каждый год, "
+        "а условия нужно сверять с официальными сайтами вузов."
     )
 
 

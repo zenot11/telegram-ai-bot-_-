@@ -64,8 +64,8 @@ def test_mini_app_uses_postgres_first_directories_and_alias_presets() -> None:
     js = read_mini_app_file("app.js")
 
     assert "directoryState" in js
-    assert "Данные из базы" in js
-    assert "Локальный fallback" in js
+    assert "PostgreSQL-базы проекта" in js
+    assert "Локальный режим без PostgreSQL" in js
     assert "fetchDirectoryPayload" in js
     assert "normalizeDirectionForSearch" in js
     assert 'direction: "информационные технологии"' in js
@@ -167,8 +167,8 @@ def test_styles_include_theme_variables_and_dark_theme() -> None:
 def test_index_mentions_demo_data_warning() -> None:
     html = read_mini_app_file("index.html")
 
-    assert "демонстрационный прототип" in html
-    assert "будут заменены" in html
+    assert "учебный прототип" in html
+    assert "Режим источника данных зависит от подключённой базы" in html
 
 
 def test_mini_app_user_texts_do_not_use_mvp_label() -> None:

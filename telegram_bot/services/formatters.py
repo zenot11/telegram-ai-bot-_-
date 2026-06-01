@@ -91,7 +91,7 @@ def display_university_name(item: dict[str, Any]) -> str:
 def location_text(item: dict[str, Any]) -> str:
     city = text_value(item.get("city"), "")
     region = text_value(item.get("region"), "")
-    if city and region and city != region:
+    if city and region and not same_location_name(city, region):
         return f"{city}, {region}"
     return city or region
 
@@ -191,6 +191,20 @@ def contest_text(item: dict[str, Any]) -> str:
 
 def normalize_label(value: Any) -> str:
     return str(value or "").strip().lower().replace(" ", "_").replace("-", "_")
+
+
+def same_location_name(left: Any, right: Any) -> bool:
+    left_text = normalize_location_name(left)
+    right_text = normalize_location_name(right)
+    return bool(left_text and right_text and left_text == right_text)
+
+
+def normalize_location_name(value: Any) -> str:
+    text = str(value or "").strip().lower().replace("ё", "е")
+    for prefix in ("г. ", "город ", "республика "):
+        if text.startswith(prefix):
+            text = text.removeprefix(prefix)
+    return " ".join(text.split())
 
 
 def is_technical_university_name(value: Any) -> bool:

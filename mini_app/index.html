@@ -95,7 +95,7 @@
         <div class="section-heading">
           <p class="eyebrow">Подбор</p>
           <h2 id="search-title">Подбор вариантов</h2>
-          <p>Заполни поля, и Аиша покажет до 5 программ из подключённой базы.</p>
+          <p>Заполни поля, и Аиша покажет до 12 программ из подключённой базы.</p>
           <p id="directory-status" class="directory-status">Загружаю справочники базы…</p>
         </div>
 
@@ -133,7 +133,7 @@
             <select id="city" name="city">
               <option value="" selected>Любой город</option>
             </select>
-            <span class="field-helper">Необязательно. Список обновится после выбора региона.</span>
+            <span class="field-helper">Необязательно. Можно оставить любой город внутри региона.</span>
           </label>
 
           <label>
@@ -171,11 +171,11 @@
           </label>
 
           <label>
-            <span class="field-label">Конкурс</span>
+            <span class="field-label">Конкурс/квота</span>
             <select id="admission-type" name="admission-type">
-              <option value="" selected>Любой конкурс</option>
+              <option value="" selected>Любой конкурс/квота</option>
             </select>
-            <span class="field-helper">Необязательно. Например: целевая квота или особая квота.</span>
+            <span class="field-helper">Необязательно. Выбирай только если нужна конкретная квота.</span>
           </label>
 
           <fieldset>
@@ -368,10 +368,8 @@
           <h2 id="about-title">Аиша помогает выбирать спокойнее</h2>
         </div>
         <div class="about-content">
-          <p>
-            Это демонстрационный прототип сервиса для абитуриентов. Сейчас используется
-            временная демонстрационная база. Перед сдачей данные будут заменены на финальные
-            данные вузов без переписывания основной логики.
+          <p id="about-data-source">
+            Aisha — учебный прототип сервиса для абитуриентов. Режим источника данных зависит от подключённой базы.
           </p>
           <article id="session-card" class="session-card session-card--checking" aria-live="polite">
             <div>
@@ -415,7 +413,7 @@
     </main>
 
     <footer class="footer">
-      Аиша · Telegram Mini App · демонстрационный прототип
+      <span id="footer-data-source">Аиша · Telegram Mini App · учебный прототип</span>
     </footer>
 
     <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
