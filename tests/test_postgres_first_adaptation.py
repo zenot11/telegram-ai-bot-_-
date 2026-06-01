@@ -75,6 +75,13 @@ def test_postgres_normalization_prefers_full_university_name_over_technical_shor
     assert record["university"] == "Региональный центр технологий и инженерии (Республика Крым)"
 
 
+def test_short_name_technical_detection_keeps_known_abbreviations() -> None:
+    assert is_technical_university_name("РЦТИ-26") is True
+    assert is_technical_university_name("ИБ") is True
+    assert is_technical_university_name("МГУ") is False
+    assert is_technical_university_name("МИРЭА") is False
+
+
 def test_achievements_endpoint_works_in_json_fallback(monkeypatch) -> None:
     monkeypatch.setenv("USE_POSTGRES", "false")
     app = create_app()

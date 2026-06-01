@@ -107,3 +107,12 @@ def test_advice_mentions_changing_scores_disclaimer() -> None:
 
     assert "Проходные баллы могут меняться" in text
     assert "проверить информацию на сайте вуза" in text
+
+
+def test_advice_with_invalid_scores_does_not_claim_large_margin() -> None:
+    text = build_advice(profile(score=280), [university("Служебный балл", 0)])
+
+    assert "проходные баллы по ним требуют уточнения" in text
+    assert "огромный запас" not in text
+    assert "достаточно спокойным" not in text
+    assert "конкурс" in text.lower()

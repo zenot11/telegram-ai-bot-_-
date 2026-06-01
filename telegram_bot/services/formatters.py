@@ -6,6 +6,7 @@ from telegram_bot.services.recommendation import (
     format_score_delta,
     get_recommendation_label,
 )
+from telegram_bot.services.scores import is_valid_score, score_display, score_note
 
 
 def format_university_card(
@@ -31,14 +32,15 @@ def format_university_card(
     if subjects:
         lines.append(f"📚 Предметы: {escape(subjects)}")
 
-    lines.append(f"📊 Проходной балл: {escape(text_value(item.get('min_score')))}")
+    lines.append(f"📊 Проходной балл: {escape(score_display(item.get('min_score')))}")
 
     if user_score is not None:
         lines.append(f"✅ Твои баллы: {user_score}")
-        lines.append(format_delta_line(user_score, item))
+        if is_valid_score(item.get("min_score")):
+            lines.append(format_delta_line(user_score, item))
 
     lines.append(f"🎯 Тип: {escape(text_value(item.get('type')))}")
-    admission_type = admission_type_text(item.get("admission_type"))
+    admission_type = admission_type_text(item.get("admission_type_label") or item.get("admission_type"))
     if admission_type and admission_type not in {normalize_label(item.get("type")), "бюджет", "платное"}:
         lines.append(f"🎫 Конкурс: {escape(admission_type)}")
     short_name = short_name_text(item)
@@ -61,6 +63,8 @@ def format_university_card(
 
     if include_note and has_display_value(item.get("note")):
         lines.extend(["", f"Пометка: {escape(str(item['note']))}."])
+    elif include_note and score_note(item.get("min_score")):
+        lines.extend(["", f"Пометка: {escape(score_note(item.get('min_score')))}."])
 
     return "\n".join(lines)
 
@@ -159,6 +163,14 @@ def is_technical_university_name(value: Any) -> bool:
     text = str(value or "").strip()
     if not text:
         return False
+    known_abbreviations = {"МГУ", "СПБГУ", "МФТИ", "МИРЭА", "КФУ", "РУДН", "ВШЭ", "МАИ", "МЭИ", "МГТУ"}
+    normalized = text.upper().replace("Ё", "Е")
+    if normalized in known_abbreviations:
+        return False
+    if any(char.isdigit() for char in text):
+        return True
+    if len(text) <= 2 and text.upper() == text and any(char.isalpha() for char in text):
+        return True
     if "-" in text and any(char.isdigit() for char in text) and len(text) <= 12:
         letters = text.replace("-", "").replace("_", "")
         return all(char.isalpha() or char.isdigit() for char in letters)

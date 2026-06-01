@@ -1,5 +1,12 @@
 from typing import Any
 
+from telegram_bot.services.scores import (
+    format_score_delta_text,
+    is_valid_score,
+    parse_score,
+    score_delta_value,
+)
+
 
 SAFE_SCORE_MARGIN = 25
 AMBITIOUS_SCORE_MARGIN = 20
@@ -32,7 +39,7 @@ RECOMMENDATION_LABELS = {
 
 def classify_university(user_score: int, university: dict[str, Any]) -> str:
     min_score = get_min_score(university)
-    if min_score is None:
+    if min_score is None or not is_valid_score(min_score):
         return CATEGORY_UNAVAILABLE
 
     if min_score <= user_score - SAFE_SCORE_MARGIN:
@@ -89,25 +96,12 @@ def format_categories_explanation() -> str:
 
 
 def get_min_score(university: dict[str, Any]) -> int | None:
-    value = university.get("min_score")
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str) and value.strip().isdigit():
-        return int(value.strip())
-    return None
+    return parse_score(university.get("min_score"))
 
 
 def score_delta(user_score: int, university: dict[str, Any]) -> int | None:
-    min_score = get_min_score(university)
-    if min_score is None:
-        return None
-    return user_score - min_score
+    return score_delta_value(user_score, university.get("min_score"))
 
 
 def format_score_delta(user_score: int, university: dict[str, Any]) -> str:
-    delta = score_delta(user_score, university)
-    if delta is None:
-        return "Запас по баллам: недостаточно данных"
-    if delta >= 0:
-        return f"Запас: +{delta}"
-    return f"Не хватает: {abs(delta)} баллов"
+    return format_score_delta_text(user_score, university.get("min_score"))

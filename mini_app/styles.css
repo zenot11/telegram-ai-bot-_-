@@ -1046,6 +1046,16 @@ select:focus {
   margin: 0;
   font-size: 1.08rem;
   line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.result-card__program {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .result-meta {
@@ -1073,6 +1083,11 @@ select:focus {
 .badge.safe {
   color: var(--safe-text);
   background: var(--safe);
+}
+
+.badge.unavailable {
+  color: var(--muted);
+  background: var(--card-soft);
 }
 
 .badge.realistic {
@@ -1659,15 +1674,22 @@ select:focus {
 }
 
 .export-item__title {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
   gap: 10px;
 }
 
 .export-item__title strong {
   color: var(--ink);
   line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.export-item__title > span:not(.badge) {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .export-item__meta {

@@ -3,6 +3,7 @@ import re
 from typing import Any
 
 from telegram_bot.services.recommendation import AMBITIOUS_SCORE_MARGIN
+from telegram_bot.services.scores import is_valid_score, score_display, score_note
 from telegram_bot.services.validation import (
     DIRECTION_SYNONYMS,
     education_type_label,
@@ -168,7 +169,19 @@ ACHIEVEMENTS_FALLBACK = [
     },
 ]
 
-TECHNICAL_UNIVERSITY_RE = re.compile(r"^[A-ZА-ЯЁ]{2,}[-_]\d+$", re.IGNORECASE)
+TECHNICAL_UNIVERSITY_RE = re.compile(r"^[A-ZА-ЯЁ]{2,}[-_]?\d+$", re.IGNORECASE)
+KNOWN_UNIVERSITY_ABBREVIATIONS = {
+    "МГУ",
+    "СПБГУ",
+    "МФТИ",
+    "МИРЭА",
+    "КФУ",
+    "РУДН",
+    "ВШЭ",
+    "МАИ",
+    "МЭИ",
+    "МГТУ",
+}
 
 SORT_OPTIONS = {
     "min_score_asc",
@@ -453,6 +466,7 @@ def normalize_pg_record(row: Any) -> dict[str, Any]:
         subjects_value = []
 
     min_score = _int_value(_row_value(row, "min_score", _row_value(row, "passing_score", 0)))
+    min_score_is_valid = is_valid_score(min_score)
     study_form = normalize_study_form(_row_value(row, "study_form", ""))
     full_name = _string_value(
         _row_value(row, "university_full_name", _row_value(row, "university_name", _row_value(row, "university", "")))
@@ -472,6 +486,9 @@ def normalize_pg_record(row: Any) -> dict[str, Any]:
         "direction_code": _string_value(_row_value(row, "direction_code", _row_value(row, "code", ""))),
         "subjects": subjects_value,
         "min_score": min_score,
+        "score_is_valid": min_score_is_valid,
+        "score_display": score_display(min_score),
+        "score_note": score_note(min_score),
         "type": row_type,
         "url": _string_value(_row_value(row, "url", _row_value(row, "website", ""))),
         "price": _row_value(row, "price", None),
@@ -742,7 +759,7 @@ def _append_postgres_common_filters(
 
 def _postgres_order_by(sort: str, has_score: bool) -> str:
     if sort == "min_score_desc":
-        return "ps.min_score DESC NULLS LAST, u.name ASC, d.name ASC"
+        return "(ps.min_score > 1) DESC, ps.min_score DESC NULLS LAST, u.name ASC, d.name ASC"
     if sort == "university":
         return "u.name ASC, d.name ASC, ps.min_score ASC NULLS LAST"
     if sort == "city":
@@ -752,15 +769,15 @@ def _postgres_order_by(sort: str, has_score: bool) -> str:
     if sort == "year_desc":
         return "ps.year DESC NULLS LAST, u.name ASC, d.name ASC"
     if sort == "min_score_asc" or has_score:
-        return "ps.min_score ASC NULLS LAST, u.name ASC, d.name ASC"
+        return "(ps.min_score > 1) DESC, ps.min_score ASC NULLS LAST, u.name ASC, d.name ASC"
     return "u.name ASC, d.name ASC, ps.min_score ASC NULLS LAST"
 
 
 def _sort_json_universities(rows: list[dict[str, Any]], sort: str) -> list[dict[str, Any]]:
     if sort == "min_score_asc":
-        return sorted(rows, key=lambda item: (_min_score(item) is None, _min_score(item) or 0))
+        return sorted(rows, key=lambda item: (not is_valid_score(_min_score(item)), _min_score(item) or 0))
     if sort == "min_score_desc":
-        return sorted(rows, key=lambda item: (_min_score(item) is None, -(_min_score(item) or 0)))
+        return sorted(rows, key=lambda item: (not is_valid_score(_min_score(item)), -(_min_score(item) or 0)))
     if sort == "university":
         return sorted(rows, key=lambda item: normalize(item.get("university", "")))
     if sort == "city":
@@ -856,11 +873,14 @@ def achievement_category(code: str) -> str:
 
 def is_technical_university_name(value: Any) -> bool:
     text = _string_value(value)
-    if not text:
+    normalized = text.upper().replace("Ё", "Е")
+    if not text or normalized in KNOWN_UNIVERSITY_ABBREVIATIONS:
         return False
     if TECHNICAL_UNIVERSITY_RE.match(text):
         return True
-    return bool(re.match(r"^[A-ZА-ЯЁ]{2,}\d+$", text, re.IGNORECASE))
+    if any(char.isdigit() for char in text):
+        return True
+    return len(text) <= 2 and text.upper() == text and any(char.isalpha() for char in text)
 
 
 def get_university_display_name(full_name: Any, short_name: Any = "", fallback: Any = "") -> str:

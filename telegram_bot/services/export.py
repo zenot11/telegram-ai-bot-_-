@@ -18,6 +18,7 @@ from telegram_bot.services.recommendation import (
     classify_university,
     format_score_delta,
 )
+from telegram_bot.services.scores import is_valid_score, score_display, score_note
 from telegram_bot.services.summary import count_categories
 from telegram_bot.services.validation import education_type_label
 
@@ -149,17 +150,18 @@ def _format_items(items: list[dict[str, Any]], score: int | None) -> list[str]:
             f"{index}. {title_short(item)}",
             f"Город: {text_value(item.get('city'))}",
             f"Категория: {category}",
-            f"Проходной балл: {text_value(item.get('min_score'))}",
+            f"Проходной балл: {score_display(item.get('min_score'))}",
         ]
         subjects = subjects_text(item)
         if subjects:
             block.insert(4, f"Предметы: {subjects}")
         if score is not None:
             block.append(f"Твои баллы: {score}")
-            block.append(format_score_delta(score, item))
+            if is_valid_score(item.get("min_score")):
+                block.append(format_score_delta(score, item))
 
         block.append(f"Тип: {text_value(item.get('type'))}")
-        admission_type = admission_type_text(item.get("admission_type"))
+        admission_type = admission_type_text(item.get("admission_type_label") or item.get("admission_type"))
         if admission_type and admission_type not in {normalize_label(item.get("type")), "бюджет", "платное"}:
             block.append(f"Конкурс: {admission_type}")
         if has_display_value(item.get("price")):
@@ -172,6 +174,10 @@ def _format_items(items: list[dict[str, Any]], score: int | None) -> list[str]:
             block.append(f"Факультет: {item['faculty']}")
         if has_display_value(item.get("year")):
             block.append(f"Год данных: {item['year']}")
+        if has_display_value(item.get("note")):
+            block.append(f"Пометка: {item['note']}")
+        elif score_note(item.get("min_score")):
+            block.append(f"Пометка: {score_note(item.get('min_score'))}")
         if has_display_value(item.get("url")):
             block.append(f"Сайт: {item['url']}")
         blocks.append("\n".join(str(line) for line in block))

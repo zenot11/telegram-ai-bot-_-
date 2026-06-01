@@ -169,7 +169,9 @@ python scripts/check_data.py
 
 Поля `study_form`, `duration`, `note` и `price` могут отсутствовать или быть пустыми. Код должен показывать аккуратные fallback-значения, а не технические `None` или `null`.
 
-В PostgreSQL mode backend дополнительно может вернуть `year`, `faculty`, `admission_type`, `admission_type_label`, `profile`, `direction_code`, `university_full_name`, `university_short_name` и диагностическое поле `source`. Карточки, сравнение, экспорт и Mini App показывают полезный контекст (`Год данных`, `Факультет`, `Конкурс`), используют полное `universities.name` как основное название, а внутренний `source` не выводят пользователю. Подробный аудит совместимости описан в [docs/DATA_COMPATIBILITY.md](docs/DATA_COMPATIBILITY.md).
+В PostgreSQL mode backend дополнительно может вернуть `year`, `faculty`, `admission_type`, `admission_type_label`, `profile`, `direction_code`, `university_full_name`, `university_short_name`, `score_is_valid`, `score_display`, `score_note` и диагностическое поле `source`. Карточки, сравнение, экспорт и Mini App показывают полезный контекст (`Год данных`, `Факультет`, `Конкурс`), используют полное `universities.name` как основное название, а внутренний `source` не выводят пользователю. Подробный аудит совместимости описан в [docs/DATA_COMPATIBILITY.md](docs/DATA_COMPATIBILITY.md).
+
+На реальных PostgreSQL-данных `min_score=0` или `min_score=1` считается неполным или служебным значением. Такие записи остаются в выдаче, но UI показывает `Проходной балл: не указан`, не считает запас от этого значения и не относит вариант к безопасным только из-за нулевого балла.
 
 Справочники Mini App загружаются из backend:
 
@@ -192,7 +194,7 @@ python scripts/check_data.py
 - `Адыгея` -> `Республика Адыгея`;
 - `IT`, `айти`, `информационные технологии` -> реальные направления PostgreSQL вроде `Прикладная информатика`, `Информационная безопасность`, `Программная инженерия`.
 
-Поиск намеренно возвращает также амбициозные варианты: `min_score <= score + 20`. Это поведение сохранено от JSON-прототипа и одинаково работает в JSON и PostgreSQL mode.
+Поиск намеренно возвращает также амбициозные варианты: `min_score <= score + 20`. Это поведение сохранено от JSON-прототипа и одинаково работает в JSON и PostgreSQL mode. При сортировке по баллам записи с валидным проходным баллом идут выше записей, где балл требует уточнения.
 
 После замены файла нужно выполнить:
 

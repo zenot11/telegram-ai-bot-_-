@@ -107,6 +107,11 @@ const categoryMeta = {
     shortLabel: "Амбициозный",
     label: "🔴 Амбициозный вариант",
   },
+  unavailable: {
+    className: "unavailable",
+    shortLabel: "Требует уточнения",
+    label: "⚪ Данные требуют проверки",
+  },
 };
 
 const filterLabels = {
@@ -1426,6 +1431,7 @@ function renderSummary() {
   }
 
   const counts = getFilterCounts(lastResults);
+  const unclearScores = lastResults.filter((item) => !hasValidMinScore(item)).length;
   summaryCard.classList.remove("is-hidden");
   summaryContentNode.innerHTML = `
     <div><b>Регион:</b> ${escapeHtml(describeRegionFilter(currentSearch.region))}</div>
@@ -1437,6 +1443,7 @@ function renderSummary() {
     <div><b>Баллы:</b> ${currentSearch.score}</div>
     <div><b>Найдено:</b> ${lastResults.length}</div>
     <div><b>Безопасные:</b> ${counts.safe} · <b>Реалистичные:</b> ${counts.realistic} · <b>Амбициозные:</b> ${counts.ambitious}</div>
+    ${unclearScores ? `<div><b>Проверка баллов:</b> ${unclearScores} знач. требуют уточнения</div>` : ""}
     <div><b>Избранное:</b> ${favorites.length}</div>
   `;
 }
@@ -1449,9 +1456,12 @@ function renderAdvice() {
   }
 
   const counts = getFilterCounts(lastResults);
+  const unclearScores = lastResults.filter((item) => !hasValidMinScore(item)).length;
   let text = "Попробуй изменить регион, направление или тип обучения.";
 
-  if (lastResults.length && counts.safe >= Math.max(1, counts.realistic + counts.ambitious)) {
+  if (lastResults.length && unclearScores === lastResults.length) {
+    text = "Варианты есть, но проходные баллы требуют уточнения. Проверь конкурс, год и пометки на сайтах вузов.";
+  } else if (lastResults.length && counts.safe >= Math.max(1, counts.realistic + counts.ambitious)) {
     text = "У тебя есть варианты с запасом. Сохрани 1–2 подходящих и проверь сайты вузов.";
   } else if (lastResults.length && counts.ambitious > 0 && counts.safe + counts.realistic === 0) {
     text = "Варианты есть, но запас небольшой. Попробуй другой регион или платное обучение как запасной сценарий.";
@@ -1549,14 +1559,17 @@ function renderCards(items, score) {
 
 function renderCard(item, score, index) {
   const category = getItemCategory(item, score);
-  const meta = categoryMeta[category] || categoryMeta.ambitious;
+  const meta = categoryMeta[category] || categoryMeta.unavailable;
   const universityName = getUniversityDisplayName(item);
+  const programName = textValue(item.program, "программа не указана");
   const shortName = getUsefulShortName(item);
   const location = formatLocation(item);
   const subjects = formatSubjects(item.subjects);
-  const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type) : "";
-  const minScore = getMinScore(item);
-  const delta = minScore === null ? null : score - minScore;
+  const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type_label || item.admission_type) : "";
+  const scoreText = getScoreDisplay(item);
+  const delta = getScoreMargin(item, score);
+  const scoreClarification = getScoreClarification(item);
+  const note = textValue(item.note, scoreClarification);
   const key = makeFavoriteKey(item);
   const compareKey = getUniversityKey(item);
   const alreadyFavorite = isFavorite(item);
@@ -1565,15 +1578,16 @@ function renderCard(item, score, index) {
   return `
     <article class="result-card">
       <div class="result-card__top">
-        <h3>${index}. ${escapeHtml(universityName)} — ${escapeHtml(textValue(item.program, "программа не указана"))}</h3>
+        <h3>${index}. ${escapeHtml(universityName)}</h3>
+        <p class="result-card__program">${escapeHtml(programName)}</p>
         <span class="badge ${meta.className}">${meta.label}</span>
       </div>
       <div class="result-meta">
         ${location ? `<div><b>Локация:</b> ${escapeHtml(location)}</div>` : ""}
         ${subjects ? `<div><b>Предметы:</b> ${escapeHtml(subjects)}</div>` : ""}
-        <div><b>Проходной балл:</b> ${escapeHtml(formatValue(minScore))}</div>
+        <div><b>Проходной балл:</b> ${escapeHtml(scoreText)}</div>
         <div><b>Твои баллы:</b> ${score}</div>
-        <div><b>${delta === null ? "Запас" : delta >= 0 ? "Запас" : "Не хватает"}:</b> ${escapeHtml(formatDelta(delta))}</div>
+        ${delta === null ? "" : `<div><b>${delta >= 0 ? "Запас" : "Не хватает"}:</b> ${escapeHtml(formatDelta(delta))}</div>`}
         <div><b>Тип:</b> ${escapeHtml(textValue(item.type, "не указан"))}</div>
         ${admissionType ? `<div><b>Конкурс:</b> ${escapeHtml(admissionType)}</div>` : ""}
         ${shortName ? `<div><b>Краткое название:</b> ${escapeHtml(shortName)}</div>` : ""}
@@ -1583,7 +1597,7 @@ function renderCard(item, score, index) {
         ${hasValue(item.faculty) ? `<div><b>Факультет:</b> ${escapeHtml(item.faculty)}</div>` : ""}
         ${hasValue(item.year) ? `<div><b>Год данных:</b> ${escapeHtml(item.year)}</div>` : ""}
         ${hasValue(item.url) ? `<div><b>Сайт:</b> <a class="site-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.url)}</a></div>` : ""}
-        ${hasValue(item.note) ? `<div><b>Пометка:</b> ${escapeHtml(item.note)}</div>` : ""}
+        ${note ? `<div><b>Пометка:</b> ${escapeHtml(note)}</div>` : ""}
       </div>
       <div class="card-actions">
         <button class="favorite-button ${alreadyFavorite ? "is-added" : ""}" type="button" data-add-favorite data-favorite-key="${escapeAttribute(key)}">
@@ -2236,24 +2250,27 @@ function renderExportItems(title, items, emptyText, limit = null) {
 
 function renderExportItem(item, index) {
   const category = getItemCategory(item);
-  const meta = categoryMeta[category] || categoryMeta.ambitious;
+  const meta = categoryMeta[category] || categoryMeta.unavailable;
   const universityName = getUniversityDisplayName(item);
+  const programName = textValue(item.program, "программа не указана");
   const location = formatLocation(item);
   const subjects = formatSubjects(item.subjects);
-  const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type) : "";
+  const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type_label || item.admission_type) : "";
   const margin = getScoreMargin(item);
+  const note = textValue(item.note, getScoreClarification(item));
 
   return `
     <article class="export-item">
       <div class="export-item__title">
-        <strong>${index}. ${escapeHtml(universityName)} — ${escapeHtml(textValue(item.program, "программа не указана"))}</strong>
+        <strong>${index}. ${escapeHtml(universityName)}</strong>
+        <span>${escapeHtml(programName)}</span>
         <span class="badge ${meta.className}">${escapeHtml(meta.shortLabel)}</span>
       </div>
       <div class="export-item__meta">
         ${location ? `<span><b>Локация:</b> ${escapeHtml(location)}</span>` : ""}
-        <span><b>Проходной балл:</b> ${escapeHtml(formatValue(getMinScore(item)))}</span>
+        <span><b>Проходной балл:</b> ${escapeHtml(getScoreDisplay(item))}</span>
         <span><b>Твои баллы:</b> ${escapeHtml(formatValue(getUserScore(item) || currentSearch?.score))}</span>
-        <span><b>Запас/не хватает:</b> ${escapeHtml(formatDelta(margin))}</span>
+        ${margin === null ? "" : `<span><b>Запас/не хватает:</b> ${escapeHtml(formatDelta(margin))}</span>`}
         <span><b>Тип:</b> ${escapeHtml(textValue(item.type, "не указано"))}</span>
         ${admissionType ? `<span><b>Конкурс:</b> ${escapeHtml(admissionType)}</span>` : ""}
         ${hasValue(item.price) ? `<span><b>Стоимость:</b> ${escapeHtml(formatPrice(item.price))}</span>` : ""}
@@ -2263,6 +2280,7 @@ function renderExportItem(item, index) {
         ${hasValue(item.faculty) ? `<span><b>Факультет:</b> ${escapeHtml(item.faculty)}</span>` : ""}
         ${hasValue(item.year) ? `<span><b>Год данных:</b> ${escapeHtml(item.year)}</span>` : ""}
         ${hasValue(item.url) ? `<span><b>Сайт:</b> <a class="site-link" href="${escapeAttribute(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.url)}</a></span>` : ""}
+        ${note ? `<span><b>Пометка:</b> ${escapeHtml(note)}</span>` : ""}
       </div>
     </article>
   `;
@@ -2351,17 +2369,21 @@ function formatExportItemsForText(items, emptyText) {
 
   return items.map((item, index) => {
     const subjects = formatSubjects(item.subjects);
-    const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type) : "";
+    const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type_label || item.admission_type) : "";
     const location = formatLocation(item);
+    const margin = getScoreMargin(item);
+    const note = textValue(item.note, getScoreClarification(item));
     const parts = [
       `${index + 1}. ${getUniversityDisplayName(item)} — ${textValue(item.program, "программа не указана")}`,
       `Локация: ${location || "не указано"}`,
       `Категория: ${getCategoryLabel(item)}`,
-      `Проходной балл: ${formatValue(getMinScore(item))}`,
+      `Проходной балл: ${getScoreDisplay(item)}`,
       `Твои баллы: ${formatValue(getUserScore(item) || currentSearch?.score)}`,
-      `Запас/не хватает: ${formatDelta(getScoreMargin(item))}`,
       `Тип: ${textValue(item.type, "не указано")}`,
     ];
+    if (margin !== null) {
+      parts.push(`Запас/не хватает: ${formatDelta(margin)}`);
+    }
     if (admissionType) {
       parts.push(`Конкурс: ${admissionType}`);
     }
@@ -2382,6 +2404,9 @@ function formatExportItemsForText(items, emptyText) {
     }
     if (hasValue(item.year)) {
       parts.push(`Год данных: ${item.year}`);
+    }
+    if (note) {
+      parts.push(`Пометка: ${note}`);
     }
     if (hasValue(item.url)) {
       parts.push(`Сайт: ${item.url}`);
@@ -2500,15 +2525,15 @@ function renderComparisonTable(items) {
     { label: "Регион", value: (item) => textValue(item.region, "не указано") },
     { label: "Направление", value: (item) => textValue(item.direction, "не указано") },
     { label: "Категория", highlight: "category", value: (item) => getCategoryLabel(item) },
-    { label: "Проходной балл", highlight: "minScore", value: (item) => formatValue(getMinScore(item)) },
+    { label: "Проходной балл", highlight: "minScore", value: (item) => getScoreDisplay(item) },
     { label: "Твои баллы", value: (item) => formatValue(getUserScore(item)) },
-    { label: "Запас/не хватает", highlight: "margin", value: (item) => formatDelta(getScoreMargin(item)) },
+    { label: "Запас/не хватает", highlight: "margin", value: (item) => getScoreMargin(item) === null ? "требует уточнения" : formatDelta(getScoreMargin(item)) },
     { label: "Тип обучения", highlight: "type", value: (item) => textValue(item.type, "не указано") },
   ];
   if (items.some((item) => shouldShowAdmissionType(item))) {
     rows.push({
       label: "Конкурс",
-      value: (item) => shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type) : "не указано",
+      value: (item) => shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type_label || item.admission_type) : "не указано",
     });
   }
   if (items.some((item) => hasValue(item.price))) {
@@ -2722,7 +2747,7 @@ function getUniversityKey(item) {
 
 function classifyUniversity(score, item) {
   const minScore = getMinScore(item);
-  if (minScore === null) {
+  if (minScore === null || !Number.isFinite(Number(score))) {
     return "unavailable";
   }
   if (minScore <= score - SAFE_MARGIN) {
@@ -2738,6 +2763,9 @@ function classifyUniversity(score, item) {
 }
 
 function getItemCategory(item, fallbackScore = currentSearch?.score || item.saved_score || 0) {
+  if (!hasValidMinScore(item)) {
+    return "unavailable";
+  }
   if (item.category && categoryMeta[item.category]) {
     return item.category;
   }
@@ -2754,6 +2782,7 @@ function getCategoryRank(category) {
     safe: 3,
     realistic: 2,
     ambitious: 1,
+    unavailable: 0,
   };
   return ranks[category] || 0;
 }
@@ -2763,8 +2792,10 @@ function getUserScore(item) {
   return Number.isFinite(score) && score > 0 ? score : null;
 }
 
-function getScoreMargin(item) {
-  const score = getUserScore(item);
+function getScoreMargin(item, fallbackScore = null) {
+  const score = Number.isFinite(Number(fallbackScore)) && Number(fallbackScore) > 0
+    ? Number(fallbackScore)
+    : getUserScore(item);
   const minScore = getMinScore(item);
   if (score === null || minScore === null) {
     return null;
@@ -2774,7 +2805,34 @@ function getScoreMargin(item) {
 
 function getMinScore(item) {
   const value = Number(item.min_score);
-  return Number.isFinite(value) ? value : null;
+  if (item.score_is_valid === false) {
+    return null;
+  }
+  return Number.isFinite(value) && value > 1 ? value : null;
+}
+
+function hasValidMinScore(item) {
+  return getMinScore(item) !== null;
+}
+
+function getScoreDisplay(item) {
+  if (hasValidMinScore(item)) {
+    return String(getMinScore(item));
+  }
+  if (hasValue(item.score_display) && !["0", "1"].includes(String(item.score_display).trim())) {
+    return String(item.score_display).trim();
+  }
+  return "не указан";
+}
+
+function getScoreClarification(item) {
+  if (hasValidMinScore(item)) {
+    return "";
+  }
+  if (hasValue(item.score_note)) {
+    return String(item.score_note).trim();
+  }
+  return "балл требует уточнения";
 }
 
 function getNumericPrice(price) {
@@ -2922,7 +2980,7 @@ function formatAdmissionType(value) {
 }
 
 function shouldShowAdmissionType(item) {
-  const label = formatAdmissionType(item?.admission_type);
+  const label = formatAdmissionType(item?.admission_type_label || item?.admission_type);
   return Boolean(label) && !["бюджет", "платное"].includes(label);
 }
 

@@ -125,6 +125,18 @@ def test_build_export_report_includes_postgres_metadata_when_available() -> None
     assert "postgresql" not in report
 
 
+def test_build_export_report_does_not_show_invalid_score_gap() -> None:
+    item = university("Вуз", 0)
+    item.update({"admission_type_label": "отдельная квота", "year": 2025})
+    report = build_export_report(profile(score=280), [item])
+
+    assert "Проходной балл: 0" not in report
+    assert "Проходной балл: не указан" in report
+    assert "Запас: +280" not in report
+    assert "Конкурс: отдельная квота" in report
+    assert "Год данных: 2025" in report
+
+
 def test_build_export_preview_contains_counts() -> None:
     preview = build_export_preview(profile(), sample_results(), favorites=[sample_results()[0]])
 

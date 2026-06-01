@@ -83,6 +83,22 @@ def test_mini_app_has_empty_state_suggestions_and_achievements() -> None:
     assert "renderAchievementsBlock" in js
 
 
+def test_mini_app_has_score_quality_helpers_and_split_card_title() -> None:
+    js = read_mini_app_file("app.js")
+    css = read_mini_app_file("styles.css")
+
+    assert "function hasValidMinScore" in js
+    assert "function getScoreDisplay" in js
+    assert "function getScoreClarification" in js
+    assert "балл требует уточнения" in js
+    assert "result-card__program" in js
+    assert ".result-card__program" in css
+    assert ".badge.unavailable" in css
+    assert "Проходной балл: 0" not in js
+    assert "Проходной балл: 1" not in js
+    assert "Запас: +279" not in js
+
+
 def test_app_js_has_local_filters_and_favorites() -> None:
     js = read_mini_app_file("app.js")
 
@@ -119,6 +135,7 @@ def test_styles_include_recommendation_categories() -> None:
     assert ".badge.safe" in css
     assert ".badge.realistic" in css
     assert ".badge.ambitious" in css
+    assert ".badge.unavailable" in css
 
 
 def test_styles_include_light_site_layout_classes() -> None:

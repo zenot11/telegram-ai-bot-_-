@@ -119,3 +119,14 @@ def test_comparison_does_not_fail_without_min_score() -> None:
 
     assert "Сравнение вузов" in text
     assert "недостаточно данных" in text
+
+
+def test_comparison_ignores_invalid_min_score_for_best_options() -> None:
+    items = [university("Служебный балл", 0), university("Нормальный балл", 180)]
+    result = compare_universities(items, user_score=280)
+    text = format_comparison(items, user_score=280)
+
+    assert result["safe_option"]["university"] == "Нормальный балл"
+    assert result["largest_score_margin_option"]["university"] == "Нормальный балл"
+    assert "Проходной балл: 0" not in text
+    assert "Запас: +280" not in text

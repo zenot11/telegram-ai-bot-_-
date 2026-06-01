@@ -6,6 +6,7 @@ from telegram_bot.services.recommendation import (
     format_score_delta,
     score_delta,
 )
+from telegram_bot.services.scores import is_valid_score, parse_score, score_display
 
 
 def compare_universities(items: list[dict[str, Any]], user_score: int | None = None) -> dict[str, Any]:
@@ -200,12 +201,8 @@ def _format_conclusion(comparison: dict[str, Any]) -> str:
 
 
 def _score(item: dict[str, Any]) -> int | None:
-    value = item.get("min_score")
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str) and value.isdigit():
-        return int(value)
-    return None
+    value = parse_score(item.get("min_score"))
+    return value if is_valid_score(value) else None
 
 
 def _price(item: dict[str, Any]) -> int | None:
@@ -250,7 +247,7 @@ def _text(value: Any, fallback: str = "не указано") -> str:
 def _title(item: dict[str, Any]) -> str:
     university = _text(item.get("university"), "Вуз")
     program = _text(item.get("program"), "программа не указана")
-    score = _text(item.get("min_score"))
+    score = score_display(item.get("min_score"))
     return f"{university} — {program} (мин. балл: {score})"
 
 

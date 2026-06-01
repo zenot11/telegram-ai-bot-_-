@@ -2,6 +2,7 @@ from html import escape
 from typing import Any
 
 from telegram_bot.services.recommendation import CATEGORY_AMBITIOUS, CATEGORY_REALISTIC, CATEGORY_SAFE
+from telegram_bot.services.scores import is_valid_score
 from telegram_bot.services.summary import count_categories
 from telegram_bot.services.validation import education_type_label
 
@@ -75,6 +76,7 @@ def analyze_result_balance(results: list[dict[str, Any]], user_score: Any = None
         CATEGORY_SAFE: counts.get(CATEGORY_SAFE, 0),
         CATEGORY_REALISTIC: counts.get(CATEGORY_REALISTIC, 0),
         CATEGORY_AMBITIOUS: counts.get(CATEGORY_AMBITIOUS, 0),
+        "score_unclear": sum(1 for item in results if isinstance(item, dict) and not is_valid_score(item.get("min_score"))),
     }
 
 
@@ -108,6 +110,9 @@ def build_next_steps(
     else:
         steps.append("Оставь запасной вариант: другой регион, похожее направление или другой тип обучения.")
 
+    if balance.get("score_unclear", 0):
+        steps.append("По части конкурсов проходной балл требует уточнения: проверь год, конкурс и пометку на сайте вуза.")
+
     if balance["total"] > 0:
         if favorites_count:
             steps.append("Сравни избранные варианты через /compare.")
@@ -136,9 +141,14 @@ def _build_assessment(balance: dict[str, int]) -> str:
     safe = balance[CATEGORY_SAFE]
     realistic = balance[CATEGORY_REALISTIC]
     ambitious = balance[CATEGORY_AMBITIOUS]
+    unclear = balance.get("score_unclear", 0)
 
     if total == 0:
         return "По этим параметрам варианты не нашлись."
+    if unclear and unclear == total:
+        return "Варианты есть, но проходные баллы по ним требуют уточнения. Лучше проверить конкурс, год и пометки на сайтах вузов."
+    if unclear and safe + realistic + ambitious == 0:
+        return "Варианты нашлись, но по баллам недостаточно надёжных данных для оценки запаса."
     if safe >= 2:
         return "Подбор выглядит достаточно спокойным: есть несколько безопасных вариантов с запасом по баллам."
     if safe > 0 and realistic > 0:

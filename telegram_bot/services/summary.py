@@ -8,6 +8,7 @@ from telegram_bot.services.recommendation import (
     CATEGORY_SAFE,
     classify_university,
 )
+from telegram_bot.services.scores import is_valid_score
 from telegram_bot.services.validation import education_type_label
 
 
@@ -31,6 +32,7 @@ def format_search_brief_summary(results: list[dict[str, Any]], user_score: int) 
         "<b>Краткий итог подбора:</b>\n"
         f"Найдено вариантов: {len(results)}\n\n"
         f"{_format_category_counts(count_categories(results, user_score))}\n\n"
+        f"{_format_unclear_scores_note(results)}"
         "Лучше начать с безопасных и реалистичных вариантов, а амбициозные оставить как цель.\n\n"
         "Это не гарантия поступления: данные демонстрационные, а реальные проходные баллы меняются каждый год."
     )
@@ -61,6 +63,9 @@ def format_last_search_summary(
 
     if isinstance(score, int):
         lines.extend(["", _format_category_counts(count_categories(last_results, score))])
+        unclear_note = _format_unclear_scores_note(last_results).strip()
+        if unclear_note:
+            lines.extend(["", unclear_note])
 
     lines.extend(["", "<b>Топ вариантов:</b>"])
     lines.extend(_format_top_results(last_results))
@@ -102,6 +107,13 @@ def _format_category_counts(counts: dict[str, int]) -> str:
         if counts.get(category, 0) > 0
     ]
     return "\n".join(lines) if lines else "Категории: недостаточно данных"
+
+
+def _format_unclear_scores_note(results: list[dict[str, Any]]) -> str:
+    count = sum(1 for item in results if isinstance(item, dict) and not is_valid_score(item.get("min_score")))
+    if not count:
+        return ""
+    return "Часть проходных баллов требует проверки по сайту вуза.\n\n"
 
 
 def _format_top_results(results: list[dict[str, Any]]) -> list[str]:

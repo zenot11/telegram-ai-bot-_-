@@ -94,6 +94,32 @@ def test_search_card_hides_empty_subjects_duration_and_note() -> None:
     assert "[]" not in text
 
 
+def test_search_card_does_not_show_invalid_score_as_gap() -> None:
+    text = _format_university_card(
+        1,
+        {
+            "university": "Тестовый вуз",
+            "city": "Москва",
+            "program": "Информатика",
+            "subjects": [],
+            "min_score": 0,
+            "type": "бюджет",
+            "admission_type_label": "отдельная квота",
+            "year": 2025,
+            "note": "отдельная квота",
+        },
+        280,
+    )
+
+    assert "Проходной балл: 0" not in text
+    assert "Проходной балл: не указан" in text
+    assert "Запас: +280" not in text
+    assert "Категория: безопасный вариант" not in text
+    assert "Конкурс: отдельная квота" in text
+    assert "Год данных: 2025" in text
+    assert "Пометка: отдельная квота" in text
+
+
 def test_can_select_fourth_and_fifth_search_result() -> None:
     results = [{"university": f"Вуз {index}"} for index in range(1, 6)]
 
