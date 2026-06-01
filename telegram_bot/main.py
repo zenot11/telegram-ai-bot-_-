@@ -25,6 +25,7 @@ async def set_bot_commands(bot: Bot) -> None:
             BotCommand(command="clear_history", description="Очистить историю подборов"),
             BotCommand(command="compare", description="Сравнить вузы"),
             BotCommand(command="categories", description="Как читать категории"),
+            BotCommand(command="achievements", description="Индивидуальные достижения"),
             BotCommand(command="support", description="Психологическая поддержка"),
             BotCommand(command="feedback", description="Обратная связь"),
             BotCommand(command="my_feedback", description="Мои обращения"),

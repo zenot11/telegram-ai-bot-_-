@@ -95,7 +95,8 @@
         <div class="section-heading">
           <p class="eyebrow">Подбор</p>
           <h2 id="search-title">Подбор вариантов</h2>
-          <p>Заполни поля, и Аиша покажет до 5 демонстрационных программ.</p>
+          <p>Заполни поля, и Аиша покажет до 5 программ из подключённой базы.</p>
+          <p id="directory-status" class="directory-status">Загружаю справочники базы…</p>
         </div>
 
         <section class="example-panel" aria-labelledby="examples-title">
@@ -115,16 +116,24 @@
             <span class="field-label">Регион</span>
             <select id="region" name="region" required>
               <option value="" selected disabled>Выбери регион</option>
-              <option value="Адыгея">Адыгея</option>
+              <option value="Республика Адыгея">Республика Адыгея</option>
               <option value="Москва">Москва</option>
               <option value="Краснодарский край">Краснодарский край</option>
               <option value="Санкт-Петербург">Санкт-Петербург</option>
-              <option value="Татарстан">Татарстан</option>
-              <option value="Крым">Крым</option>
+              <option value="Республика Татарстан">Республика Татарстан</option>
+              <option value="Республика Крым">Республика Крым</option>
               <option value="Ростовская область">Ростовская область</option>
               <option value="Свердловская область">Свердловская область</option>
             </select>
-            <span class="field-helper">Например: Адыгея, Москва, Краснодарский край.</span>
+            <span class="field-helper">Например: Республика Адыгея, Москва, Республика Крым.</span>
+          </label>
+
+          <label>
+            <span class="field-label">Город</span>
+            <select id="city" name="city">
+              <option value="" selected>Любой город</option>
+            </select>
+            <span class="field-helper">Необязательно. Список обновится после выбора региона.</span>
           </label>
 
           <label>
@@ -137,7 +146,10 @@
             <span class="field-label">Направление</span>
             <select id="direction" name="direction" required>
               <option value="" selected disabled>Выбери направление</option>
-              <option value="IT">IT</option>
+              <option value="информационные технологии">IT-направления</option>
+              <option value="Прикладная информатика">Прикладная информатика</option>
+              <option value="Информационная безопасность">Информационная безопасность</option>
+              <option value="Программная инженерия">Программная инженерия</option>
               <option value="психология">психология</option>
               <option value="медицина">медицина</option>
               <option value="экономика">экономика</option>
@@ -147,7 +159,23 @@
               <option value="строительство">строительство</option>
               <option value="туризм">туризм</option>
             </select>
-            <span class="field-helper">Например: IT, медицина, экономика.</span>
+            <span class="field-helper">Лучше выбрать реальное направление из базы. Быстрые пресеты раскрываются в группы направлений.</span>
+          </label>
+
+          <label>
+            <span class="field-label">Форма обучения</span>
+            <select id="study-form" name="study-form">
+              <option value="" selected>Любая форма</option>
+            </select>
+            <span class="field-helper">Необязательно. Например: очная или заочная.</span>
+          </label>
+
+          <label>
+            <span class="field-label">Тип конкурса</span>
+            <select id="admission-type" name="admission-type">
+              <option value="" selected>Любой конкурс</option>
+            </select>
+            <span class="field-helper">Необязательно. Например: целевая квота или особая квота.</span>
           </label>
 
           <fieldset>

@@ -12,13 +12,14 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from backend_stub.university_repository import (  # noqa: E402
     build_university_filters,
+    fetch_achievements_postgres,
     fetch_directions_postgres,
     fetch_regions_postgres,
     fetch_universities_postgres,
 )
 
 
-REQUIRED_TABLES = ("universities", "directions", "passing_scores")
+REQUIRED_TABLES = ("universities", "directions", "passing_scores", "achievements")
 
 
 async def main_async() -> int:
@@ -56,6 +57,7 @@ async def main_async() -> int:
             universities_count = await connection.fetchval("SELECT COUNT(*) FROM universities")
             directions_count = await connection.fetchval("SELECT COUNT(*) FROM directions")
             scores_count = await connection.fetchval("SELECT COUNT(*) FROM passing_scores")
+            achievements_count = await connection.fetchval("SELECT COUNT(*) FROM achievements")
 
         regions = await fetch_regions_postgres(pool)
         directions = await fetch_directions_postgres(pool, build_university_filters({}))
@@ -72,6 +74,7 @@ async def main_async() -> int:
                 }
             ),
         )
+        achievements = await fetch_achievements_postgres(pool, limit=3)
     except Exception:
         print("PostgreSQL check failed: connection or query failed. Check DATABASE_URL, schema and seed data.")
         return 1
@@ -85,7 +88,9 @@ async def main_async() -> int:
     print(f"Directions: {directions_count}")
     print(f"Directory directions: {len(directions)}")
     print(f"Passing scores: {scores_count}")
+    print(f"Achievements: {achievements_count}")
     print(f"Sample /api/universities-like rows: {len(sample)}")
+    print(f"Sample achievements rows: {len(achievements)}")
     return 0
 
 

@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+import re
 from typing import Any
 
 from telegram_bot.services.recommendation import AMBITIOUS_SCORE_MARGIN
@@ -14,6 +15,7 @@ from telegram_bot.services.validation import (
 
 DEFAULT_LIMIT = 5
 MAX_LIMIT = 200
+ACHIEVEMENTS_DEFAULT_LIMIT = 20
 
 STUDY_FORM_LABELS = {
     "full_time": "очная",
@@ -59,6 +61,114 @@ POSTGRES_ADMISSION_BY_API_TYPE = {
     "бюджет": ["budget", "target", "special_quota", "separate_quota", "additional"],
     "платное": ["paid"],
 }
+
+ADMISSION_TYPE_LABELS = {
+    "budget": "бюджет",
+    "paid": "платное",
+    "target": "целевая квота",
+    "target_quota": "целевая квота",
+    "special_quota": "особая квота",
+    "separate_quota": "отдельная квота",
+    "additional": "дополнительный набор",
+}
+
+POSTGRES_ADMISSION_BY_LABEL = {
+    "бюджет": ["budget"],
+    "общий бюджет": ["budget"],
+    "budget": ["budget"],
+    "платное": ["paid"],
+    "paid": ["paid"],
+    "контракт": ["paid"],
+    "целевая": ["target"],
+    "целевая квота": ["target"],
+    "target": ["target"],
+    "target_quota": ["target"],
+    "особая квота": ["special_quota"],
+    "special_quota": ["special_quota"],
+    "отдельная квота": ["separate_quota"],
+    "separate_quota": ["separate_quota"],
+    "дополнительный набор": ["additional"],
+    "дополнительный прием": ["additional"],
+    "additional": ["additional"],
+}
+
+REGION_ALIAS_GROUPS = {
+    "адыгея": ["Республика Адыгея", "Адыгея"],
+    "республика адыгея": ["Республика Адыгея", "Адыгея"],
+    "крым": ["Республика Крым", "Крым"],
+    "республика крым": ["Республика Крым", "Крым"],
+    "татарстан": ["Республика Татарстан", "Татарстан"],
+    "республика татарстан": ["Республика Татарстан", "Татарстан"],
+}
+
+POSTGRES_DIRECTION_PRESETS = {
+    "IT": (
+        "Прикладная информатика",
+        "Информационная безопасность",
+        "Информационные системы и технологии",
+        "Программная инженерия",
+        "Информатика и вычислительная техника",
+        "Бизнес-информатика",
+        "Большие и открытые данные",
+        "Математическое обеспечение и администрирование информационных систем",
+    ),
+    "медицина": (
+        "Лечебное дело",
+        "Педиатрия",
+        "Стоматология",
+        "Фармация",
+        "Медико-профилактическое дело",
+    ),
+    "экономика": (
+        "Экономика",
+        "Экономическая безопасность",
+        "Менеджмент",
+        "Бизнес-информатика",
+        "Государственное и муниципальное управление",
+    ),
+    "юриспруденция": (
+        "Юриспруденция",
+        "Правовое обеспечение национальной безопасности",
+    ),
+    "педагогика": (
+        "Педагогическое образование",
+        "Психолого-педагогическое образование",
+        "Специальное дефектологическое образование",
+    ),
+    "строительство": (
+        "Архитектура",
+        "Строительство",
+        "Градостроительство",
+    ),
+    "экология": (
+        "Экология и природопользование",
+        "География",
+        "Картография и геоинформатика",
+    ),
+}
+
+ACHIEVEMENTS_FALLBACK = [
+    {
+        "title": "Золотая медаль за окончание школы",
+        "category": "аттестат",
+        "points": 5,
+        "description": "Ориентировочный максимум. Точные баллы нужно проверять в правилах конкретного вуза.",
+    },
+    {
+        "title": "Знак отличия ГТО",
+        "category": "спорт",
+        "points": 3,
+        "description": "Баллы за ГТО зависят от правил приёма конкретного вуза.",
+    },
+    {
+        "title": "Олимпиады школьников",
+        "category": "олимпиады",
+        "points": 10,
+        "description": "Олимпиады могут давать баллы или особые права, если вуз учитывает конкретный диплом.",
+    },
+]
+
+TECHNICAL_UNIVERSITY_RE = re.compile(r"^[A-ZА-ЯЁ]{2,}[-_]\d+$", re.IGNORECASE)
 
 SORT_OPTIONS = {
     "min_score_asc",
@@ -120,6 +230,7 @@ def build_university_filters(params: Mapping[str, Any]) -> dict[str, Any]:
         "city": str(params.get("city", "") or "").strip(),
         "direction": str(params.get("direction", "") or "").strip(),
         "type": str(params.get("type", "") or "").strip(),
+        "admission_type": str(params.get("admission_type", "") or "").strip(),
         "study_form": str(params.get("study_form", "") or "").strip(),
         "q": str(params.get("q", "") or "").strip(),
         "score": parse_int(params.get("score"), None),
@@ -130,26 +241,19 @@ def build_university_filters(params: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def direction_matches(item: dict[str, Any], direction: str) -> bool:
-    requested = normalize_direction(direction)
-    if not requested:
+    terms = direction_search_terms(direction)
+    if not terms:
         return True
 
     values = [
         item.get("program", ""),
         item.get("direction", ""),
+        item.get("profile", ""),
         " ".join(item.get("directions") or []),
     ]
     haystack = " ".join(values)
-    requested_direction = normalize_direction(requested)
-    item_direction = normalize_direction(haystack)
-    if normalize(requested_direction) == normalize(item_direction):
-        return True
-
-    normalized_requested = normalize(requested)
     normalized_haystack = normalize(haystack)
-    return normalized_requested in normalized_haystack or any(
-        part and part in normalized_haystack for part in normalized_requested.split()
-    )
+    return any(_term_matches_haystack(term, normalized_haystack) for term in terms)
 
 
 def filter_json_universities(
@@ -309,7 +413,34 @@ async def fetch_admission_types_postgres(pool: Any) -> list[str]:
         ORDER BY admission_type::TEXT
         """
     )
-    return _sorted_unique(normalize_type(row["admission_type"]) for row in rows)
+    return _sorted_unique(admission_type_label(row["admission_type"]) for row in rows)
+
+
+def fetch_achievements_json(limit: int = ACHIEVEMENTS_DEFAULT_LIMIT) -> list[dict[str, Any]]:
+    return ACHIEVEMENTS_FALLBACK[: normalize_limit(limit, ACHIEVEMENTS_DEFAULT_LIMIT)]
+
+
+async def fetch_achievements_postgres(pool: Any, limit: int = ACHIEVEMENTS_DEFAULT_LIMIT) -> list[dict[str, Any]]:
+    rows = await pool.fetch(
+        """
+        SELECT code, name, max_points, description
+        FROM achievements
+        ORDER BY max_points DESC, name ASC
+        LIMIT $1
+        """,
+        normalize_limit(limit, ACHIEVEMENTS_DEFAULT_LIMIT),
+    )
+    return [normalize_achievement(row) for row in rows]
+
+
+def normalize_achievement(row: Any) -> dict[str, Any]:
+    code = _string_value(_row_value(row, "code", ""))
+    return {
+        "title": _string_value(_row_value(row, "title", _row_value(row, "name", ""))),
+        "category": _string_value(_row_value(row, "category", achievement_category(code))),
+        "points": _int_value(_row_value(row, "points", _row_value(row, "max_points", 0))),
+        "description": _string_value(_row_value(row, "description", "")),
+    }
 
 
 def normalize_pg_record(row: Any) -> dict[str, Any]:
@@ -323,15 +454,22 @@ def normalize_pg_record(row: Any) -> dict[str, Any]:
 
     min_score = _int_value(_row_value(row, "min_score", _row_value(row, "passing_score", 0)))
     study_form = normalize_study_form(_row_value(row, "study_form", ""))
+    full_name = _string_value(
+        _row_value(row, "university_full_name", _row_value(row, "university_name", _row_value(row, "university", "")))
+    )
+    short_name = _string_value(_row_value(row, "university_short_name", ""))
+    raw_university = _string_value(_row_value(row, "university", full_name))
     admission_type = _string_value(_row_value(row, "admission_type", _row_value(row, "type", "")))
     row_type = normalize_type(admission_type) or "бюджет"
 
     return {
-        "university": _string_value(_row_value(row, "university", _row_value(row, "university_name", ""))),
+        "university": get_university_display_name(full_name, short_name, raw_university),
         "city": _string_value(_row_value(row, "city", "")),
         "region": _string_value(_row_value(row, "region", "")),
         "program": _string_value(_row_value(row, "program", _row_value(row, "direction_name", ""))),
         "direction": _string_value(_row_value(row, "direction", _row_value(row, "direction_name", ""))),
+        "profile": _string_value(_row_value(row, "profile", "")),
+        "direction_code": _string_value(_row_value(row, "direction_code", _row_value(row, "code", ""))),
         "subjects": subjects_value,
         "min_score": min_score,
         "type": row_type,
@@ -343,7 +481,9 @@ def normalize_pg_record(row: Any) -> dict[str, Any]:
         "year": _row_value(row, "year", _row_value(row, "latest_year", None)),
         "faculty": _string_value(_row_value(row, "faculty", _row_value(row, "faculty_name", ""))),
         "admission_type": admission_type,
-        "university_short_name": _string_value(_row_value(row, "university_short_name", "")),
+        "admission_type_label": admission_type_label(admission_type),
+        "university_short_name": short_name,
+        "university_full_name": full_name,
         "source": _string_value(_row_value(row, "source", "postgresql")),
     }
 
@@ -363,23 +503,47 @@ def postgres_admission_types(value: Any) -> list[str]:
     return POSTGRES_ADMISSION_BY_API_TYPE.get(normalize_type(value), [])
 
 
+def postgres_admission_type_values(value: Any) -> list[str]:
+    return POSTGRES_ADMISSION_BY_LABEL.get(normalize(value), [])
+
+
 def postgres_direction_terms(value: str) -> list[str]:
-    requested = normalize_direction(value)
+    return direction_search_terms(value)
+
+
+def direction_search_terms(value: Any) -> list[str]:
+    requested = normalize_direction(str(value or ""))
     if not requested:
         return []
 
-    terms = {requested, value}
+    terms = {requested, str(value or "")}
     for direction, synonyms in DIRECTION_SYNONYMS.items():
         if normalize_direction(requested) == direction or normalize(requested) == normalize(direction):
             terms.add(direction)
             terms.update(synonyms)
+
+    preset = POSTGRES_DIRECTION_PRESETS.get(requested)
+    if preset:
+        terms.update(preset)
 
     result = []
     for term in terms:
         cleaned = " ".join(str(term).strip().split())
         if cleaned and cleaned not in result:
             result.append(cleaned)
-    return result[:12]
+    return result[:24]
+
+
+def region_search_terms(value: Any) -> list[str]:
+    raw = str(value or "").strip()
+    if not raw:
+        return []
+
+    normalized_region = normalize_region(raw)
+    terms = {raw, normalized_region}
+    for alias in (normalize(raw), normalize(normalized_region)):
+        terms.update(REGION_ALIAS_GROUPS.get(alias, []))
+    return _dedupe_text(terms)
 
 
 def _json_record_matches(item: dict[str, Any], filters: Mapping[str, Any]) -> bool:
@@ -459,14 +623,16 @@ def _build_postgres_universities_query(filters: Mapping[str, Any]) -> tuple[str,
             ORDER BY direction_id, admission_type, year DESC
         )
         SELECT
-            COALESCE(NULLIF(u.short_name, ''), u.name) AS university,
+            u.name AS university,
             u.name AS university_name,
+            u.name AS university_full_name,
             u.short_name AS university_short_name,
             u.city,
             u.region,
             u.website AS url,
             d.name AS program,
             d.name AS direction,
+            d.code AS direction_code,
             d.profile,
             d.study_form::TEXT AS study_form,
             f.name AS faculty,
@@ -513,8 +679,11 @@ def _append_postgres_common_filters(
         return f"${len(params)}"
 
     if filters.get("region"):
-        region_pattern = add_param(f"%{normalize_region(str(filters['region']))}%")
-        where_parts.append(f"u.region ILIKE {region_pattern}")
+        region_conditions = []
+        for term in region_search_terms(filters["region"]):
+            region_pattern = add_param(f"%{term}%")
+            region_conditions.append(f"u.region ILIKE {region_pattern}")
+        where_parts.append("(" + " OR ".join(region_conditions) + ")")
 
     if filters.get("city"):
         city_pattern = add_param(f"%{filters['city']}%")
@@ -525,6 +694,13 @@ def _append_postgres_common_filters(
         admission_param = add_param(admission_types)
         where_parts.append(f"ps.admission_type::TEXT = ANY({admission_param}::TEXT[])")
     elif normalize(filters.get("type", "")):
+        where_parts.append("FALSE")
+
+    exact_admission_types = postgres_admission_type_values(filters.get("admission_type", ""))
+    if exact_admission_types:
+        admission_type_param = add_param(exact_admission_types)
+        where_parts.append(f"ps.admission_type::TEXT = ANY({admission_type_param}::TEXT[])")
+    elif normalize(filters.get("admission_type", "")):
         where_parts.append("FALSE")
 
     study_form = postgres_study_form(filters.get("study_form", ""))
@@ -543,8 +719,7 @@ def _append_postgres_common_filters(
                 direction_conditions.append(
                     "("
                     f"d.name ILIKE {term_param} "
-                    f"OR COALESCE(d.profile, '') ILIKE {term_param} "
-                    f"OR COALESCE(f.name, '') ILIKE {term_param}"
+                    f"OR COALESCE(d.profile, '') ILIKE {term_param}"
                     ")"
                 )
             where_parts.append("(" + " OR ".join(direction_conditions) + ")")
@@ -612,9 +787,10 @@ def _json_q_matches(item: dict[str, Any], query: str) -> bool:
 
 
 def _region_matches(value: Any, requested: str) -> bool:
-    requested_region = normalize_region(requested)
+    requested_terms = region_search_terms(requested)
     item_region = normalize_region(str(value or ""))
-    return item_region == requested_region or _text_matches(item_region, requested_region)
+    normalized_region = normalize(item_region)
+    return any(normalize(term) == normalized_region or _text_matches(item_region, term) for term in requested_terms)
 
 
 def _text_matches(value: Any, requested: str) -> bool:
@@ -658,3 +834,59 @@ def _int_value(value: Any) -> int:
     if isinstance(value, str) and value.strip().isdigit():
         return int(value.strip())
     return 0
+
+
+def admission_type_label(value: Any) -> str:
+    normalized = normalize(value).replace(" ", "_").replace("-", "_")
+    return ADMISSION_TYPE_LABELS.get(normalized, str(value).strip() if value is not None else "")
+
+
+def achievement_category(code: str) -> str:
+    normalized = normalize(code)
+    if "gto" in normalized:
+        return "спорт"
+    if "olympiad" in normalized or "vsosh" in normalized:
+        return "олимпиады"
+    if "volunteer" in normalized:
+        return "волонтёрство"
+    if "medal" in normalized or "diploma" in normalized or "sochinenie" in normalized:
+        return "аттестат"
+    return "прочее"
+
+
+def is_technical_university_name(value: Any) -> bool:
+    text = _string_value(value)
+    if not text:
+        return False
+    if TECHNICAL_UNIVERSITY_RE.match(text):
+        return True
+    return bool(re.match(r"^[A-ZА-ЯЁ]{2,}\d+$", text, re.IGNORECASE))
+
+
+def get_university_display_name(full_name: Any, short_name: Any = "", fallback: Any = "") -> str:
+    full_text = _string_value(full_name)
+    short_text = _string_value(short_name)
+    fallback_text = _string_value(fallback)
+    for candidate in (full_text, fallback_text, short_text):
+        if candidate and not is_technical_university_name(candidate):
+            return candidate
+    return full_text or fallback_text or short_text or "Вуз"
+
+
+def _term_matches_haystack(term: str, normalized_haystack: str) -> bool:
+    normalized_term = normalize(term)
+    if not normalized_term:
+        return False
+    if normalized_term in normalized_haystack:
+        return True
+    parts = [part for part in normalized_term.split() if part]
+    return len(parts) > 1 and all(part in normalized_haystack for part in parts)
+
+
+def _dedupe_text(values: Any) -> list[str]:
+    result = []
+    for value in values:
+        text = _string_value(value)
+        if text and text not in result:
+            result.append(text)
+    return result

@@ -55,6 +55,8 @@ def test_build_export_report_contains_search_context_and_results() -> None:
     assert "Баллы ЕГЭ: 230" in report
     assert "Найдено вариантов: 3" in report
     assert "Безопасный вуз — Прикладная информатика" in report
+    assert "Проходной балл: 180" in report
+    assert "Мин. балл" not in report
     assert "Проходные баллы могут меняться" in report
 
 

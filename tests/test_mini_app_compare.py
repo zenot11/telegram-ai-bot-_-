@@ -46,7 +46,7 @@ def test_comparison_js_has_table_rows_and_safe_links() -> None:
     assert "Регион" in js
     assert "Направление" in js
     assert "Категория" in js
-    assert "Мин. балл" in js
+    assert "Проходной балл" in js
     assert "Запас/не хватает" in js
     assert "Стоимость" in js
     assert 'rel="noopener noreferrer"' in js

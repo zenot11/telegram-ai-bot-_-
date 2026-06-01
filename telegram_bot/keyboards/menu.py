@@ -21,6 +21,7 @@ MENU_ADVICE_CALLBACK = "menu:advice"
 MENU_NEXT_CALLBACK = "menu:next"
 MENU_SUPPORT_CALLBACK = "menu:support"
 MENU_CATEGORIES_CALLBACK = "menu:categories"
+MENU_ACHIEVEMENTS_CALLBACK = "menu:achievements"
 MENU_DIRECTIONS_CALLBACK = "menu:directions"
 MENU_REGIONS_CALLBACK = "menu:regions"
 MENU_PROFILE_CALLBACK = "menu:profile"
@@ -98,6 +99,7 @@ def assistant_menu_inline_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="Направления", callback_data=MENU_DIRECTIONS_CALLBACK),
                 InlineKeyboardButton(text="Регионы", callback_data=MENU_REGIONS_CALLBACK),
             ],
+            [InlineKeyboardButton(text="Индивидуальные достижения", callback_data=MENU_ACHIEVEMENTS_CALLBACK)],
             [InlineKeyboardButton(text="Психологическая поддержка", callback_data=MENU_SUPPORT_CALLBACK)],
             [_mini_app_inline_button("Mini App")],
             [InlineKeyboardButton(text="Назад", callback_data=MENU_MAIN_CALLBACK)],
@@ -167,6 +169,7 @@ def assistant_menu_keyboard() -> ReplyKeyboardMarkup:
             [KeyboardButton(text="Советы по подбору"), KeyboardButton(text="Что делать дальше")],
             [KeyboardButton(text="Как читать категории")],
             [KeyboardButton(text="Направления"), KeyboardButton(text="Регионы")],
+            [KeyboardButton(text="Индивидуальные достижения")],
             [KeyboardButton(text="Психологическая поддержка")],
             [_mini_app_button("Mini App")],
             [KeyboardButton(text="Назад")],

@@ -14,6 +14,7 @@ def test_backend_registers_mini_app_static_paths() -> None:
     assert "/api/directions" in paths
     assert "/api/study-forms" in paths
     assert "/api/admission-types" in paths
+    assert "/api/achievements" in paths
     assert "/api/favorites" in paths
     assert "/api/favorites/add" in paths
     assert "/api/favorites/remove" in paths

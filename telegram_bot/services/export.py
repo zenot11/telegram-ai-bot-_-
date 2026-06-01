@@ -149,7 +149,7 @@ def _format_items(items: list[dict[str, Any]], score: int | None) -> list[str]:
             f"{index}. {title_short(item)}",
             f"Город: {text_value(item.get('city'))}",
             f"Категория: {category}",
-            f"Мин. балл: {text_value(item.get('min_score'))}",
+            f"Проходной балл: {text_value(item.get('min_score'))}",
         ]
         subjects = subjects_text(item)
         if subjects:

@@ -52,11 +52,13 @@ def test_postgres_fetch_uses_ambitious_margin_and_normalizes_quality_fields() ->
     assert 3 in pool.params
     assert records == [
         {
-            "university": "МГУ",
+            "university": "Московский государственный университет",
             "city": "Москва",
             "region": "Москва",
             "program": "Прикладная информатика",
             "direction": "Прикладная информатика",
+            "profile": "",
+            "direction_code": "",
             "subjects": [],
             "min_score": 250,
             "type": "бюджет",
@@ -68,7 +70,9 @@ def test_postgres_fetch_uses_ambitious_margin_and_normalizes_quality_fields() ->
             "year": 2025,
             "faculty": "Факультет вычислительной математики и кибернетики",
             "admission_type": "target",
+            "admission_type_label": "целевая квота",
             "university_short_name": "МГУ",
+            "university_full_name": "Московский государственный университет",
             "source": "postgresql",
         }
     ]

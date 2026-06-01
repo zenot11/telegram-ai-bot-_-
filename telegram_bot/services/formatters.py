@@ -18,10 +18,10 @@ def format_university_card(
 ) -> str:
     title = title_short(item)
     header_prefix = f"{icon} " if icon else ""
-    lines = [
-        f"{header_prefix}<b>{index}. {escape(title)}</b>",
-        f"📍 Город: {escape(text_value(item.get('city')))}",
-    ]
+    lines = [f"{header_prefix}<b>{index}. {escape(title)}</b>"]
+    location = location_text(item)
+    if location:
+        lines.append(f"📍 {escape(location)}")
 
     if user_score is not None:
         category = classify_university(user_score, item)
@@ -31,7 +31,7 @@ def format_university_card(
     if subjects:
         lines.append(f"📚 Предметы: {escape(subjects)}")
 
-    lines.append(f"📊 Мин. балл: {escape(text_value(item.get('min_score')))}")
+    lines.append(f"📊 Проходной балл: {escape(text_value(item.get('min_score')))}")
 
     if user_score is not None:
         lines.append(f"✅ Твои баллы: {user_score}")
@@ -41,6 +41,9 @@ def format_university_card(
     admission_type = admission_type_text(item.get("admission_type"))
     if admission_type and admission_type not in {normalize_label(item.get("type")), "бюджет", "платное"}:
         lines.append(f"🎫 Конкурс: {escape(admission_type)}")
+    short_name = short_name_text(item)
+    if short_name:
+        lines.append(f"🏷 Краткое название: {escape(short_name)}")
 
     if has_display_value(item.get("price")):
         lines.append(f"💰 Стоимость: {escape(format_price(item.get('price')))}")
@@ -63,9 +66,41 @@ def format_university_card(
 
 
 def title_short(item: dict[str, Any]) -> str:
-    university = text_value(item.get("university"), "Вуз")
+    university = display_university_name(item)
     program = text_value(item.get("program"), "программа не указана")
     return f"{university} — {program}"
+
+
+def display_university_name(item: dict[str, Any]) -> str:
+    for key in ("university_full_name", "university_name", "university"):
+        value = item.get(key)
+        if has_display_value(value) and not is_technical_university_name(value):
+            return str(value)
+    for key in ("university", "university_short_name"):
+        value = item.get(key)
+        if has_display_value(value):
+            return str(value)
+    return "Вуз"
+
+
+def location_text(item: dict[str, Any]) -> str:
+    city = text_value(item.get("city"), "")
+    region = text_value(item.get("region"), "")
+    if city and region and city != region:
+        return f"{city}, {region}"
+    return city or region
+
+
+def short_name_text(item: dict[str, Any]) -> str:
+    short_name = text_value(item.get("university_short_name"), "")
+    if not short_name:
+        return ""
+    display_name = display_university_name(item)
+    if normalize_label(short_name) == normalize_label(display_name):
+        return ""
+    if is_technical_university_name(short_name):
+        return ""
+    return short_name
 
 
 def text_value(value: Any, fallback: str = "не указано") -> str:
@@ -107,6 +142,7 @@ def admission_type_text(value: Any) -> str:
     normalized = normalize_label(value)
     return {
         "target": "целевая квота",
+        "target_quota": "целевая квота",
         "special_quota": "особая квота",
         "separate_quota": "отдельная квота",
         "additional": "дополнительный набор",
@@ -117,6 +153,16 @@ def admission_type_text(value: Any) -> str:
 
 def normalize_label(value: Any) -> str:
     return str(value or "").strip().lower().replace(" ", "_").replace("-", "_")
+
+
+def is_technical_university_name(value: Any) -> bool:
+    text = str(value or "").strip()
+    if not text:
+        return False
+    if "-" in text and any(char.isdigit() for char in text) and len(text) <= 12:
+        letters = text.replace("-", "").replace("_", "")
+        return all(char.isalpha() or char.isdigit() for char in letters)
+    return False
 
 
 def category_emoji(category: str) -> str:

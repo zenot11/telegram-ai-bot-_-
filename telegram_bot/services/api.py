@@ -60,3 +60,23 @@ async def fetch_directory_items(base_url: str, endpoint: str, limit: int = 30) -
 
     items = [str(item).strip() for item in payload["items"] if item is not None and str(item).strip()]
     return items[:limit]
+
+
+async def fetch_achievements(base_url: str, limit: int = 8) -> list[dict[str, Any]]:
+    url = f"{base_url.rstrip('/')}/api/achievements"
+    params = {"limit": str(limit)}
+
+    timeout = aiohttp.ClientTimeout(total=5)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url, params=params) as response:
+                if response.status != 200:
+                    raise UniversityAPIError(f"Backend returned HTTP {response.status}")
+                payload = await response.json(content_type=None)
+    except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+        raise UniversityAPIError("Backend is unavailable") from exc
+
+    if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
+        raise UniversityAPIError("Backend achievements response must contain items")
+
+    return [item for item in payload["items"] if isinstance(item, dict)][:limit]

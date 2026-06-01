@@ -16,6 +16,8 @@ from backend_stub.university_repository import (
     direction_matches,
     fetch_admission_types_json,
     fetch_admission_types_postgres,
+    fetch_achievements_json,
+    fetch_achievements_postgres,
     fetch_cities_json,
     fetch_cities_postgres,
     fetch_directions_json,
@@ -47,6 +49,7 @@ FEATURES = [
     "directions",
     "study_forms",
     "admission_types",
+    "achievements",
     "filters",
     "sorting",
 ]
@@ -171,6 +174,23 @@ async def admission_types(request: web.Request) -> web.Response:
     return _directory_response(request, items)
 
 
+async def achievements(request: web.Request) -> web.Response:
+    limit = request.query.get("limit", "20")
+    if request.app[STORAGE_KEY] == "postgresql":
+        items = await fetch_achievements_postgres(request.app[DB_POOL_KEY], limit)
+    else:
+        items = fetch_achievements_json(limit)
+    return web.json_response(
+        {
+            "storage": request.app[STORAGE_KEY],
+            "count": len(items),
+            "items": items,
+            "note": "Баллы за индивидуальные достижения зависят от правил конкретного вуза.",
+        },
+        dumps=_json_dumps,
+    )
+
+
 async def miniapp_index(_: web.Request) -> web.FileResponse:
     return web.FileResponse(MINI_APP_PATH / "index.html")
 
@@ -191,11 +211,20 @@ def _json_dumps(data: Any) -> str:
 
 
 def _directory_response(request: web.Request, items: list[str]) -> web.Response:
+    limit_value = request.query.get("limit")
+    limited_items = items
+    if limit_value is not None:
+        try:
+            limit = max(1, min(int(limit_value), 200))
+        except ValueError:
+            limit = len(items)
+        limited_items = items[:limit]
     return web.json_response(
         {
             "storage": request.app[STORAGE_KEY],
-            "count": len(items),
-            "items": items,
+            "count": len(limited_items),
+            "total_count": len(items),
+            "items": limited_items,
         },
         dumps=_json_dumps,
     )
@@ -233,6 +262,7 @@ def create_app(
     app.router.add_get("/api/directions", directions)
     app.router.add_get("/api/study-forms", study_forms)
     app.router.add_get("/api/admission-types", admission_types)
+    app.router.add_get("/api/achievements", achievements)
     setup_webapp_session_routes(app)
     setup_favorites_routes(app, favorites_storage)
     setup_feedback_routes(app)

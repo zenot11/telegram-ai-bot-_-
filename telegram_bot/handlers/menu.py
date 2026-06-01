@@ -18,6 +18,7 @@ from telegram_bot.keyboards.filters import empty_filters_keyboard, filters_keybo
 from telegram_bot.keyboards.menu import (
     MENU_ABOUT_CALLBACK,
     MENU_ABOUT_TEXT_CALLBACK,
+    MENU_ACHIEVEMENTS_CALLBACK,
     MENU_ADVICE_CALLBACK,
     MENU_ASSISTANT_CALLBACK,
     MENU_BOTFATHER_CALLBACK,
@@ -64,7 +65,7 @@ from telegram_bot.keyboards.menu import (
     summary_keyboard,
 )
 from telegram_bot.keyboards.search import no_results_keyboard, search_results_keyboard, support_keyboard
-from telegram_bot.services.api import UniversityAPIError, fetch_directory_items, fetch_universities
+from telegram_bot.services.api import UniversityAPIError, fetch_achievements, fetch_directory_items, fetch_universities
 from telegram_bot.services.advice import build_advice, has_advice_context
 from telegram_bot.services.export import build_export_preview
 from telegram_bot.services.feedback import format_user_feedback
@@ -363,6 +364,14 @@ async def categories_menu_callback(callback: CallbackQuery, state: FSMContext) -
     await callback.answer()
     if callback.message:
         await callback.message.answer(format_categories_explanation(), reply_markup=assistant_menu_inline_keyboard())
+
+
+@router.callback_query(F.data == MENU_ACHIEVEMENTS_CALLBACK)
+async def achievements_menu_callback(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.answer()
+    if callback.message:
+        await _send_achievements_list(callback.message, assistant_menu_inline_keyboard())
 
 
 @router.callback_query(F.data == MENU_DIRECTIONS_CALLBACK)
@@ -759,9 +768,20 @@ async def regions(message: Message, state: FSMContext) -> None:
     await _send_regions_list(message, main_menu_keyboard())
 
 
+@router.message(Command("achievements"))
+@router.message(F.text == "Индивидуальные достижения")
+async def achievements(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await _send_achievements_list(message, main_menu_keyboard())
+
+
 async def _send_directions_list(message: Message, reply_markup) -> None:
-    items = await _load_directory_items("/api/directions", list(AVAILABLE_DIRECTIONS), limit=20)
-    suffix = "\n\nСписок короткий, поэтому можно также написать близкое название направления своими словами."
+    items, is_fallback = await _load_directory_items("/api/directions", list(AVAILABLE_DIRECTIONS), limit=20)
+    suffix = (
+        "\n\nПоказываю базовый список, сервис данных сейчас недоступен."
+        if is_fallback
+        else "\n\nСписок взят из базы. Можно также написать близкое название направления своими словами."
+    )
     await message.answer(
         "Сейчас доступны направления. Можешь использовать одно из них в подборе:\n"
         + "\n".join(f"- {item}" for item in items)
@@ -771,20 +791,63 @@ async def _send_directions_list(message: Message, reply_markup) -> None:
 
 
 async def _send_regions_list(message: Message, reply_markup) -> None:
-    items = await _load_directory_items("/api/regions", list(AVAILABLE_REGIONS), limit=20)
+    items, is_fallback = await _load_directory_items("/api/regions", list(AVAILABLE_REGIONS), limit=20)
+    prefix = (
+        "Показываю базовый список регионов, сервис данных сейчас недоступен:\n"
+        if is_fallback
+        else "Сейчас доступны регионы из базы. Для проверки можно использовать:\n"
+    )
     await message.answer(
-        "Сейчас доступны регионы. Для проверки можно использовать:\n"
+        prefix
         + "\n".join(f"- {item}" for item in items),
         reply_markup=reply_markup,
     )
 
 
-async def _load_directory_items(endpoint: str, fallback: list[str], limit: int) -> list[str]:
+async def _send_achievements_list(message: Message, reply_markup) -> None:
+    try:
+        items = await fetch_achievements(settings.backend_base_url, limit=8)
+        is_fallback = False
+    except UniversityAPIError:
+        items = []
+        is_fallback = True
+
+    if items:
+        lines = [
+            "<b>Индивидуальные достижения</b>",
+            "",
+            "Это общий справочник. Точные баллы нужно проверять в правилах конкретного вуза.",
+            "",
+        ]
+        for item in items:
+            title = escape(str(item.get("title") or "Достижение"))
+            points = escape(str(item.get("points") or ""))
+            category = escape(str(item.get("category") or ""))
+            description = escape(str(item.get("description") or ""))
+            meta = " · ".join(part for part in (category, f"до {points} баллов" if points else "") if part)
+            lines.append(f"• <b>{title}</b>{f' — {meta}' if meta else ''}")
+            if description:
+                lines.append(f"  {description}")
+        await message.answer("\n".join(lines), reply_markup=reply_markup)
+        return
+
+    fallback_text = (
+        "<b>Индивидуальные достижения</b>\n\n"
+        "Проверь в правилах выбранного вуза: аттестат с отличием, олимпиады, ГТО, "
+        "волонтёрство и итоговое сочинение могут дать дополнительные баллы. "
+        "Точные условия различаются по вузам."
+    )
+    if is_fallback:
+        fallback_text += "\n\nПоказываю базовую подсказку, сервис данных сейчас недоступен."
+    await message.answer(fallback_text, reply_markup=reply_markup)
+
+
+async def _load_directory_items(endpoint: str, fallback: list[str], limit: int) -> tuple[list[str], bool]:
     try:
         items = await fetch_directory_items(settings.backend_base_url, endpoint, limit=limit)
     except UniversityAPIError:
-        return fallback[:limit]
-    return items or fallback[:limit]
+        return fallback[:limit], True
+    return (items or fallback[:limit]), not bool(items)
 
 
 @router.message(F.text == "Помощь")

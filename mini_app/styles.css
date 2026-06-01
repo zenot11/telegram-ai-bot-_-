@@ -969,6 +969,21 @@ select:focus {
   font-weight: 700;
 }
 
+.directory-status {
+  margin-top: 8px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.directory-status--database {
+  color: var(--safe-text);
+}
+
+.directory-status--fallback,
+.directory-status--loading {
+  color: var(--realistic-text);
+}
+
 .status-error {
   color: var(--danger);
 }
@@ -983,6 +998,27 @@ select:focus {
   border-radius: 14px;
   padding: 14px 16px;
   background: var(--card-soft);
+}
+
+.empty-state--search {
+  display: grid;
+  gap: 14px;
+}
+
+.empty-search-details,
+.empty-search-suggestions {
+  display: grid;
+  gap: 8px;
+}
+
+.empty-search-details {
+  color: var(--muted);
+}
+
+.empty-search-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .results-grid {
@@ -1417,6 +1453,25 @@ select:focus {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 10px;
+}
+
+.achievement-list {
+  display: grid;
+  gap: 10px;
+}
+
+.achievement-item {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--card);
+}
+
+.achievement-item span,
+.achievement-item p {
+  color: var(--muted);
 }
 
 .plan-checkitem {

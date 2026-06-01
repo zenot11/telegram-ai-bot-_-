@@ -2,7 +2,7 @@
 
 `backend_stub` - временный backend API проекта “Аиша”. Он используется Telegram-ботом и Mini App.
 
-По умолчанию backend читает данные из JSON-базы `backend_stub/data/universities.json`. При `USE_POSTGRES=true` он читает каталог вузов из PostgreSQL по `DATABASE_URL`. Формат ответа `/api/universities` одинаковый в обоих режимах.
+При `USE_POSTGRES=true` backend читает пользовательский каталог из PostgreSQL по `DATABASE_URL`: вузы, регионы, города, направления, формы обучения, типы конкурса и справочник индивидуальных достижений. JSON-база `backend_stub/data/universities.json` остаётся fallback для локального запуска и тестов без PostgreSQL. Формат ответа `/api/universities` одинаковый в обоих режимах.
 
 ## GET `/health`
 
@@ -23,7 +23,7 @@ GET /health
   "storage": "json",
   "universities_count": 45,
   "data_source": "backend_stub/data/universities.json",
-  "features": ["universities", "regions", "cities", "directions", "study_forms", "admission_types", "filters", "sorting"]
+  "features": ["universities", "regions", "cities", "directions", "study_forms", "admission_types", "achievements", "filters", "sorting"]
 }
 ```
 
@@ -36,7 +36,7 @@ GET /health
   "storage": "postgresql",
   "data_source": "postgresql",
   "universities_count": 94,
-  "features": ["universities", "regions", "cities", "directions", "study_forms", "admission_types", "filters", "sorting"]
+  "features": ["universities", "regions", "cities", "directions", "study_forms", "admission_types", "achievements", "filters", "sorting"]
 }
 ```
 
@@ -52,6 +52,7 @@ GET /health
 - `score` - сумма баллов ЕГЭ.
 - `direction` - направление.
 - `type` - тип обучения.
+- `admission_type` - точный тип конкурса PostgreSQL или пользовательская метка, например `target`, `целевая квота`, `особая квота`.
 - `city` - город.
 - `study_form` - форма обучения.
 - `year` - год проходных баллов.
@@ -75,6 +76,9 @@ Backend мягко нормализует ввод:
 
 - `Адыгеая` -> `Адыгея`;
 - `айти` -> `IT`;
+- `IT` -> реальные PostgreSQL-направления: `Прикладная информатика`, `Информационная безопасность`, `Программная инженерия`, `Информатика и вычислительная техника` и близкие профили;
+- `Крым` -> `Республика Крым`;
+- `Адыгея` -> `Республика Адыгея`;
 - `Бюджет` -> `бюджет`.
 - `контракт` -> `платное`.
 
@@ -98,11 +102,11 @@ Backend мягко нормализует ввод:
 ```json
 [
   {
-    "university": "АГУ",
+    "university": "Адыгейский государственный университет",
     "city": "Майкоп",
-    "region": "Адыгея",
+    "region": "Республика Адыгея",
     "program": "Прикладная информатика",
-    "direction": "IT",
+    "direction": "Прикладная информатика",
     "subjects": ["русский язык", "математика", "информатика"],
     "min_score": 185,
     "type": "бюджет",
@@ -114,19 +118,25 @@ Backend мягко нормализует ввод:
     "year": 2025,
     "faculty": "",
     "admission_type": "budget",
+    "admission_type_label": "бюджет",
+    "profile": "",
+    "direction_code": "",
+    "university_full_name": "Адыгейский государственный университет",
     "university_short_name": "АГУ",
     "source": "postgresql"
   }
 ]
 ```
 
-Поля `year`, `faculty`, `admission_type`, `university_short_name`, `source` могут присутствовать в PostgreSQL mode. Старые клиенты могут их игнорировать. `source` является диагностическим полем API и не показывается в обычном пользовательском интерфейсе.
+Поля `year`, `faculty`, `admission_type`, `admission_type_label`, `profile`, `direction_code`, `university_full_name`, `university_short_name`, `source` могут присутствовать в PostgreSQL mode. Старые клиенты могут их игнорировать. `source` является диагностическим полем API и не показывается в обычном пользовательском интерфейсе.
+
+Если `universities.short_name` выглядит как технический код (`РЦТИ-26`, `РУТЭ-25`), backend и UI используют полное `universities.name` как главное название. Короткое название выводится отдельно только если оно полезно для пользователя.
 
 Совместимость JSON и PostgreSQL, а также правила скрытия пустых необязательных полей описаны в [DATA_COMPATIBILITY.md](DATA_COMPATIBILITY.md).
 
 ## Directory endpoints
 
-Все справочники работают и в JSON fallback, и в PostgreSQL mode. Если данных нет, возвращается пустой список.
+Все справочники работают и в JSON fallback, и в PostgreSQL mode. Mini App загружает их из backend при старте и использует static fallback только если backend недоступен или вернул пустой справочник.
 
 ### GET `/api/regions`
 
@@ -164,7 +174,32 @@ Backend мягко нормализует ввод:
 
 ### GET `/api/admission-types`
 
-Возвращает нормализованные типы: `бюджет`, `платное`.
+Возвращает человекочитаемые типы конкурса. В PostgreSQL mode это могут быть `бюджет`, `платное`, `целевая квота`, `особая квота`, `отдельная квота`, `дополнительный прием`.
+
+### GET `/api/achievements`
+
+Параметры:
+
+- `limit` - максимальное количество записей.
+
+Возвращает общий справочник индивидуальных достижений. В SQL-схеме `achievements` не связана с конкретными вузами, поэтому UI показывает эти записи как общие достижения, а не как правила отдельного университета.
+
+```json
+{
+  "storage": "postgresql",
+  "count": 13,
+  "items": [
+    {
+      "code": "gto",
+      "name": "Знак отличия ГТО",
+      "max_points": 2,
+      "description": "Баллы за индивидуальное достижение",
+      "category": "спорт"
+    }
+  ],
+  "note": "Баллы за индивидуальные достижения зависят от правил конкретного вуза."
+}
+```
 
 ## Контракт записи в ответе
 
@@ -192,7 +227,7 @@ backend_stub/data/universities.json
 
 `price: null` означает, что стоимость не указана. Клиентские интерфейсы должны скрывать необязательные строки без данных, а не выводить `Стоимость: null`, `Стоимость: None`, `Предметы: []` или пустой `Срок:`.
 
-`note` используется для пометки демонстрационных данных.
+`note` используется для пометки демонстрационных данных или для контекста PostgreSQL-записи. Малые значения `min_score`, например `25`, не исправляются искусственно: UI показывает рядом `Конкурс`, `Год данных` и `Примечание`, чтобы не выдавать догадки за данные.
 
 Если структура полей сохранится, источник данных можно заменить без переписывания Telegram-бота, карточек, сравнения, экспорта и Mini App. PostgreSQL-настройка описана в [docs/POSTGRES.md](POSTGRES.md).
 

@@ -5,6 +5,7 @@ const resultsNode = document.querySelector("#results");
 const filterResultsNode = document.querySelector("#filter-results");
 const favoritesNode = document.querySelector("#favorites-list");
 const statusNode = document.querySelector("#status-text");
+const directoryStatusNode = document.querySelector("#directory-status");
 const resultsActionsNode = document.querySelector("#results-actions");
 const filterStatusNode = document.querySelector("#filter-status");
 const favoritesStatusNode = document.querySelector("#favorites-status");
@@ -72,6 +73,16 @@ let comparisonNotice = "";
 let favoritesSyncNotice = "";
 let feedbackTickets = [];
 let latestLocalFeedbackTicket = null;
+let directoryState = {
+  status: "loading",
+  storage: "fallback",
+  regions: [],
+  cities: [],
+  directions: [],
+  studyForms: [],
+  admissionTypes: [],
+  achievements: [],
+};
 let sessionState = {
   status: "checking",
   mode: "checking",
@@ -109,9 +120,9 @@ const filterLabels = {
 
 const quickScenarios = {
   "adygea-it": {
-    region: "Адыгея",
+    region: "Республика Адыгея",
     score: 230,
-    direction: "IT",
+    direction: "информационные технологии",
     type: "budget",
     label: "Адыгея · 230 · IT · Бюджет",
   },
@@ -138,6 +149,27 @@ const feedbackCategoryLabels = {
   data_error: "Ошибка в данных",
   improvement: "Предложить улучшение",
   other: "Другое",
+};
+
+const directionPresetGroups = {
+  "информационные технологии": [
+    "Прикладная информатика",
+    "Информационная безопасность",
+    "Информационные системы и технологии",
+    "Программная инженерия",
+    "Информатика и вычислительная техника",
+  ],
+  it: [
+    "Прикладная информатика",
+    "Информационная безопасность",
+    "Информационные системы и технологии",
+    "Программная инженерия",
+    "Информатика и вычислительная техника",
+  ],
+  медицина: ["Лечебное дело", "Педиатрия", "Стоматология", "Фармация"],
+  экономика: ["Экономика", "Экономическая безопасность", "Менеджмент", "Бизнес-информатика"],
+  юриспруденция: ["Юриспруденция", "Правовое обеспечение национальной безопасности"],
+  педагогика: ["Педагогическое образование", "Психолого-педагогическое образование"],
 };
 
 const telegramWebApp = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
@@ -169,6 +201,10 @@ quickScenarioButtons.forEach((button) => {
 
 clearFormButton?.addEventListener("click", () => {
   clearSearchForm();
+});
+
+form.elements.region?.addEventListener("change", () => {
+  loadCitiesForRegion(String(form.elements.region.value || ""));
 });
 
 feedbackForm?.addEventListener("submit", (event) => {
@@ -211,7 +247,11 @@ async function performSearch() {
   const type = formData.get("education-type") === "paid" ? "paid" : "budget";
   const typeLabel = type === "paid" ? "Платное" : "Бюджет";
   const region = String(formData.get("region") || "").trim();
-  const direction = String(formData.get("direction") || "").trim();
+  const rawDirection = String(formData.get("direction") || "").trim();
+  const direction = normalizeDirectionForSearch(rawDirection);
+  const city = String(formData.get("city") || "").trim();
+  const studyForm = String(formData.get("study-form") || "").trim();
+  const admissionType = String(formData.get("admission-type") || "").trim();
 
   if (!region) {
     showStatus("Выбери регион для подбора.", true);
@@ -219,7 +259,7 @@ async function performSearch() {
     activateTab("search");
     return;
   }
-  if (!direction) {
+  if (!rawDirection) {
     showStatus("Выбери направление для подбора.", true);
     showToast("Выбери направление.", "warning");
     activateTab("search");
@@ -241,6 +281,10 @@ async function performSearch() {
     region,
     score,
     direction,
+    originalDirection: rawDirection,
+    city,
+    studyForm,
+    admissionType,
     type,
     typeLabel,
   };
@@ -252,6 +296,15 @@ async function performSearch() {
     type,
     limit: "5",
   });
+  if (city) {
+    params.set("city", city);
+  }
+  if (studyForm) {
+    params.set("study_form", studyForm);
+  }
+  if (admissionType) {
+    params.set("admission_type", admissionType);
+  }
 
   showStatus("Ищу варианты...");
   resultsNode.innerHTML = "";
@@ -282,7 +335,7 @@ async function performSearch() {
     renderAll();
 
     if (!lastResults.length) {
-      showStatus("По этим параметрам вариантов не нашлось. Попробуй увеличить диапазон баллов, выбрать соседний регион или поменять тип обучения.");
+      showStatus("Точных совпадений не найдено. Ниже показаны параметры и подсказки, что изменить.");
       showToast("По этим параметрам вариантов не нашлось.", "warning");
     } else {
       showStatus(`Найдено: ${lastResults.length} вариантов. Можно сохранить, отфильтровать или сравнить.`);
@@ -313,10 +366,13 @@ function applyQuickScenario(scenarioId) {
   performSearch();
 }
 
-function setFormValues({ region, score, direction, type }) {
+function setFormValues({ region, score, direction, type, city = "", studyForm = "", admissionType = "" }) {
   const regionInput = form.elements.region;
+  const cityInput = form.elements.city;
   const scoreInput = form.elements.score;
   const directionInput = form.elements.direction;
+  const studyFormInput = form.elements["study-form"];
+  const admissionTypeInput = form.elements["admission-type"];
   const typeInput = form.querySelector(`input[name="education-type"][value="${type}"]`);
 
   if (regionInput) {
@@ -326,9 +382,27 @@ function setFormValues({ region, score, direction, type }) {
   if (scoreInput) {
     scoreInput.value = String(score);
   }
+  if (cityInput) {
+    if (city) {
+      ensureSelectOption(cityInput, city);
+    }
+    cityInput.value = city;
+  }
   if (directionInput) {
     ensureSelectOption(directionInput, direction);
     directionInput.value = direction;
+  }
+  if (studyFormInput) {
+    if (studyForm) {
+      ensureSelectOption(studyFormInput, studyForm);
+    }
+    studyFormInput.value = studyForm;
+  }
+  if (admissionTypeInput) {
+    if (admissionType) {
+      ensureSelectOption(admissionTypeInput, admissionType);
+    }
+    admissionTypeInput.value = admissionType;
   }
   if (typeInput) {
     typeInput.checked = true;
@@ -340,8 +414,17 @@ function clearSearchForm() {
   if (form.elements.region) {
     form.elements.region.value = "";
   }
+  if (form.elements.city) {
+    form.elements.city.value = "";
+  }
   if (form.elements.direction) {
     form.elements.direction.value = "";
+  }
+  if (form.elements["study-form"]) {
+    form.elements["study-form"].value = "";
+  }
+  if (form.elements["admission-type"]) {
+    form.elements["admission-type"].value = "";
   }
   if (form.elements.score) {
     form.elements.score.value = "";
@@ -350,11 +433,35 @@ function clearSearchForm() {
   showToast("Форма очищена.", "info");
 }
 
+function clearOptionalSearchFilters() {
+  if (form.elements.city) {
+    form.elements.city.value = "";
+  }
+  if (form.elements["study-form"]) {
+    form.elements["study-form"].value = "";
+  }
+  if (form.elements["admission-type"]) {
+    form.elements["admission-type"].value = "";
+  }
+  showToast("Необязательные фильтры убраны.", "info");
+  performSearch();
+}
+
 async function loadBackendDirectories() {
-  const [regions, directions] = await Promise.all([
-    fetchDirectoryItems("/api/regions"),
-    fetchDirectoryItems("/api/directions"),
+  renderDirectoryStatus();
+  const [regionsPayload, directionsPayload, studyFormsPayload, admissionTypesPayload, achievementsPayload] = await Promise.all([
+    fetchDirectoryPayload("/api/regions"),
+    fetchDirectoryPayload("/api/directions"),
+    fetchDirectoryPayload("/api/study-forms"),
+    fetchDirectoryPayload("/api/admission-types"),
+    fetchAchievementsPayload("/api/achievements?limit=8"),
   ]);
+  const regions = regionsPayload.items;
+  const directions = directionsPayload.items;
+  const studyForms = studyFormsPayload.items;
+  const admissionTypes = admissionTypesPayload.items;
+  const backendLoaded = [regionsPayload, directionsPayload, studyFormsPayload, admissionTypesPayload]
+    .some((payload) => payload.ok && payload.items.length > 0);
 
   if (regions.length) {
     replaceSelectOptions(form.elements.region, regions, "Выбери регион");
@@ -362,28 +469,84 @@ async function loadBackendDirectories() {
   if (directions.length) {
     replaceSelectOptions(form.elements.direction, directions, "Выбери направление");
   }
-}
+  if (studyForms.length) {
+    replaceSelectOptions(form.elements["study-form"], studyForms, "Любая форма", { optional: true });
+  }
+  if (admissionTypes.length) {
+    replaceSelectOptions(form.elements["admission-type"], admissionTypes, "Любой конкурс", { optional: true });
+  }
 
-async function fetchDirectoryItems(url) {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      return [];
-    }
-    const payload = await response.json();
-    if (!Array.isArray(payload.items)) {
-      return [];
-    }
-    return payload.items
-      .map((item) => String(item || "").trim())
-      .filter(Boolean)
-      .slice(0, 200);
-  } catch (error) {
-    return [];
+  directoryState = {
+    status: backendLoaded ? "database" : "fallback",
+    storage: regionsPayload.storage || directionsPayload.storage || "fallback",
+    regions,
+    cities: [],
+    directions,
+    studyForms,
+    admissionTypes,
+    achievements: achievementsPayload.items,
+  };
+  renderDirectoryStatus();
+  renderAll();
+  if (form.elements.region?.value) {
+    await loadCitiesForRegion(form.elements.region.value);
   }
 }
 
-function replaceSelectOptions(select, items, placeholder) {
+async function fetchDirectoryItems(url) {
+  return (await fetchDirectoryPayload(url)).items;
+}
+
+async function fetchDirectoryPayload(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return { ok: false, storage: "fallback", items: [] };
+    }
+    const payload = await response.json();
+    if (!Array.isArray(payload.items)) {
+      return { ok: false, storage: "fallback", items: [] };
+    }
+    const items = payload.items.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 200);
+    return { ok: items.length > 0, storage: payload.storage || "backend", items };
+  } catch (error) {
+    return { ok: false, storage: "fallback", items: [] };
+  }
+}
+
+async function fetchAchievementsPayload(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return { ok: false, items: [] };
+    }
+    const payload = await response.json();
+    const items = Array.isArray(payload.items)
+      ? payload.items.filter((item) => item && typeof item === "object").slice(0, 8)
+      : [];
+    return { ok: items.length > 0, items };
+  } catch (error) {
+    return { ok: false, items: [] };
+  }
+}
+
+async function loadCitiesForRegion(region) {
+  const citySelect = form.elements.city;
+  if (!citySelect) {
+    return;
+  }
+  if (!region || directoryState.status !== "database") {
+    replaceSelectOptions(citySelect, [], "Любой город", { optional: true });
+    directoryState.cities = [];
+    return;
+  }
+  const payload = await fetchDirectoryPayload(`/api/cities?region=${encodeURIComponent(region)}`);
+  directoryState.cities = payload.items;
+  replaceSelectOptions(citySelect, payload.items, "Любой город", { optional: true });
+  renderDirectoryStatus();
+}
+
+function replaceSelectOptions(select, items, placeholder, options = {}) {
   if (!select) {
     return;
   }
@@ -391,7 +554,7 @@ function replaceSelectOptions(select, items, placeholder) {
   const uniqueItems = [...new Set(items)];
   const placeholderOption = document.createElement("option");
   placeholderOption.value = "";
-  placeholderOption.disabled = true;
+  placeholderOption.disabled = !options.optional;
   placeholderOption.textContent = placeholder;
 
   select.replaceChildren(placeholderOption);
@@ -402,12 +565,30 @@ function replaceSelectOptions(select, items, placeholder) {
     select.appendChild(option);
   });
 
-  if (currentValue) {
+  if (currentValue && uniqueItems.includes(currentValue)) {
     ensureSelectOption(select, currentValue);
     select.value = currentValue;
   } else {
     placeholderOption.selected = true;
   }
+}
+
+function renderDirectoryStatus() {
+  if (!directoryStatusNode) {
+    return;
+  }
+  if (directoryState.status === "loading") {
+    directoryStatusNode.textContent = "Загружаю справочники базы…";
+    directoryStatusNode.className = "directory-status directory-status--loading";
+    return;
+  }
+  if (directoryState.status === "database") {
+    directoryStatusNode.textContent = `Данные из базы: регионов ${directoryState.regions.length}, направлений ${directoryState.directions.length}.`;
+    directoryStatusNode.className = "directory-status directory-status--database";
+    return;
+  }
+  directoryStatusNode.textContent = "Локальный fallback: сервис данных сейчас недоступен, показан базовый список.";
+  directoryStatusNode.className = "directory-status directory-status--fallback";
 }
 
 function ensureSelectOption(select, value) {
@@ -490,6 +671,12 @@ document.addEventListener("click", (event) => {
   const refreshExportButton = event.target.closest("[data-export-refresh]");
   if (refreshExportButton) {
     refreshExportReport();
+    return;
+  }
+
+  const clearSoftFiltersButton = event.target.closest("[data-clear-soft-filters]");
+  if (clearSoftFiltersButton) {
+    clearOptionalSearchFilters();
     return;
   }
 });
@@ -599,6 +786,7 @@ function validateScore(rawValue, score) {
 }
 
 function renderAll() {
+  renderDirectoryStatus();
   renderSessionStatus();
   renderSearchResults();
   renderSummary();
@@ -1174,12 +1362,60 @@ function feedbackErrorMessage(error) {
 
 function renderSearchResults() {
   if (!lastResults.length) {
-    resultsNode.innerHTML = "";
+    resultsNode.innerHTML = currentSearch && !isSearchLoading ? renderEmptySearchState() : "";
     resultsActionsNode?.classList.add("is-hidden");
     return;
   }
   resultsActionsNode?.classList.remove("is-hidden");
   resultsNode.innerHTML = renderCards(lastResults, currentSearch?.score || 0);
+}
+
+function renderEmptySearchState() {
+  const suggestions = buildEmptySearchSuggestions();
+  return `
+    <article class="empty-state empty-state--search">
+      <h3>Точных совпадений не найдено</h3>
+      <p>Проверь применённые фильтры и попробуй один из вариантов ниже.</p>
+      <div class="empty-search-details">
+        ${renderSearchDetail("Регион", describeRegionFilter(currentSearch.region))}
+        ${currentSearch.city ? renderSearchDetail("Город", currentSearch.city) : ""}
+        ${renderSearchDetail("Направление", describeDirectionFilter(currentSearch.originalDirection || currentSearch.direction))}
+        ${renderSearchDetail("Тип", currentSearch.typeLabel)}
+        ${currentSearch.studyForm ? renderSearchDetail("Форма", currentSearch.studyForm) : ""}
+        ${currentSearch.admissionType ? renderSearchDetail("Конкурс", currentSearch.admissionType) : ""}
+        ${renderSearchDetail("Баллы", currentSearch.score)}
+      </div>
+      <ul class="empty-search-suggestions">
+        ${suggestions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ul>
+      <div class="empty-search-actions">
+        <button class="secondary-button" type="button" data-tab-target="search">Изменить поиск</button>
+        <button class="secondary-button" type="button" data-clear-soft-filters>Убрать необязательные фильтры</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderSearchDetail(label, value) {
+  return `<div><b>${escapeHtml(label)}:</b> ${escapeHtml(formatValue(value))}</div>`;
+}
+
+function buildEmptySearchSuggestions() {
+  const suggestions = [];
+  const directionSuggestions = getDirectionPresetSuggestions(currentSearch?.originalDirection || currentSearch?.direction);
+  if (directionSuggestions.length) {
+    suggestions.push(`Попробуй направление: ${directionSuggestions.slice(0, 3).join(", ")}.`);
+  } else if (directoryState.directions.length) {
+    suggestions.push(`Попробуй одно из направлений базы: ${directoryState.directions.slice(0, 3).join(", ")}.`);
+  }
+  if (currentSearch?.region && regionAliasText(currentSearch.region) !== currentSearch.region) {
+    suggestions.push(`Попробуй регион: ${regionAliasText(currentSearch.region)}.`);
+  } else if (directoryState.regions.length) {
+    suggestions.push(`Проверь регион из базы: ${directoryState.regions.slice(0, 3).join(", ")}.`);
+  }
+  suggestions.push("Убери город, форму обучения или тип конкурса, если они выбраны.");
+  suggestions.push("Попробуй другой тип обучения или соседний регион.");
+  return suggestions;
 }
 
 function renderSummary() {
@@ -1192,9 +1428,12 @@ function renderSummary() {
   const counts = getFilterCounts(lastResults);
   summaryCard.classList.remove("is-hidden");
   summaryContentNode.innerHTML = `
-    <div><b>Регион:</b> ${escapeHtml(currentSearch.region)}</div>
-    <div><b>Направление:</b> ${escapeHtml(currentSearch.direction)}</div>
+    <div><b>Регион:</b> ${escapeHtml(describeRegionFilter(currentSearch.region))}</div>
+    ${currentSearch.city ? `<div><b>Город:</b> ${escapeHtml(currentSearch.city)}</div>` : ""}
+    <div><b>Направление:</b> ${escapeHtml(describeDirectionFilter(currentSearch.originalDirection || currentSearch.direction))}</div>
     <div><b>Тип:</b> ${escapeHtml(currentSearch.typeLabel)}</div>
+    ${currentSearch.studyForm ? `<div><b>Форма:</b> ${escapeHtml(currentSearch.studyForm)}</div>` : ""}
+    ${currentSearch.admissionType ? `<div><b>Конкурс:</b> ${escapeHtml(currentSearch.admissionType)}</div>` : ""}
     <div><b>Баллы:</b> ${currentSearch.score}</div>
     <div><b>Найдено:</b> ${lastResults.length}</div>
     <div><b>Безопасные:</b> ${counts.safe} · <b>Реалистичные:</b> ${counts.realistic} · <b>Амбициозные:</b> ${counts.ambitious}</div>
@@ -1311,6 +1550,9 @@ function renderCards(items, score) {
 function renderCard(item, score, index) {
   const category = getItemCategory(item, score);
   const meta = categoryMeta[category] || categoryMeta.ambitious;
+  const universityName = getUniversityDisplayName(item);
+  const shortName = getUsefulShortName(item);
+  const location = formatLocation(item);
   const subjects = formatSubjects(item.subjects);
   const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type) : "";
   const minScore = getMinScore(item);
@@ -1323,17 +1565,18 @@ function renderCard(item, score, index) {
   return `
     <article class="result-card">
       <div class="result-card__top">
-        <h3>${index}. ${escapeHtml(textValue(item.university, "Вуз"))} — ${escapeHtml(textValue(item.program, "программа не указана"))}</h3>
+        <h3>${index}. ${escapeHtml(universityName)} — ${escapeHtml(textValue(item.program, "программа не указана"))}</h3>
         <span class="badge ${meta.className}">${meta.label}</span>
       </div>
       <div class="result-meta">
-        <div><b>Город:</b> ${escapeHtml(textValue(item.city, "не указан"))}</div>
+        ${location ? `<div><b>Локация:</b> ${escapeHtml(location)}</div>` : ""}
         ${subjects ? `<div><b>Предметы:</b> ${escapeHtml(subjects)}</div>` : ""}
-        <div><b>Мин. балл:</b> ${escapeHtml(formatValue(minScore))}</div>
+        <div><b>Проходной балл:</b> ${escapeHtml(formatValue(minScore))}</div>
         <div><b>Твои баллы:</b> ${score}</div>
         <div><b>${delta === null ? "Запас" : delta >= 0 ? "Запас" : "Не хватает"}:</b> ${escapeHtml(formatDelta(delta))}</div>
         <div><b>Тип:</b> ${escapeHtml(textValue(item.type, "не указан"))}</div>
         ${admissionType ? `<div><b>Конкурс:</b> ${escapeHtml(admissionType)}</div>` : ""}
+        ${shortName ? `<div><b>Краткое название:</b> ${escapeHtml(shortName)}</div>` : ""}
         ${hasValue(item.price) ? `<div><b>Стоимость:</b> ${escapeHtml(formatPrice(item.price))}</div>` : ""}
         ${hasValue(item.study_form) ? `<div><b>Форма:</b> ${escapeHtml(item.study_form)}</div>` : ""}
         ${hasValue(item.duration) ? `<div><b>Срок:</b> ${escapeHtml(item.duration)}</div>` : ""}
@@ -1603,8 +1846,11 @@ function renderAdmissionPlan() {
         <span class="plan-badge plan-badge--next">Краткий итог</span>
         <div class="plan-summary">
           <div><b>Регион:</b> ${escapeHtml(currentSearch.region)}</div>
-          <div><b>Направление:</b> ${escapeHtml(currentSearch.direction)}</div>
+          ${currentSearch.city ? `<div><b>Город:</b> ${escapeHtml(currentSearch.city)}</div>` : ""}
+          <div><b>Направление:</b> ${escapeHtml(currentSearch.originalDirection || currentSearch.direction)}</div>
           <div><b>Тип:</b> ${escapeHtml(currentSearch.typeLabel)}</div>
+          ${currentSearch.studyForm ? `<div><b>Форма:</b> ${escapeHtml(currentSearch.studyForm)}</div>` : ""}
+          ${currentSearch.admissionType ? `<div><b>Конкурс:</b> ${escapeHtml(currentSearch.admissionType)}</div>` : ""}
           <div><b>Баллы:</b> ${currentSearch.score}</div>
           <div><b>Найдено:</b> ${lastResults.length}</div>
           <div><b>Избранное:</b> ${favorites.length}</div>
@@ -1634,6 +1880,8 @@ function renderAdmissionPlan() {
       <span class="plan-badge plan-badge--important">Что проверить перед подачей</span>
       ${renderPlanList(plan.checkBeforeSubmit)}
     </article>
+
+    ${renderAchievementsBlock(plan.achievements)}
 
     <article class="plan-card">
       <span class="plan-badge plan-badge--next">Следующие действия</span>
@@ -1701,7 +1949,8 @@ function buildAdmissionPlan() {
   const checkBeforeSubmit = [
     "Актуальные проходные баллы и сроки приёма.",
     "Стоимость, если рассматриваешь платное обучение.",
-    "Предметы, форма обучения и длительность программы.",
+    "Форма обучения, тип конкурса, факультет и год данных.",
+    "Индивидуальные достижения: правила начисления отличаются по вузам.",
     "Официальные страницы выбранных вузов.",
   ];
 
@@ -1716,6 +1965,7 @@ function buildAdmissionPlan() {
     firstSteps,
     nextActions,
     checkBeforeSubmit,
+    achievements: directoryState.achievements,
     categoryMessages: {
       safe: safeItems.length
         ? "У тебя есть варианты с запасом. Начни с них как со спокойного списка."
@@ -1754,6 +2004,33 @@ function renderPlanList(items) {
   `;
 }
 
+function renderAchievementsBlock(items) {
+  const achievements = Array.isArray(items) ? items.filter((item) => item && typeof item === "object").slice(0, 5) : [];
+  if (!achievements.length) {
+    return `
+      <article class="plan-card">
+        <span class="plan-badge plan-badge--next">Индивидуальные достижения</span>
+        <p>Проверь правила выбранного вуза: медаль, олимпиады, ГТО, волонтёрство и другие достижения могут добавить баллы.</p>
+      </article>
+    `;
+  }
+  return `
+    <article class="plan-card plan-card--wide">
+      <span class="plan-badge plan-badge--next">Индивидуальные достижения</span>
+      <p>Это общий справочник. Точные баллы зависят от правил конкретного вуза.</p>
+      <div class="achievement-list">
+        ${achievements.map((item) => `
+          <div class="achievement-item">
+            <strong>${escapeHtml(textValue(item.title, "Достижение"))}</strong>
+            <span>${escapeHtml(textValue(item.category, "категория"))}${hasValue(item.points) ? ` · до ${escapeHtml(item.points)} баллов` : ""}</span>
+            ${hasValue(item.description) ? `<p>${escapeHtml(item.description)}</p>` : ""}
+          </div>
+        `).join("")}
+      </div>
+    </article>
+  `;
+}
+
 function renderChecklistItem(item) {
   return `
     <div class="plan-checkitem ${item.done ? "is-done" : ""}">
@@ -1774,7 +2051,7 @@ function renderPlanCategoryBlock(title, category, items, message) {
         topItems.length
           ? `<ol class="plan-program-list">${topItems.map((item) => `
               <li>
-                <b>${escapeHtml(textValue(item.university, "Вуз"))}</b>
+                <b>${escapeHtml(getUniversityDisplayName(item))}</b>
                 <span>${escapeHtml(textValue(item.program, "программа не указана"))}</span>
               </li>
             `).join("")}</ol>`
@@ -1815,8 +2092,11 @@ function buildAdmissionPlanText(plan) {
     "",
     "Краткий итог:",
     `Регион: ${currentSearch.region}`,
-    `Направление: ${currentSearch.direction}`,
+    ...(currentSearch.city ? [`Город: ${currentSearch.city}`] : []),
+    `Направление: ${currentSearch.originalDirection || currentSearch.direction}`,
     `Тип обучения: ${currentSearch.typeLabel}`,
+    ...(currentSearch.studyForm ? [`Форма: ${currentSearch.studyForm}`] : []),
+    ...(currentSearch.admissionType ? [`Конкурс: ${currentSearch.admissionType}`] : []),
     `Баллы: ${currentSearch.score}`,
     `Найдено вариантов: ${lastResults.length}`,
     `Безопасные: ${plan.counts.safe}`,
@@ -1830,6 +2110,9 @@ function buildAdmissionPlanText(plan) {
     "",
     "Что проверить перед подачей:",
     ...plan.checkBeforeSubmit.map((item, index) => `${index + 1}. ${item}`),
+    "",
+    "Индивидуальные достижения:",
+    ...formatAchievementsForText(plan.achievements),
     "",
     "Следующие действия:",
     ...plan.nextActions.map((item, index) => `${index + 1}. ${item}`),
@@ -1872,9 +2155,12 @@ function renderExportPreview() {
         <h4>Параметры подбора</h4>
         <div class="export-grid">
           <div><b>Регион:</b> ${escapeHtml(reportData.search.region)}</div>
+          ${reportData.search.city ? `<div><b>Город:</b> ${escapeHtml(reportData.search.city)}</div>` : ""}
           <div><b>Баллы:</b> ${escapeHtml(formatValue(reportData.search.score))}</div>
-          <div><b>Направление:</b> ${escapeHtml(reportData.search.direction)}</div>
+          <div><b>Направление:</b> ${escapeHtml(reportData.search.originalDirection || reportData.search.direction)}</div>
           <div><b>Тип обучения:</b> ${escapeHtml(reportData.search.typeLabel)}</div>
+          ${reportData.search.studyForm ? `<div><b>Форма:</b> ${escapeHtml(reportData.search.studyForm)}</div>` : ""}
+          ${reportData.search.admissionType ? `<div><b>Конкурс:</b> ${escapeHtml(reportData.search.admissionType)}</div>` : ""}
         </div>
       </section>
 
@@ -1951,6 +2237,8 @@ function renderExportItems(title, items, emptyText, limit = null) {
 function renderExportItem(item, index) {
   const category = getItemCategory(item);
   const meta = categoryMeta[category] || categoryMeta.ambitious;
+  const universityName = getUniversityDisplayName(item);
+  const location = formatLocation(item);
   const subjects = formatSubjects(item.subjects);
   const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type) : "";
   const margin = getScoreMargin(item);
@@ -1958,12 +2246,12 @@ function renderExportItem(item, index) {
   return `
     <article class="export-item">
       <div class="export-item__title">
-        <strong>${index}. ${escapeHtml(textValue(item.university, "Вуз"))} — ${escapeHtml(textValue(item.program, "программа не указана"))}</strong>
+        <strong>${index}. ${escapeHtml(universityName)} — ${escapeHtml(textValue(item.program, "программа не указана"))}</strong>
         <span class="badge ${meta.className}">${escapeHtml(meta.shortLabel)}</span>
       </div>
       <div class="export-item__meta">
-        <span><b>Город:</b> ${escapeHtml(textValue(item.city, "не указано"))}</span>
-        <span><b>Мин. балл:</b> ${escapeHtml(formatValue(getMinScore(item)))}</span>
+        ${location ? `<span><b>Локация:</b> ${escapeHtml(location)}</span>` : ""}
+        <span><b>Проходной балл:</b> ${escapeHtml(formatValue(getMinScore(item)))}</span>
         <span><b>Твои баллы:</b> ${escapeHtml(formatValue(getUserScore(item) || currentSearch?.score))}</span>
         <span><b>Запас/не хватает:</b> ${escapeHtml(formatDelta(margin))}</span>
         <span><b>Тип:</b> ${escapeHtml(textValue(item.type, "не указано"))}</span>
@@ -2006,6 +2294,7 @@ function renderExportPlan(reportData) {
           ${renderPlanList(plan.checkBeforeSubmit)}
         </div>
       </div>
+      <p><b>Индивидуальные достижения:</b> проверь правила выбранных вузов; общий справочник может отличаться от конкретного начисления.</p>
     </section>
   `;
 }
@@ -2022,9 +2311,12 @@ function buildExportPlainText(reportData = buildExportReportData()) {
     "",
     "Параметры подбора:",
     `Регион: ${reportData.search.region}`,
+    ...(reportData.search.city ? [`Город: ${reportData.search.city}`] : []),
     `Баллы: ${reportData.search.score}`,
-    `Направление: ${reportData.search.direction}`,
+    `Направление: ${reportData.search.originalDirection || reportData.search.direction}`,
     `Тип обучения: ${reportData.search.typeLabel}`,
+    ...(reportData.search.studyForm ? [`Форма: ${reportData.search.studyForm}`] : []),
+    ...(reportData.search.admissionType ? [`Конкурс: ${reportData.search.admissionType}`] : []),
     "",
     "Краткий итог:",
     `Найдено вариантов: ${reportData.totalResults}`,
@@ -2060,11 +2352,12 @@ function formatExportItemsForText(items, emptyText) {
   return items.map((item, index) => {
     const subjects = formatSubjects(item.subjects);
     const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type) : "";
+    const location = formatLocation(item);
     const parts = [
-      `${index + 1}. ${textValue(item.university, "Вуз")} — ${textValue(item.program, "программа не указана")}`,
-      `Город: ${textValue(item.city, "не указано")}`,
+      `${index + 1}. ${getUniversityDisplayName(item)} — ${textValue(item.program, "программа не указана")}`,
+      `Локация: ${location || "не указано"}`,
       `Категория: ${getCategoryLabel(item)}`,
-      `Мин. балл: ${formatValue(getMinScore(item))}`,
+      `Проходной балл: ${formatValue(getMinScore(item))}`,
       `Твои баллы: ${formatValue(getUserScore(item) || currentSearch?.score)}`,
       `Запас/не хватает: ${formatDelta(getScoreMargin(item))}`,
       `Тип: ${textValue(item.type, "не указано")}`,
@@ -2111,7 +2404,21 @@ function formatExportPlanForText(plan) {
     "",
     "Что проверить перед подачей:",
     ...plan.checkBeforeSubmit.map((item, index) => `${index + 1}. ${item}`),
+    "",
+    "Индивидуальные достижения:",
+    ...formatAchievementsForText(plan.achievements),
   ];
+}
+
+function formatAchievementsForText(items) {
+  const achievements = Array.isArray(items) ? items.filter((item) => item && typeof item === "object").slice(0, 5) : [];
+  if (!achievements.length) {
+    return ["Проверь в правилах вуза: медаль, олимпиады, ГТО, волонтёрство и другие достижения могут добавить баллы."];
+  }
+  return achievements.map((item, index) => {
+    const points = hasValue(item.points) ? `, до ${item.points} баллов` : "";
+    return `${index + 1}. ${textValue(item.title, "Достижение")} (${textValue(item.category, "категория")}${points})`;
+  });
 }
 
 async function copyExportReport() {
@@ -2175,7 +2482,7 @@ function renderComparisonSelected() {
     return `
       <article class="comparison-selected-card">
         <div>
-          <b>${index + 1}. ${escapeHtml(textValue(item.university, "Вуз"))}</b>
+          <b>${index + 1}. ${escapeHtml(getUniversityDisplayName(item))}</b>
           <span>${escapeHtml(textValue(item.program, "программа не указана"))}</span>
         </div>
         <button class="secondary-button danger-button" type="button" data-remove-compare="${escapeAttribute(key)}">Удалить</button>
@@ -2187,13 +2494,13 @@ function renderComparisonSelected() {
 function renderComparisonTable(items) {
   const highlights = getComparisonHighlights(items);
   const rows = [
-    { label: "Вуз", value: (item) => textValue(item.university, "не указано") },
+    { label: "Вуз", value: (item) => getUniversityDisplayName(item) },
     { label: "Программа", value: (item) => textValue(item.program, "не указано") },
     { label: "Город", value: (item) => textValue(item.city, "не указано") },
     { label: "Регион", value: (item) => textValue(item.region, "не указано") },
     { label: "Направление", value: (item) => textValue(item.direction, "не указано") },
     { label: "Категория", highlight: "category", value: (item) => getCategoryLabel(item) },
-    { label: "Мин. балл", highlight: "minScore", value: (item) => formatValue(getMinScore(item)) },
+    { label: "Проходной балл", highlight: "minScore", value: (item) => formatValue(getMinScore(item)) },
     { label: "Твои баллы", value: (item) => formatValue(getUserScore(item)) },
     { label: "Запас/не хватает", highlight: "margin", value: (item) => formatDelta(getScoreMargin(item)) },
     { label: "Тип обучения", highlight: "type", value: (item) => textValue(item.type, "не указано") },
@@ -2235,7 +2542,7 @@ function renderComparisonTable(items) {
         <thead>
           <tr>
             <th>Параметр</th>
-            ${items.map((item, index) => `<th>${index + 1}. ${escapeHtml(textValue(item.university, "Вуз"))}</th>`).join("")}
+            ${items.map((item, index) => `<th>${index + 1}. ${escapeHtml(getUniversityDisplayName(item))}</th>`).join("")}
           </tr>
         </thead>
         <tbody>
@@ -2405,7 +2712,7 @@ function makeFavoriteKey(item) {
 
 function getUniversityKey(item) {
   return [
-    item.university,
+    getUniversityDisplayName(item),
     item.program,
     item.city,
     item.min_score,
@@ -2494,6 +2801,76 @@ function normalizeType(value) {
   return normalized;
 }
 
+function normalizeDirectionForSearch(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["it", "ит", "айти"].includes(normalized)) {
+    return "информационные технологии";
+  }
+  return String(value || "").trim();
+}
+
+function describeDirectionFilter(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  const searchValue = normalizeDirectionForSearch(value);
+  const suggestions = getDirectionPresetSuggestions(searchValue);
+  if (suggestions.length && normalized !== suggestions[0].toLowerCase()) {
+    return `${value} → поиск по группе направлений`;
+  }
+  return searchValue;
+}
+
+function getDirectionPresetSuggestions(value) {
+  const normalized = normalizeDirectionForSearch(value).toLowerCase();
+  return directionPresetGroups[normalized] || [];
+}
+
+function regionAliasText(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  const aliases = {
+    "адыгея": "Республика Адыгея",
+    "крым": "Республика Крым",
+    "татарстан": "Республика Татарстан",
+  };
+  return aliases[normalized] || value;
+}
+
+function describeRegionFilter(value) {
+  const alias = regionAliasText(value);
+  return alias !== value ? `${value} → ${alias}` : value;
+}
+
+function getUniversityDisplayName(item) {
+  const candidates = [item.university_full_name, item.university_name, item.university, item.university_short_name];
+  for (const value of candidates) {
+    if (hasValue(value) && !isTechnicalUniversityName(value)) {
+      return String(value).trim();
+    }
+  }
+  return textValue(item.university || item.university_short_name, "Вуз");
+}
+
+function getUsefulShortName(item) {
+  const shortName = textValue(item.university_short_name, "");
+  if (!shortName || isTechnicalUniversityName(shortName)) {
+    return "";
+  }
+  return shortName.toLowerCase() === getUniversityDisplayName(item).toLowerCase() ? "" : shortName;
+}
+
+function isTechnicalUniversityName(value) {
+  const text = String(value || "").trim();
+  return /^[A-Za-zА-Яа-яЁё]{2,}[-_]\d+$/.test(text) || /^[A-Za-zА-Яа-яЁё]{2,}\d+$/.test(text);
+}
+
+function formatLocation(item) {
+  const city = textValue(item.city, "");
+  const region = textValue(item.region, "");
+  if (city && region && city !== region) {
+    return `${city}, ${region}`;
+  }
+  return city || region;
+}
+
 function formatDelta(delta) {
   if (delta === null) {
     return "недостаточно данных";
@@ -2536,6 +2913,7 @@ function formatAdmissionType(value) {
     budget: "бюджет",
     paid: "платное",
     target: "целевая квота",
+    target_quota: "целевая квота",
     special_quota: "особая квота",
     separate_quota: "отдельная квота",
     additional: "дополнительный набор",

@@ -38,6 +38,10 @@ def test_index_contains_aisha_and_search_form() -> None:
     assert "region" in html
     assert "score" in html
     assert "direction" in html
+    assert "city" in html
+    assert "study-form" in html
+    assert "admission-type" in html
+    assert "directory-status" in html
     assert "/miniapp/styles.css" in html
     assert "/miniapp/app.js" in html
 
@@ -46,8 +50,37 @@ def test_app_js_uses_backend_api_without_openai_key() -> None:
     js = read_mini_app_file("app.js")
 
     assert "/api/universities" in js
+    assert "/api/regions" in js
+    assert "/api/cities" in js
+    assert "/api/directions" in js
+    assert "/api/study-forms" in js
+    assert "/api/admission-types" in js
+    assert "/api/achievements" in js
     assert "OPENAI_API_KEY" not in js
     assert "Не удалось получить данные" in js
+
+
+def test_mini_app_uses_postgres_first_directories_and_alias_presets() -> None:
+    js = read_mini_app_file("app.js")
+
+    assert "directoryState" in js
+    assert "Данные из базы" in js
+    assert "Локальный fallback" in js
+    assert "fetchDirectoryPayload" in js
+    assert "normalizeDirectionForSearch" in js
+    assert 'direction: "информационные технологии"' in js
+    assert 'direction: "IT"' not in js
+    assert 'value="IT"' not in read_mini_app_file("index.html")
+
+
+def test_mini_app_has_empty_state_suggestions_and_achievements() -> None:
+    js = read_mini_app_file("app.js")
+
+    assert "renderEmptySearchState" in js
+    assert "Точных совпадений не найдено" in js
+    assert "Убрать необязательные фильтры" in js
+    assert "Индивидуальные достижения" in js
+    assert "renderAchievementsBlock" in js
 
 
 def test_app_js_has_local_filters_and_favorites() -> None:
