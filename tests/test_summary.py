@@ -43,7 +43,7 @@ def test_summary_contains_profile_fields_and_total_count() -> None:
     assert "Регион: Адыгея" in text
     assert "Баллы: 230" in text
     assert "Направление: IT" in text
-    assert "Тип обучения: бюджет" in text
+    assert "Финансирование: бюджет" in text
     assert "Найдено вариантов: 2" in text
 
 

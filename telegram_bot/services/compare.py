@@ -172,11 +172,11 @@ def _format_conclusion(comparison: dict[str, Any]) -> str:
     paid_count = comparison.get("paid_options", 0)
     items_count = len(comparison.get("items", []))
     if budget_count == items_count:
-        lines.append("По типу обучения: все выбранные варианты бюджетные.")
+        lines.append("По финансированию: все выбранные варианты бюджетные.")
     elif paid_count == items_count:
-        lines.append("По типу обучения: все выбранные варианты платные.")
+        lines.append("По финансированию: все выбранные варианты платные.")
     else:
-        lines.append(f"По типу обучения: бюджетных вариантов — {budget_count}, платных — {paid_count}.")
+        lines.append(f"По финансированию: бюджетных вариантов — {budget_count}, платных — {paid_count}.")
 
     cheapest = comparison.get("cheapest_option")
     if cheapest:
@@ -215,11 +215,11 @@ def _price(item: dict[str, Any]) -> int | None:
 
 
 def _is_budget(item: dict[str, Any]) -> bool:
-    return str(item.get("type", "")).strip().lower() in {"бюджет", "budget"}
+    return str(item.get("financing_label", item.get("type", ""))).strip().lower() in {"бюджет", "budget"}
 
 
 def _is_paid(item: dict[str, Any]) -> bool:
-    return str(item.get("type", "")).strip().lower() in {"платное", "paid"}
+    return str(item.get("financing_label", item.get("type", ""))).strip().lower() in {"платное", "paid"}
 
 
 def _subject_set(item: dict[str, Any]) -> set[str]:

@@ -56,7 +56,7 @@ def format_last_search_summary(
         f"📍 Регион: {escape(_value(region))}",
         f"📊 Баллы: {escape(_value(score))}",
         f"🎯 Направление: {escape(_value(direction))}",
-        f"🏛 Тип обучения: {education_type_label(str(education_type or ''))}",
+        f"🏛 Финансирование: {education_type_label(str(education_type or ''))}",
         "",
         f"Найдено вариантов: {len(last_results)}",
     ]

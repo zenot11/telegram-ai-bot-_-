@@ -42,7 +42,7 @@
 
 Mini App при старте загружает `/api/regions`, `/api/cities`, `/api/directions`, `/api/study-forms`, `/api/admission-types` и `/api/achievements`. Если backend недоступен, интерфейс остаётся рабочим на fallback-справочниках и показывает пользователю статус fallback.
 
-Слой форматирования в Telegram-боте и Mini App не показывает пустые необязательные поля как технические значения. PostgreSQL-поля `year`, `faculty`, `admission_type_label`, `note`, `profile` используются как дополнительный контекст, а диагностическое поле `source` остаётся только в API. Полное `universities.name` используется как основное название, чтобы технические короткие коды вроде `РЦТИ-26` не попадали в заголовок карточки.
+Слой форматирования в Telegram-боте и Mini App не показывает пустые необязательные поля как технические значения. PostgreSQL-поля `year`, `faculty`, `financing_label`, `contest_label`, `study_form_label`, `admission_type_label`, `note`, `profile` используются как дополнительный контекст, а диагностическое поле `source` остаётся только в API. Полное `universities.name` используется как основное название, а synthetic/demo rows supplemental seed скрываются из обычной выдачи по умолчанию.
 
 Для Telegram-режима Mini App дополнительно проверяет сессию:
 
@@ -73,7 +73,7 @@ Mini App
 - `filters.py` - `/filters`, inline-фильтры последних результатов и активная отфильтрованная выдача.
 - `export.py` - `/export`, текстовый отчёт и отправка `.txt` файла по последнему подбору.
 - `feedback.py` - `/feedback`, `/my_feedback`, выбор категории обращения и сохранение заявки.
-- `search.py` - FSM-подбор вузов: регион, баллы, направление, тип обучения, запрос к backend.
+- `search.py` - FSM-подбор вузов: регион, баллы, направление, финансирование, запрос к backend.
 - `compare.py` - `/compare`, выбор источника и вариантов сравнения.
 - `support.py` - `/support` и кнопки психологической поддержки.
 - `common.py` - fallback-обработчик, crisis/safety и свободные вопросы.
@@ -139,7 +139,7 @@ Mini App
 - `/favicon.ico` - favicon для браузера.
 - `data/universities.json` - демонстрационная база вузов и fallback по умолчанию.
 
-В JSON mode backend загружает базу при создании приложения. Если JSON некорректный или структура записей не соответствует контракту, backend завершает запуск с понятной ошибкой. В PostgreSQL mode backend создаёт pool при старте и не скрывает ошибку подключения, если `USE_POSTGRES=true`. `/api/universities` поддерживает `region`, `city`, `score`, `direction`, `type`, `study_form`, `year`, `q`, `limit` и `sort`. При фильтрации по баллам сохраняется амбициозный зазор `score + 20`. Формат JSON описан в `docs/DATA.md`, PostgreSQL-запуск - в `docs/POSTGRES.md`, совместимость источников - в `docs/DATA_COMPATIBILITY.md`.
+В JSON mode backend загружает базу при создании приложения. Если JSON некорректный или структура записей не соответствует контракту, backend завершает запуск с понятной ошибкой. В PostgreSQL mode backend создаёт pool при старте и не скрывает ошибку подключения, если `USE_POSTGRES=true`. `/api/universities` поддерживает `region`, `city`, `score`, `direction`, `type`, `admission_type`, `study_form`, `year`, `q`, `limit`, `sort`, `include_synthetic` и `include_demo`. При фильтрации по баллам сохраняется амбициозный зазор `score + 20`. Формат JSON описан в `docs/DATA.md`, PostgreSQL-запуск - в `docs/POSTGRES.md`, совместимость источников - в `docs/DATA_COMPATIBILITY.md`.
 
 ## `mini_app/`
 

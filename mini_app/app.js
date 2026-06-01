@@ -257,6 +257,7 @@ async function performSearch() {
   const city = String(formData.get("city") || "").trim();
   const studyForm = String(formData.get("study-form") || "").trim();
   const admissionType = String(formData.get("admission-type") || "").trim();
+  const admissionTypeLabel = getSearchContestLabel(admissionType);
 
   if (!region) {
     showStatus("Выбери регион для подбора.", true);
@@ -290,6 +291,7 @@ async function performSearch() {
     city,
     studyForm,
     admissionType,
+    admissionTypeLabel,
     type,
     typeLabel,
   };
@@ -329,6 +331,7 @@ async function performSearch() {
     }
 
     lastResults = payload
+      .filter((item) => !isSyntheticUniversityItem(item))
       .filter((item) => classifyUniversity(score, item) !== "unavailable")
       .map((item) => ({
         ...item,
@@ -908,7 +911,7 @@ function buildAishaHint() {
   if (!context.hasSearch) {
     return {
       title: "Aisha советует",
-      text: "Начни с подбора: выбери регион, баллы, направление и тип обучения.",
+      text: "Начни с подбора: выбери регион, баллы, направление и финансирование.",
       actionLabel: "К подбору",
       actionTab: "search",
       tone: "idle",
@@ -918,7 +921,7 @@ function buildAishaHint() {
   if (!context.hasResults) {
     return {
       title: "Aisha советует",
-      text: "По текущим параметрам ничего не найдено. Попробуй соседний регион, платное обучение или более широкое направление.",
+      text: "По текущим параметрам ничего не найдено в обычной выдаче. Попробуй расширить регион, конкурс или направление.",
       actionLabel: "Изменить поиск",
       actionTab: "search",
       tone: "empty",
@@ -1379,15 +1382,15 @@ function renderEmptySearchState() {
   const suggestions = buildEmptySearchSuggestions();
   return `
     <article class="empty-state empty-state--search">
-      <h3>Точных совпадений не найдено</h3>
-      <p>Проверь применённые фильтры и попробуй один из вариантов ниже.</p>
+      <h3>По текущим фильтрам обычных вузов не найдено</h3>
+      <p>Проверь применённые фильтры и попробуй расширить поиск.</p>
       <div class="empty-search-details">
         ${renderSearchDetail("Регион", describeRegionFilter(currentSearch.region))}
         ${currentSearch.city ? renderSearchDetail("Город", currentSearch.city) : ""}
         ${renderSearchDetail("Направление", describeDirectionFilter(currentSearch.originalDirection || currentSearch.direction))}
-        ${renderSearchDetail("Тип", currentSearch.typeLabel)}
-        ${currentSearch.studyForm ? renderSearchDetail("Форма", currentSearch.studyForm) : ""}
-        ${currentSearch.admissionType ? renderSearchDetail("Конкурс", currentSearch.admissionType) : ""}
+        ${renderSearchDetail("Финансирование", currentSearch.typeLabel)}
+        ${currentSearch.studyForm ? renderSearchDetail("Форма обучения", currentSearch.studyForm) : ""}
+        ${currentSearch.admissionTypeLabel ? renderSearchDetail("Конкурс", currentSearch.admissionTypeLabel) : ""}
         ${renderSearchDetail("Баллы", currentSearch.score)}
       </div>
       <ul class="empty-search-suggestions">
@@ -1418,8 +1421,8 @@ function buildEmptySearchSuggestions() {
   } else if (directoryState.regions.length) {
     suggestions.push(`Проверь регион из базы: ${directoryState.regions.slice(0, 3).join(", ")}.`);
   }
-  suggestions.push("Убери город, форму обучения или тип конкурса, если они выбраны.");
-  suggestions.push("Попробуй другой тип обучения или соседний регион.");
+  suggestions.push("Убери город, форму обучения или конкурс, если они выбраны.");
+  suggestions.push("Попробуй соседний регион или другое финансирование.");
   return suggestions;
 }
 
@@ -1437,9 +1440,9 @@ function renderSummary() {
     <div><b>Регион:</b> ${escapeHtml(describeRegionFilter(currentSearch.region))}</div>
     ${currentSearch.city ? `<div><b>Город:</b> ${escapeHtml(currentSearch.city)}</div>` : ""}
     <div><b>Направление:</b> ${escapeHtml(describeDirectionFilter(currentSearch.originalDirection || currentSearch.direction))}</div>
-    <div><b>Тип:</b> ${escapeHtml(currentSearch.typeLabel)}</div>
-    ${currentSearch.studyForm ? `<div><b>Форма:</b> ${escapeHtml(currentSearch.studyForm)}</div>` : ""}
-    ${currentSearch.admissionType ? `<div><b>Конкурс:</b> ${escapeHtml(currentSearch.admissionType)}</div>` : ""}
+    <div><b>Финансирование:</b> ${escapeHtml(currentSearch.typeLabel)}</div>
+    ${currentSearch.studyForm ? `<div><b>Форма обучения:</b> ${escapeHtml(currentSearch.studyForm)}</div>` : ""}
+    ${currentSearch.admissionTypeLabel ? `<div><b>Конкурс:</b> ${escapeHtml(currentSearch.admissionTypeLabel)}</div>` : ""}
     <div><b>Баллы:</b> ${currentSearch.score}</div>
     <div><b>Найдено:</b> ${lastResults.length}</div>
     <div><b>Безопасные:</b> ${counts.safe} · <b>Реалистичные:</b> ${counts.realistic} · <b>Амбициозные:</b> ${counts.ambitious}</div>
@@ -1457,7 +1460,7 @@ function renderAdvice() {
 
   const counts = getFilterCounts(lastResults);
   const unclearScores = lastResults.filter((item) => !hasValidMinScore(item)).length;
-  let text = "Попробуй изменить регион, направление или тип обучения.";
+  let text = "Попробуй изменить регион, направление или финансирование.";
 
   if (lastResults.length && unclearScores === lastResults.length) {
     text = "Варианты есть, но проходные баллы требуют уточнения. Проверь конкурс, год и пометки на сайтах вузов.";
@@ -1565,7 +1568,9 @@ function renderCard(item, score, index) {
   const shortName = getUsefulShortName(item);
   const location = formatLocation(item);
   const subjects = formatSubjects(item.subjects);
-  const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type_label || item.admission_type) : "";
+  const financing = getFinancingLabel(item);
+  const studyForm = getStudyFormLabel(item);
+  const admissionType = getContestLabel(item);
   const scoreText = getScoreDisplay(item);
   const delta = getScoreMargin(item, score);
   const scoreClarification = getScoreClarification(item);
@@ -1588,11 +1593,11 @@ function renderCard(item, score, index) {
         <div><b>Проходной балл:</b> ${escapeHtml(scoreText)}</div>
         <div><b>Твои баллы:</b> ${score}</div>
         ${delta === null ? "" : `<div><b>${delta >= 0 ? "Запас" : "Не хватает"}:</b> ${escapeHtml(formatDelta(delta))}</div>`}
-        <div><b>Тип:</b> ${escapeHtml(textValue(item.type, "не указан"))}</div>
+        <div><b>Финансирование:</b> ${escapeHtml(financing)}</div>
         ${admissionType ? `<div><b>Конкурс:</b> ${escapeHtml(admissionType)}</div>` : ""}
         ${shortName ? `<div><b>Краткое название:</b> ${escapeHtml(shortName)}</div>` : ""}
         ${hasValue(item.price) ? `<div><b>Стоимость:</b> ${escapeHtml(formatPrice(item.price))}</div>` : ""}
-        ${hasValue(item.study_form) ? `<div><b>Форма:</b> ${escapeHtml(item.study_form)}</div>` : ""}
+        ${studyForm ? `<div><b>Форма обучения:</b> ${escapeHtml(studyForm)}</div>` : ""}
         ${hasValue(item.duration) ? `<div><b>Срок:</b> ${escapeHtml(item.duration)}</div>` : ""}
         ${hasValue(item.faculty) ? `<div><b>Факультет:</b> ${escapeHtml(item.faculty)}</div>` : ""}
         ${hasValue(item.year) ? `<div><b>Год данных:</b> ${escapeHtml(item.year)}</div>` : ""}
@@ -1654,7 +1659,7 @@ function loadFavorites() {
   try {
     const raw = window.localStorage.getItem(FAVORITES_KEY) || window.localStorage.getItem(LEGACY_FAVORITES_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.filter((item) => item && typeof item === "object" && !isSyntheticUniversityItem(item)) : [];
   } catch (error) {
     return [];
   }
@@ -1716,7 +1721,9 @@ async function requestFavoritesApi(path, body = null) {
 }
 
 function updateFavoritesFromServer(serverFavorites) {
-  favorites = Array.isArray(serverFavorites) ? serverFavorites.filter((item) => item && typeof item === "object") : [];
+  favorites = Array.isArray(serverFavorites)
+    ? serverFavorites.filter((item) => item && typeof item === "object" && !isSyntheticUniversityItem(item))
+    : [];
   saveFavorites();
 }
 
@@ -1862,9 +1869,9 @@ function renderAdmissionPlan() {
           <div><b>Регион:</b> ${escapeHtml(currentSearch.region)}</div>
           ${currentSearch.city ? `<div><b>Город:</b> ${escapeHtml(currentSearch.city)}</div>` : ""}
           <div><b>Направление:</b> ${escapeHtml(currentSearch.originalDirection || currentSearch.direction)}</div>
-          <div><b>Тип:</b> ${escapeHtml(currentSearch.typeLabel)}</div>
-          ${currentSearch.studyForm ? `<div><b>Форма:</b> ${escapeHtml(currentSearch.studyForm)}</div>` : ""}
-          ${currentSearch.admissionType ? `<div><b>Конкурс:</b> ${escapeHtml(currentSearch.admissionType)}</div>` : ""}
+          <div><b>Финансирование:</b> ${escapeHtml(currentSearch.typeLabel)}</div>
+          ${currentSearch.studyForm ? `<div><b>Форма обучения:</b> ${escapeHtml(currentSearch.studyForm)}</div>` : ""}
+          ${currentSearch.admissionTypeLabel ? `<div><b>Конкурс:</b> ${escapeHtml(currentSearch.admissionTypeLabel)}</div>` : ""}
           <div><b>Баллы:</b> ${currentSearch.score}</div>
           <div><b>Найдено:</b> ${lastResults.length}</div>
           <div><b>Избранное:</b> ${favorites.length}</div>
@@ -1930,7 +1937,7 @@ function buildAdmissionPlan() {
 
   const firstSteps = [];
   if (!lastResults.length) {
-    firstSteps.push("Измени параметры поиска: регион, направление, тип обучения или баллы.");
+    firstSteps.push("Измени параметры поиска: регион, направление, финансирование или баллы.");
   } else if (safeItems.length >= 2) {
     firstSteps.push("Начни с безопасных вариантов: они дают самый спокойный запасной список.");
   } else if (safeItems.length === 0 && realisticItems.length > 0) {
@@ -1963,7 +1970,7 @@ function buildAdmissionPlan() {
   const checkBeforeSubmit = [
     "Актуальные проходные баллы и сроки приёма.",
     "Стоимость, если рассматриваешь платное обучение.",
-    "Форма обучения, тип конкурса, факультет и год данных.",
+    "Форма обучения, конкурс, факультет и год данных.",
     "Индивидуальные достижения: правила начисления отличаются по вузам.",
     "Официальные страницы выбранных вузов.",
   ];
@@ -1983,7 +1990,7 @@ function buildAdmissionPlan() {
     categoryMessages: {
       safe: safeItems.length
         ? "У тебя есть варианты с запасом. Начни с них как со спокойного списка."
-        : "Безопасных вариантов пока нет. Попробуй расширить регион или тип обучения.",
+        : "Безопасных вариантов пока нет. Попробуй расширить регион или финансирование.",
       realistic: realisticItems.length
         ? "Эти варианты близки к твоим баллам. Их стоит сохранить и проверить на сайтах вузов."
         : "Реалистичных вариантов сейчас нет. Проверь соседние параметры поиска.",
@@ -1996,7 +2003,7 @@ function buildAdmissionPlan() {
 
 function buildAdmissionOverview(counts) {
   if (!lastResults.length) {
-    return "По текущим параметрам варианты не найдены. Попробуй соседний регион, другой тип обучения или более широкое направление.";
+    return "По текущим параметрам обычные вузы не найдены. Попробуй соседний регион, другое финансирование или более широкое направление.";
   }
   if (counts.safe >= 2) {
     return `Подбор выглядит спокойным: найдено ${counts.safe} безопасных вариантов из ${lastResults.length}.`;
@@ -2108,9 +2115,9 @@ function buildAdmissionPlanText(plan) {
     `Регион: ${currentSearch.region}`,
     ...(currentSearch.city ? [`Город: ${currentSearch.city}`] : []),
     `Направление: ${currentSearch.originalDirection || currentSearch.direction}`,
-    `Тип обучения: ${currentSearch.typeLabel}`,
-    ...(currentSearch.studyForm ? [`Форма: ${currentSearch.studyForm}`] : []),
-    ...(currentSearch.admissionType ? [`Конкурс: ${currentSearch.admissionType}`] : []),
+    `Финансирование: ${currentSearch.typeLabel}`,
+    ...(currentSearch.studyForm ? [`Форма обучения: ${currentSearch.studyForm}`] : []),
+    ...(currentSearch.admissionTypeLabel ? [`Конкурс: ${currentSearch.admissionTypeLabel}`] : []),
     `Баллы: ${currentSearch.score}`,
     `Найдено вариантов: ${lastResults.length}`,
     `Безопасные: ${plan.counts.safe}`,
@@ -2172,9 +2179,9 @@ function renderExportPreview() {
           ${reportData.search.city ? `<div><b>Город:</b> ${escapeHtml(reportData.search.city)}</div>` : ""}
           <div><b>Баллы:</b> ${escapeHtml(formatValue(reportData.search.score))}</div>
           <div><b>Направление:</b> ${escapeHtml(reportData.search.originalDirection || reportData.search.direction)}</div>
-          <div><b>Тип обучения:</b> ${escapeHtml(reportData.search.typeLabel)}</div>
-          ${reportData.search.studyForm ? `<div><b>Форма:</b> ${escapeHtml(reportData.search.studyForm)}</div>` : ""}
-          ${reportData.search.admissionType ? `<div><b>Конкурс:</b> ${escapeHtml(reportData.search.admissionType)}</div>` : ""}
+          <div><b>Финансирование:</b> ${escapeHtml(reportData.search.typeLabel)}</div>
+          ${reportData.search.studyForm ? `<div><b>Форма обучения:</b> ${escapeHtml(reportData.search.studyForm)}</div>` : ""}
+          ${reportData.search.admissionTypeLabel ? `<div><b>Конкурс:</b> ${escapeHtml(reportData.search.admissionTypeLabel)}</div>` : ""}
         </div>
       </section>
 
@@ -2255,7 +2262,9 @@ function renderExportItem(item, index) {
   const programName = textValue(item.program, "программа не указана");
   const location = formatLocation(item);
   const subjects = formatSubjects(item.subjects);
-  const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type_label || item.admission_type) : "";
+  const financing = getFinancingLabel(item);
+  const studyForm = getStudyFormLabel(item);
+  const admissionType = getContestLabel(item);
   const margin = getScoreMargin(item);
   const note = textValue(item.note, getScoreClarification(item));
 
@@ -2271,11 +2280,11 @@ function renderExportItem(item, index) {
         <span><b>Проходной балл:</b> ${escapeHtml(getScoreDisplay(item))}</span>
         <span><b>Твои баллы:</b> ${escapeHtml(formatValue(getUserScore(item) || currentSearch?.score))}</span>
         ${margin === null ? "" : `<span><b>Запас/не хватает:</b> ${escapeHtml(formatDelta(margin))}</span>`}
-        <span><b>Тип:</b> ${escapeHtml(textValue(item.type, "не указано"))}</span>
+        <span><b>Финансирование:</b> ${escapeHtml(financing)}</span>
         ${admissionType ? `<span><b>Конкурс:</b> ${escapeHtml(admissionType)}</span>` : ""}
         ${hasValue(item.price) ? `<span><b>Стоимость:</b> ${escapeHtml(formatPrice(item.price))}</span>` : ""}
         ${subjects ? `<span><b>Предметы:</b> ${escapeHtml(subjects)}</span>` : ""}
-        ${hasValue(item.study_form) ? `<span><b>Форма:</b> ${escapeHtml(item.study_form)}</span>` : ""}
+        ${studyForm ? `<span><b>Форма обучения:</b> ${escapeHtml(studyForm)}</span>` : ""}
         ${hasValue(item.duration) ? `<span><b>Срок:</b> ${escapeHtml(item.duration)}</span>` : ""}
         ${hasValue(item.faculty) ? `<span><b>Факультет:</b> ${escapeHtml(item.faculty)}</span>` : ""}
         ${hasValue(item.year) ? `<span><b>Год данных:</b> ${escapeHtml(item.year)}</span>` : ""}
@@ -2332,9 +2341,9 @@ function buildExportPlainText(reportData = buildExportReportData()) {
     ...(reportData.search.city ? [`Город: ${reportData.search.city}`] : []),
     `Баллы: ${reportData.search.score}`,
     `Направление: ${reportData.search.originalDirection || reportData.search.direction}`,
-    `Тип обучения: ${reportData.search.typeLabel}`,
-    ...(reportData.search.studyForm ? [`Форма: ${reportData.search.studyForm}`] : []),
-    ...(reportData.search.admissionType ? [`Конкурс: ${reportData.search.admissionType}`] : []),
+    `Финансирование: ${reportData.search.typeLabel}`,
+    ...(reportData.search.studyForm ? [`Форма обучения: ${reportData.search.studyForm}`] : []),
+    ...(reportData.search.admissionTypeLabel ? [`Конкурс: ${reportData.search.admissionTypeLabel}`] : []),
     "",
     "Краткий итог:",
     `Найдено вариантов: ${reportData.totalResults}`,
@@ -2369,7 +2378,9 @@ function formatExportItemsForText(items, emptyText) {
 
   return items.map((item, index) => {
     const subjects = formatSubjects(item.subjects);
-    const admissionType = shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type_label || item.admission_type) : "";
+    const financing = getFinancingLabel(item);
+    const studyForm = getStudyFormLabel(item);
+    const admissionType = getContestLabel(item);
     const location = formatLocation(item);
     const margin = getScoreMargin(item);
     const note = textValue(item.note, getScoreClarification(item));
@@ -2379,7 +2390,7 @@ function formatExportItemsForText(items, emptyText) {
       `Категория: ${getCategoryLabel(item)}`,
       `Проходной балл: ${getScoreDisplay(item)}`,
       `Твои баллы: ${formatValue(getUserScore(item) || currentSearch?.score)}`,
-      `Тип: ${textValue(item.type, "не указано")}`,
+      `Финансирование: ${financing}`,
     ];
     if (margin !== null) {
       parts.push(`Запас/не хватает: ${formatDelta(margin)}`);
@@ -2393,8 +2404,8 @@ function formatExportItemsForText(items, emptyText) {
     if (subjects) {
       parts.push(`Предметы: ${subjects}`);
     }
-    if (hasValue(item.study_form)) {
-      parts.push(`Форма: ${item.study_form}`);
+    if (studyForm) {
+      parts.push(`Форма обучения: ${studyForm}`);
     }
     if (hasValue(item.duration)) {
       parts.push(`Срок: ${item.duration}`);
@@ -2528,19 +2539,19 @@ function renderComparisonTable(items) {
     { label: "Проходной балл", highlight: "minScore", value: (item) => getScoreDisplay(item) },
     { label: "Твои баллы", value: (item) => formatValue(getUserScore(item)) },
     { label: "Запас/не хватает", highlight: "margin", value: (item) => getScoreMargin(item) === null ? "требует уточнения" : formatDelta(getScoreMargin(item)) },
-    { label: "Тип обучения", highlight: "type", value: (item) => textValue(item.type, "не указано") },
+    { label: "Финансирование", highlight: "type", value: (item) => getFinancingLabel(item) },
   ];
   if (items.some((item) => shouldShowAdmissionType(item))) {
     rows.push({
       label: "Конкурс",
-      value: (item) => shouldShowAdmissionType(item) ? formatAdmissionType(item.admission_type_label || item.admission_type) : "не указано",
+      value: (item) => getContestLabel(item) || "не указано",
     });
   }
   if (items.some((item) => hasValue(item.price))) {
     rows.push({ label: "Стоимость", highlight: "price", value: (item) => hasValue(item.price) ? formatPrice(item.price) : "не указано" });
   }
-  if (items.some((item) => hasValue(item.study_form))) {
-    rows.push({ label: "Форма", value: (item) => textValue(item.study_form, "не указано") });
+  if (items.some((item) => getStudyFormLabel(item))) {
+    rows.push({ label: "Форма обучения", value: (item) => getStudyFormLabel(item) || "не указано" });
   }
   if (items.some((item) => hasValue(item.duration))) {
     rows.push({ label: "Срок", value: (item) => textValue(item.duration, "не указано") });
@@ -2640,7 +2651,7 @@ function loadComparisonItems() {
     const raw = window.localStorage.getItem(COMPARISON_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed)
-      ? parsed.filter((item) => item && typeof item === "object").slice(0, MAX_COMPARISON_ITEMS)
+      ? parsed.filter((item) => item && typeof item === "object" && !isSyntheticUniversityItem(item)).slice(0, MAX_COMPARISON_ITEMS)
       : [];
   } catch (error) {
     return [];
@@ -2915,6 +2926,21 @@ function getUsefulShortName(item) {
   return shortName.toLowerCase() === getUniversityDisplayName(item).toLowerCase() ? "" : shortName;
 }
 
+function isSyntheticUniversityItem(item) {
+  const values = [
+    item?.university_full_name,
+    item?.university_name,
+    item?.university,
+    item?.name,
+  ].map((value) => String(value || "").trim().toLowerCase());
+  const hasSyntheticName = values.some((value) =>
+    value.includes("региональный центр технологий и инженерии")
+    || value.includes("институт социальных и цифровых профессий")
+  );
+  const shortName = String(item?.university_short_name || item?.short_name || "").trim();
+  return hasSyntheticName || /^(РЦТИ|ИСЦП)-\d+$/i.test(shortName);
+}
+
 function isTechnicalUniversityName(value) {
   const text = String(value || "").trim();
   return /^[A-Za-zА-Яа-яЁё]{2,}[-_]\d+$/.test(text) || /^[A-Za-zА-Яа-яЁё]{2,}\d+$/.test(text);
@@ -2969,19 +2995,64 @@ function formatAdmissionType(value) {
   const normalized = String(value || "").trim().toLowerCase().replaceAll(" ", "_").replaceAll("-", "_");
   const labels = {
     budget: "бюджет",
+    "бюджет": "бюджет",
+    "общий_бюджет": "общий конкурс",
+    "общий_конкурс": "общий конкурс",
     paid: "платное",
+    "платное": "платное",
     target: "целевая квота",
     target_quota: "целевая квота",
+    "целевая": "целевая квота",
+    "целевая_квота": "целевая квота",
+    special: "особая квота",
     special_quota: "особая квота",
+    "особая_квота": "особая квота",
+    separate: "отдельная квота",
     separate_quota: "отдельная квота",
+    individual_quota: "отдельная квота",
+    "отдельная_квота": "отдельная квота",
     additional: "дополнительный набор",
+    "дополнительный_набор": "дополнительный набор",
   };
   return labels[normalized] || (hasValue(value) ? String(value).trim() : "");
 }
 
+function getFinancingLabel(item) {
+  const label = formatFinancing(item?.financing_label || item?.type);
+  return label || "не указано";
+}
+
+function formatFinancing(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["budget", "бюджет", "бюджетное", "бюджетный"].includes(normalized)) {
+    return "бюджет";
+  }
+  if (["paid", "платное", "платный", "контракт"].includes(normalized)) {
+    return "платное";
+  }
+  return hasValue(value) ? String(value).trim() : "";
+}
+
+function getStudyFormLabel(item) {
+  return textValue(item?.study_form_label || item?.study_form, "");
+}
+
+function getContestLabel(item) {
+  const label = formatAdmissionType(item?.contest_label || item?.admission_type_label || item?.admission_type);
+  return shouldDisplayContestLabel(label) ? label : "";
+}
+
+function getSearchContestLabel(value) {
+  const label = formatAdmissionType(value);
+  return shouldDisplayContestLabel(label) ? label : "";
+}
+
 function shouldShowAdmissionType(item) {
-  const label = formatAdmissionType(item?.admission_type_label || item?.admission_type);
-  return Boolean(label) && !["бюджет", "платное"].includes(label);
+  return Boolean(getContestLabel(item));
+}
+
+function shouldDisplayContestLabel(label) {
+  return Boolean(label) && !["бюджет", "платное", "общий конкурс"].includes(label);
 }
 
 function formatPrice(price) {

@@ -38,7 +38,7 @@ async def fetch_universities(
     if not isinstance(payload, list):
         raise UniversityAPIError("Backend response must be a JSON list")
 
-    return payload[:limit]
+    return [item for item in payload if not _is_synthetic_university_item(item)][:limit]
 
 
 async def fetch_directory_items(base_url: str, endpoint: str, limit: int = 30) -> list[str]:
@@ -80,3 +80,26 @@ async def fetch_achievements(base_url: str, limit: int = 8) -> list[dict[str, An
         raise UniversityAPIError("Backend achievements response must contain items")
 
     return [item for item in payload["items"] if isinstance(item, dict)][:limit]
+
+
+def _is_synthetic_university_item(item: Any) -> bool:
+    if not isinstance(item, dict):
+        return False
+    values = [
+        item.get("university_full_name"),
+        item.get("university_name"),
+        item.get("university"),
+        item.get("name"),
+    ]
+    if any(_is_synthetic_university_name(value) for value in values):
+        return True
+    short_name = str(item.get("university_short_name") or item.get("short_name") or "").strip().upper()
+    return bool(short_name.startswith(("РЦТИ-", "ИСЦП-")) and short_name.rsplit("-", 1)[-1].isdigit())
+
+
+def _is_synthetic_university_name(value: Any) -> bool:
+    text = str(value or "").strip().lower()
+    return (
+        "региональный центр технологий и инженерии" in text
+        or "институт социальных и цифровых профессий" in text
+    )

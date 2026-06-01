@@ -25,7 +25,7 @@ def test_search_card_hides_missing_price_and_renders_available_metadata() -> Non
     )
 
     assert "Стоимость:" not in text
-    assert "Форма: очная" in text
+    assert "Форма обучения: очная" in text
     assert "Срок: 4 года" in text
     assert "Факультет: Факультет цифровых технологий" in text
     assert "Год данных: 2025" in text
@@ -40,7 +40,8 @@ def test_search_card_hides_missing_price_and_renders_available_metadata() -> Non
     assert "📊 Проходной балл: 185" in text
     assert "✅ Твои баллы: 230" in text
     assert "➕ Запас: +45" in text
-    assert "🎯 Тип: бюджет" in text
+    assert "🎯 Финансирование: бюджет" in text
+    assert "Конкурс: бюджет" not in text
 
 
 def test_search_card_does_not_render_none_or_null_values() -> None:

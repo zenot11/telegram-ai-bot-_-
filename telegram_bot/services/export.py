@@ -3,10 +3,11 @@ from typing import Any
 
 from telegram_bot.services.advice import build_next_steps
 from telegram_bot.services.formatters import (
-    admission_type_text,
+    contest_text,
+    financing_text,
     format_price,
     has_display_value,
-    normalize_label,
+    study_form_text,
     subjects_text,
     text_value,
     title_short,
@@ -82,7 +83,7 @@ def build_export_report(
         "Параметры подбора:",
         f"Регион: {_value(safe_profile.get('region'))}",
         f"Направление: {_value(safe_profile.get('direction'))}",
-        f"Тип обучения: {_education_type_text(safe_profile.get('education_type'))}",
+        f"Финансирование: {_education_type_text(safe_profile.get('education_type'))}",
         f"Баллы ЕГЭ: {_value(safe_profile.get('score'))}",
         "",
         "Итог:",
@@ -160,14 +161,15 @@ def _format_items(items: list[dict[str, Any]], score: int | None) -> list[str]:
             if is_valid_score(item.get("min_score")):
                 block.append(format_score_delta(score, item))
 
-        block.append(f"Тип: {text_value(item.get('type'))}")
-        admission_type = admission_type_text(item.get("admission_type_label") or item.get("admission_type"))
-        if admission_type and admission_type not in {normalize_label(item.get("type")), "бюджет", "платное"}:
+        block.append(f"Финансирование: {financing_text(item)}")
+        admission_type = contest_text(item)
+        if admission_type:
             block.append(f"Конкурс: {admission_type}")
         if has_display_value(item.get("price")):
             block.append(f"Стоимость: {format_price(item.get('price'))}")
-        if has_display_value(item.get("study_form")):
-            block.append(f"Форма: {item['study_form']}")
+        study_form = study_form_text(item)
+        if study_form:
+            block.append(f"Форма обучения: {study_form}")
         if has_display_value(item.get("duration")):
             block.append(f"Срок: {item['duration']}")
         if has_display_value(item.get("faculty")):

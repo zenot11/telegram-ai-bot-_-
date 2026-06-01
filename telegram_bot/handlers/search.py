@@ -89,7 +89,7 @@ async def search_direction(message: Message, state: FSMContext) -> None:
     direction = normalize_direction(text)
     await state.update_data(direction=direction)
     await state.set_state(SearchStates.education_type)
-    await message.answer("Какой тип обучения рассматриваешь?", reply_markup=education_type_keyboard())
+    await message.answer("Какое финансирование рассматриваешь?", reply_markup=education_type_keyboard())
 
 
 @router.message(SearchStates.education_type)
@@ -102,7 +102,7 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
 
     education_type = normalize_education_type(text)
     if not education_type:
-        await message.answer("Выбери тип обучения: бюджет или платное.", reply_markup=education_type_keyboard())
+        await message.answer("Выбери финансирование: бюджет или платное.", reply_markup=education_type_keyboard())
         return
 
     data = await state.get_data()
@@ -144,10 +144,11 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
 
     if not display_results:
         await message.answer(
-            "Пока не нашла подходящих вариантов по этим параметрам.\n\n"
+            "В обычной выдаче нет подходящих вузов по этим фильтрам.\n\n"
             "Можно попробовать:\n"
             "- выбрать соседний регион;\n"
-            "- рассмотреть платное обучение;\n"
+            "- изменить финансирование;\n"
+            "- убрать фильтр конкурса;\n"
             "- изменить направление;\n"
             "- проверить баллы.",
             reply_markup=no_results_keyboard(),
@@ -164,7 +165,7 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
         f"Регион: {escape(profile['region'])}\n"
         f"Баллы: {profile['score']}\n"
         f"Направление: {escape(profile['direction'])}\n"
-        f"Тип: {education_type_label(profile['education_type'])}\n\n"
+        f"Финансирование: {education_type_label(profile['education_type'])}\n\n"
         f"{cards}\n\n"
         f"{summary}\n\n"
         "Сейчас используются демонстрационные данные.",

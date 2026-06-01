@@ -40,8 +40,12 @@ POSTGRES_STUDY_FORMS = {
 BUDGET_ADMISSION_TYPES = {
     "budget",
     "target",
+    "target_quota",
+    "special",
     "special_quota",
+    "separate",
     "separate_quota",
+    "individual_quota",
     "additional",
     "бюджет",
     "целевая",
@@ -68,9 +72,34 @@ ADMISSION_TYPE_LABELS = {
     "paid": "платное",
     "target": "целевая квота",
     "target_quota": "целевая квота",
+    "special": "особая квота",
     "special_quota": "особая квота",
+    "separate": "отдельная квота",
     "separate_quota": "отдельная квота",
+    "individual_quota": "отдельная квота",
     "additional": "дополнительный набор",
+}
+
+CONTEST_LABELS = {
+    "budget": "общий конкурс",
+    "бюджет": "общий конкурс",
+    "общий_бюджет": "общий конкурс",
+    "общий_конкурс": "общий конкурс",
+    "paid": "",
+    "платное": "",
+    "target": "целевая квота",
+    "target_quota": "целевая квота",
+    "целевая": "целевая квота",
+    "целевая_квота": "целевая квота",
+    "special": "особая квота",
+    "special_quota": "особая квота",
+    "особая_квота": "особая квота",
+    "separate": "отдельная квота",
+    "separate_quota": "отдельная квота",
+    "individual_quota": "отдельная квота",
+    "отдельная_квота": "отдельная квота",
+    "additional": "дополнительный набор",
+    "дополнительный_набор": "дополнительный набор",
 }
 
 POSTGRES_ADMISSION_BY_LABEL = {
@@ -85,9 +114,12 @@ POSTGRES_ADMISSION_BY_LABEL = {
     "target": ["target"],
     "target_quota": ["target"],
     "особая квота": ["special_quota"],
+    "special": ["special_quota"],
     "special_quota": ["special_quota"],
     "отдельная квота": ["separate_quota"],
+    "separate": ["separate_quota"],
     "separate_quota": ["separate_quota"],
+    "individual_quota": ["separate_quota"],
     "дополнительный набор": ["additional"],
     "дополнительный прием": ["additional"],
     "additional": ["additional"],
@@ -170,6 +202,11 @@ ACHIEVEMENTS_FALLBACK = [
 ]
 
 TECHNICAL_UNIVERSITY_RE = re.compile(r"^[A-ZА-ЯЁ]{2,}[-_]?\d+$", re.IGNORECASE)
+SYNTHETIC_UNIVERSITY_SHORT_NAME_RE = re.compile(r"^(?:РЦТИ|ИСЦП)-\d+$", re.IGNORECASE)
+SYNTHETIC_UNIVERSITY_NAME_MARKERS = (
+    "региональный центр технологий и инженерии",
+    "институт социальных и цифровых профессий",
+)
 KNOWN_UNIVERSITY_ABBREVIATIONS = {
     "МГУ",
     "СПБГУ",
@@ -226,6 +263,10 @@ def parse_int(value: Any, default: int | None = None) -> int | None:
         return default
 
 
+def parse_bool(value: Any) -> bool:
+    return normalize(value) in {"1", "true", "yes", "on", "да"}
+
+
 def normalize_limit(value: Any, default: int = DEFAULT_LIMIT, max_limit: int = MAX_LIMIT) -> int:
     parsed = parse_int(value, default)
     if parsed is None:
@@ -238,6 +279,7 @@ clamp_limit = normalize_limit
 
 def build_university_filters(params: Mapping[str, Any]) -> dict[str, Any]:
     sort = str(params.get("sort", "") or "").strip()
+    include_synthetic = parse_bool(params.get("include_synthetic")) or parse_bool(params.get("include_demo"))
     return {
         "region": str(params.get("region", "") or "").strip(),
         "city": str(params.get("city", "") or "").strip(),
@@ -250,6 +292,7 @@ def build_university_filters(params: Mapping[str, Any]) -> dict[str, Any]:
         "year": parse_int(params.get("year"), None),
         "limit": normalize_limit(params.get("limit", DEFAULT_LIMIT)),
         "sort": sort if sort in SORT_OPTIONS else "",
+        "include_synthetic": include_synthetic,
     }
 
 
@@ -290,7 +333,12 @@ def filter_json_universities(
 
 
 def fetch_universities_json(rows: list[dict[str, Any]], filters: Mapping[str, Any]) -> list[dict[str, Any]]:
-    results = [item for item in rows if _json_record_matches(item, filters)]
+    include_synthetic = bool(filters.get("include_synthetic"))
+    results = [
+        with_display_labels(item)
+        for item in rows
+        if _json_record_matches(item, filters) and (include_synthetic or not is_synthetic_university_record(item))
+    ]
     results = _sort_json_universities(results, str(filters.get("sort", "")))
     return results[: normalize_limit(filters.get("limit", DEFAULT_LIMIT))]
 
@@ -298,7 +346,10 @@ def fetch_universities_json(rows: list[dict[str, Any]], filters: Mapping[str, An
 async def fetch_universities_postgres(pool: Any, filters: Mapping[str, Any]) -> list[dict[str, Any]]:
     query, params = _build_postgres_universities_query(filters)
     rows = await pool.fetch(query, *params)
-    return [normalize_pg_record(row) for row in rows]
+    records = [normalize_pg_record(row) for row in rows]
+    if filters.get("include_synthetic"):
+        return records
+    return [record for record in records if not is_synthetic_university_record(record)]
 
 
 async def fetch_postgres_universities(
@@ -475,6 +526,9 @@ def normalize_pg_record(row: Any) -> dict[str, Any]:
     raw_university = _string_value(_row_value(row, "university", full_name))
     admission_type = _string_value(_row_value(row, "admission_type", _row_value(row, "type", "")))
     row_type = normalize_type(admission_type) or "бюджет"
+    financing = financing_label(row_type)
+    study_form_label = normalize_study_form(_row_value(row, "study_form", ""))
+    contest = contest_label(admission_type)
 
     return {
         "university": get_university_display_name(full_name, short_name, raw_university),
@@ -490,19 +544,34 @@ def normalize_pg_record(row: Any) -> dict[str, Any]:
         "score_display": score_display(min_score),
         "score_note": score_note(min_score),
         "type": row_type,
+        "financing_label": financing,
         "url": _string_value(_row_value(row, "url", _row_value(row, "website", ""))),
         "price": _row_value(row, "price", None),
         "study_form": study_form,
+        "study_form_label": study_form_label,
         "duration": _string_value(_row_value(row, "duration", "")),
         "note": _string_value(_row_value(row, "note", "")),
         "year": _row_value(row, "year", _row_value(row, "latest_year", None)),
         "faculty": _string_value(_row_value(row, "faculty", _row_value(row, "faculty_name", ""))),
         "admission_type": admission_type,
         "admission_type_label": admission_type_label(admission_type),
+        "contest_label": contest,
         "university_short_name": short_name,
         "university_full_name": full_name,
         "source": _string_value(_row_value(row, "source", "postgresql")),
     }
+
+
+def with_display_labels(item: Mapping[str, Any]) -> dict[str, Any]:
+    record = dict(item)
+    financing = financing_label(record.get("financing_label") or record.get("type") or record.get("admission_type"))
+    study_form = normalize_study_form(record.get("study_form_label") or record.get("study_form", ""))
+    contest = contest_label(record.get("contest_label") or record.get("admission_type_label") or record.get("admission_type"))
+
+    record["financing_label"] = financing
+    record["study_form_label"] = study_form
+    record["contest_label"] = contest
+    return record
 
 
 def normalize_study_form(value: Any) -> str:
@@ -695,6 +764,15 @@ def _append_postgres_common_filters(
         params.append(value)
         return f"${len(params)}"
 
+    if not filters.get("include_synthetic"):
+        where_parts.append(
+            "NOT ("
+            "u.name ILIKE '%Региональный центр технологий и инженерии%' "
+            "OR u.name ILIKE '%Институт социальных и цифровых профессий%' "
+            "OR COALESCE(u.short_name, '') ~* '^(РЦТИ|ИСЦП)-[0-9]+$'"
+            ")"
+        )
+
     if filters.get("region"):
         region_conditions = []
         for term in region_search_terms(filters["region"]):
@@ -858,6 +936,15 @@ def admission_type_label(value: Any) -> str:
     return ADMISSION_TYPE_LABELS.get(normalized, str(value).strip() if value is not None else "")
 
 
+def financing_label(value: Any) -> str:
+    return normalize_type(value)
+
+
+def contest_label(value: Any) -> str:
+    normalized = normalize(value).replace(" ", "_").replace("-", "_")
+    return CONTEST_LABELS.get(normalized, str(value).strip() if has_display_text(value) else "")
+
+
 def achievement_category(code: str) -> str:
     normalized = normalize(code)
     if "gto" in normalized:
@@ -881,6 +968,29 @@ def is_technical_university_name(value: Any) -> bool:
     if any(char.isdigit() for char in text):
         return True
     return len(text) <= 2 and text.upper() == text and any(char.isalpha() for char in text)
+
+
+def is_synthetic_university_name(value: Any) -> bool:
+    normalized = normalize(value)
+    return any(marker in normalized for marker in SYNTHETIC_UNIVERSITY_NAME_MARKERS)
+
+
+def is_synthetic_university_record(record: Mapping[str, Any]) -> bool:
+    name_values = (
+        record.get("university_full_name"),
+        record.get("university_name"),
+        record.get("university"),
+        record.get("name"),
+    )
+    if any(is_synthetic_university_name(value) for value in name_values):
+        return True
+
+    short_name = _string_value(record.get("university_short_name", record.get("short_name", "")))
+    return bool(short_name and SYNTHETIC_UNIVERSITY_SHORT_NAME_RE.match(short_name))
+
+
+def has_display_text(value: Any) -> bool:
+    return value is not None and str(value).strip() != ""
 
 
 def get_university_display_name(full_name: Any, short_name: Any = "", fallback: Any = "") -> str:

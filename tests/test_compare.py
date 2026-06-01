@@ -91,7 +91,7 @@ def test_missing_price_line_is_hidden_in_comparison_cards() -> None:
 def test_study_form_and_duration_are_rendered() -> None:
     text = format_comparison([university("АГУ", 185), university("МГТУ", 172)])
 
-    assert "Форма: очная" in text
+    assert "Форма обучения: очная" in text
     assert "Срок: 4 года" in text
 
 

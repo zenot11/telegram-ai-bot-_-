@@ -22,6 +22,9 @@ REQUIRED_API_FIELDS = {
 OPTIONAL_API_FIELDS = {
     "price",
     "study_form",
+    "study_form_label",
+    "financing_label",
+    "contest_label",
     "duration",
     "note",
 }
@@ -51,7 +54,10 @@ def test_json_and_postgres_records_share_legacy_api_contract() -> None:
     assert isinstance(json_record["subjects"], list)
     assert isinstance(postgres_record["subjects"], list)
     assert postgres_record["type"] == "бюджет"
+    assert postgres_record["financing_label"] == "бюджет"
     assert postgres_record["study_form"] == "очная"
+    assert postgres_record["study_form_label"] == "очная"
+    assert postgres_record["contest_label"] == "общий конкурс"
 
 
 def test_postgres_record_exposes_extra_fields_without_breaking_legacy_fields() -> None:
@@ -73,6 +79,8 @@ def test_postgres_record_exposes_extra_fields_without_breaking_legacy_fields() -
     assert record["year"] == 2024
     assert record["faculty"] == "Институт технологий"
     assert record["admission_type"] == "target"
+    assert record["admission_type_label"] == "целевая квота"
+    assert record["contest_label"] == "целевая квота"
     assert record["source"] == "postgresql"
 
 

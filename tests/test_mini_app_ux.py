@@ -63,10 +63,27 @@ def test_app_js_improves_empty_states() -> None:
     js = read_mini_app_file("app.js")
 
     assert "По этим параметрам вариантов не нашлось" in js
+    assert "По текущим фильтрам обычных вузов не найдено" in js
     assert "В этом фильтре вариантов нет" in js
     assert "Пока здесь пусто" in js
     assert "Добавь 2–3 вуза к сравнению" in js
     assert "Проверь подключение или попробуй позже" in js
+
+
+def test_mini_app_uses_clean_financing_study_form_and_contest_labels() -> None:
+    html = read_mini_app_file("index.html")
+    js = read_mini_app_file("app.js")
+
+    assert "Финансирование" in html
+    assert "Форма обучения" in html
+    assert "Конкурс" in html
+    assert "Тип обучения" not in html
+    assert "Тип конкурса" not in html
+    assert "Финансирование:" in js
+    assert "Форма обучения:" in js
+    assert "Конкурс: бюджет" not in js
+    assert "общий конкурс" in js
+    assert "function getContestLabel" in js
 
 
 def test_styles_include_ux_blocks_toasts_and_dark_support() -> None:

@@ -45,7 +45,7 @@ def _education_type_label(value: Any) -> str:
         return "Бюджет"
     if normalized in {"paid", "платное", "контракт"}:
         return "Платное"
-    return _text_value(value, "тип обучения не указан")
+    return _text_value(value, "финансирование не указано")
 
 
 def _text_value(value: Any, fallback: str) -> str:

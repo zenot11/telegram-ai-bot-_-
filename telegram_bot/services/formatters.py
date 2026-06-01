@@ -39,9 +39,9 @@ def format_university_card(
         if is_valid_score(item.get("min_score")):
             lines.append(format_delta_line(user_score, item))
 
-    lines.append(f"🎯 Тип: {escape(text_value(item.get('type')))}")
-    admission_type = admission_type_text(item.get("admission_type_label") or item.get("admission_type"))
-    if admission_type and admission_type not in {normalize_label(item.get("type")), "бюджет", "платное"}:
+    lines.append(f"🎯 Финансирование: {escape(financing_text(item))}")
+    admission_type = contest_text(item)
+    if admission_type:
         lines.append(f"🎫 Конкурс: {escape(admission_type)}")
     short_name = short_name_text(item)
     if short_name:
@@ -50,8 +50,9 @@ def format_university_card(
     if has_display_value(item.get("price")):
         lines.append(f"💰 Стоимость: {escape(format_price(item.get('price')))}")
 
-    if has_display_value(item.get("study_form")):
-        lines.append(f"🏫 Форма: {escape(str(item['study_form']))}")
+    study_form = study_form_text(item)
+    if study_form:
+        lines.append(f"🏫 Форма обучения: {escape(study_form)}")
     if has_display_value(item.get("duration")):
         lines.append(f"⏱ Срок: {escape(str(item['duration']))}")
     if has_display_value(item.get("faculty")):
@@ -147,12 +148,45 @@ def admission_type_text(value: Any) -> str:
     return {
         "target": "целевая квота",
         "target_quota": "целевая квота",
+        "целевая": "целевая квота",
+        "целевая_квота": "целевая квота",
+        "special": "особая квота",
         "special_quota": "особая квота",
+        "особая_квота": "особая квота",
+        "separate": "отдельная квота",
         "separate_quota": "отдельная квота",
+        "individual_quota": "отдельная квота",
+        "отдельная_квота": "отдельная квота",
         "additional": "дополнительный набор",
+        "дополнительный_набор": "дополнительный набор",
+        "общий_бюджет": "общий конкурс",
+        "общий_конкурс": "общий конкурс",
         "budget": "бюджет",
+        "бюджет": "бюджет",
         "paid": "платное",
+        "платное": "платное",
     }.get(normalized, str(value).strip() if has_display_value(value) else "")
+
+
+def financing_text(item: dict[str, Any]) -> str:
+    value = item.get("financing_label", item.get("type"))
+    normalized = normalize_label(value)
+    if normalized in {"budget", "бюджет", "бюджетное", "бюджетный"}:
+        return "бюджет"
+    if normalized in {"paid", "платное", "платный", "контракт"}:
+        return "платное"
+    return text_value(value)
+
+
+def study_form_text(item: dict[str, Any]) -> str:
+    return text_value(item.get("study_form_label", item.get("study_form")), "")
+
+
+def contest_text(item: dict[str, Any]) -> str:
+    label = admission_type_text(item.get("contest_label") or item.get("admission_type_label") or item.get("admission_type"))
+    if normalize_label(label) in {"budget", "бюджет", "paid", "платное", "общий_конкурс"}:
+        return ""
+    return label
 
 
 def normalize_label(value: Any) -> str:

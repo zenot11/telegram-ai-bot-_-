@@ -513,10 +513,11 @@ async def repeat_last_search(message: Message, state: FSMContext) -> None:
 
     if not display_results:
         await message.answer(
-            "Пока не нашла подходящих вариантов по этим параметрам.\n\n"
+            "В обычной выдаче нет подходящих вузов по этим фильтрам.\n\n"
             "Можно попробовать:\n"
             "- выбрать соседний регион;\n"
-            "- рассмотреть платное обучение;\n"
+            "- изменить финансирование;\n"
+            "- убрать фильтр конкурса;\n"
             "- изменить направление;\n"
             "- проверить баллы.",
             reply_markup=no_results_keyboard(),
@@ -533,7 +534,7 @@ async def repeat_last_search(message: Message, state: FSMContext) -> None:
         f"Регион: {escape(profile['region'])}\n"
         f"Баллы: {profile['score']}\n"
         f"Направление: {escape(profile['direction'])}\n"
-        f"Тип: {education_type_label(profile['education_type'])}\n\n"
+        f"Финансирование: {education_type_label(profile['education_type'])}\n\n"
         f"{cards}\n\n"
         f"{summary}\n\n"
         "Сейчас используются демонстрационные данные.",
@@ -574,7 +575,7 @@ async def _send_profile(message: Message, telegram_id: int) -> None:
         f"Регион: {_value(summary.get('region'))}\n"
         f"Баллы: {_value(summary.get('score'))}\n"
         f"Направление: {_value(summary.get('direction'))}\n"
-        f"Тип обучения: {education_type_label(str(summary.get('education_type') or ''))}\n"
+        f"Финансирование: {education_type_label(str(summary.get('education_type') or ''))}\n"
         f"Последний подбор: {summary['last_results_count']} {_plural(summary['last_results_count'], 'вариант', 'варианта', 'вариантов')}\n"
         f"Избранное: {summary['favorites_count']} {_plural(summary['favorites_count'], 'вуз', 'вуза', 'вузов')}"
     )
