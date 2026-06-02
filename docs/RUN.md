@@ -97,6 +97,7 @@ PostgreSQL-режим включается отдельно через `USE_POST
 ```bash
 curl "http://localhost:8000/api/regions"
 curl "http://localhost:8000/api/directions"
+curl "http://localhost:8000/api/directions?q=09.03.04&limit=20"
 curl "http://localhost:8000/api/universities?score=230&limit=5&sort=min_score_desc"
 ```
 

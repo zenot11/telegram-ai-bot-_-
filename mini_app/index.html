@@ -144,22 +144,22 @@
 
           <label>
             <span class="field-label">Направление</span>
-            <select id="direction" name="direction" required>
-              <option value="" selected disabled>Выбери направление</option>
+            <input id="direction" name="direction" list="direction-options" placeholder="Например: 09.03.04 или архитектура" required autocomplete="off">
+            <datalist id="direction-options">
               <option value="информационные технологии">IT-направления</option>
-              <option value="Прикладная информатика">Прикладная информатика</option>
-              <option value="Информационная безопасность">Информационная безопасность</option>
-              <option value="Программная инженерия">Программная инженерия</option>
-              <option value="психология">психология</option>
-              <option value="медицина">медицина</option>
-              <option value="экономика">экономика</option>
-              <option value="юриспруденция">юриспруденция</option>
-              <option value="педагогика">педагогика</option>
-              <option value="дизайн">дизайн</option>
-              <option value="строительство">строительство</option>
-              <option value="туризм">туризм</option>
-            </select>
-            <span class="field-helper">Лучше выбрать реальное направление из базы. Быстрые пресеты раскрываются в группы направлений.</span>
+              <option value="Прикладная информатика"></option>
+              <option value="Информационная безопасность"></option>
+              <option value="Программная инженерия"></option>
+              <option value="психология"></option>
+              <option value="медицина"></option>
+              <option value="экономика"></option>
+              <option value="юриспруденция"></option>
+              <option value="педагогика"></option>
+              <option value="дизайн"></option>
+              <option value="строительство"></option>
+              <option value="туризм"></option>
+            </datalist>
+            <span class="field-helper">Вводи код, название или профиль. Подсказки ищутся по полному справочнику PostgreSQL, а первые 200 вариантов показаны только для удобства.</span>
           </label>
 
           <label>
@@ -418,6 +418,6 @@
 
     <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-    <script src="/miniapp/app.js?v=44"></script>
+    <script src="/miniapp/app.js?v=45"></script>
   </body>
 </html>

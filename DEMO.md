@@ -24,6 +24,8 @@
 - опциональную OpenAI-интеграцию при наличии `OPENAI_API_KEY`;
 - PostgreSQL-режим для базы вузов с JSON fallback;
 - backend-справочники регионов, городов, направлений, форм обучения и типов конкурса;
+- поиск направлений `/api/directions?q=...` по полному PostgreSQL-справочнику кодов, названий и профилей;
+- аудит использования SQL-схемы команды в `docs/DATABASE_USAGE.md`;
 - сохранённый контракт `/api/universities` для Telegram-бота и Mini App.
 
 ## 2. Подготовка
@@ -124,6 +126,8 @@ python -m telegram_bot.main
 ```bash
 curl "http://localhost:8000/api/regions"
 curl "http://localhost:8000/api/directions?limit=5"
+curl "http://localhost:8000/api/directions?q=09.03.04&limit=20"
+curl "http://localhost:8000/api/directions?q=архитектура&limit=20"
 curl "http://localhost:8000/api/achievements"
 ```
 
@@ -333,7 +337,7 @@ abc
 python scripts/check_data.py
 ```
 
-Ожидаемый результат: скрипт показывает количество записей, регионов, направлений и типов обучения для JSON fallback. Для PostgreSQL есть отдельная ручная проверка `python scripts/check_postgres.py`, которая также выводит диагностику по московским программам `09.03.04` и coverage audit по категориям, регионам, финансированию, формам и квотам.
+Ожидаемый результат: скрипт показывает количество записей, регионов, направлений и типов обучения для JSON fallback. Для PostgreSQL есть отдельная ручная проверка `python scripts/check_postgres.py`, которая также выводит диагностику по московским программам `09.03.04`, quality audit баллов, форм, конкурсов, регионов, q-search направлений и coverage audit по категориям, регионам, финансированию, формам и квотам. Документ `docs/DATABASE_USAGE.md` можно открыть как доказательство, что SQL-схема команды проверена по таблицам и полям.
 
 ## 18. Сравнение вузов
 

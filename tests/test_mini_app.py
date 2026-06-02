@@ -38,6 +38,8 @@ def test_index_contains_aisha_and_search_form() -> None:
     assert "region" in html
     assert "score" in html
     assert "direction" in html
+    assert 'list="direction-options"' in html
+    assert "direction-options" in html
     assert "city" in html
     assert "study-form" in html
     assert "admission-type" in html
@@ -67,6 +69,9 @@ def test_mini_app_uses_postgres_first_directories_and_alias_presets() -> None:
     assert "PostgreSQL-база проекта" in js
     assert "Источник данных: JSON fallback" in js
     assert "formatDirectoryCount" in js
+    assert "formatDirectionsDirectoryCount" in js
+    assert "refreshDirectionSuggestions" in js
+    assert "/api/directions?" in js
     assert "fetchDirectoryPayload" in js
     assert "normalizeDirectionForSearch" in js
     assert 'direction: "информационные технологии"' in js

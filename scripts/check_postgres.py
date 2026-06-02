@@ -2,6 +2,7 @@
 import asyncio
 import os
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +48,34 @@ COVERAGE_AUDIT_SCENARIOS = [
     {"label": "paid / очно-заочная", "type": "paid", "study_form": "очно-заочная"},
     {"label": "target quota / budget", "admission_type": "целевая квота", "type": "budget"},
     {"label": "special quota / budget", "admission_type": "особая квота", "type": "budget"},
+]
+
+DIRECTION_SEARCH_AUDIT_QUERIES = ("ПМИ", "09.03.04", "архитектура", "экономика", "медицина")
+
+API_AUDIT_SCENARIOS = [
+    {"label": "Москва + IT + budget", "region": "Москва", "direction": "IT", "type": "budget", "score": "276", "limit": "12"},
+    {"label": "Москва + 01.03.02 ПМИ", "region": "Москва", "direction": "01.03.02 ПМИ", "type": "budget", "score": "276", "limit": "12"},
+    {
+        "label": "Москва + 09.03.04 Программная инженерия + paid + заочная",
+        "region": "Москва",
+        "city": "Москва",
+        "direction": "09.03.04 Программная инженерия",
+        "type": "paid",
+        "study_form": "заочная",
+        "score": "276",
+        "limit": "12",
+    },
+    {"label": "Крым + IT + budget", "region": "Крым", "direction": "IT", "type": "budget", "score": "250", "limit": "12"},
+    {"label": "Адыгея + IT + budget", "region": "Адыгея", "direction": "IT", "type": "budget", "score": "250", "limit": "12"},
+    {"label": "Татарстан + медицина + budget", "region": "Татарстан", "direction": "медицина", "type": "budget", "score": "250", "limit": "12"},
+    {
+        "label": "Краснодарский край + архитектура/строительство",
+        "region": "Краснодарский край",
+        "direction": "архитектура строительство",
+        "type": "budget",
+        "score": "250",
+        "limit": "12",
+    },
 ]
 
 
@@ -155,6 +184,20 @@ async def fetch_coverage_audit_scenario(connection: Any, scenario: dict[str, str
     }
 
 
+async def fetch_api_audit_scenario(pool: Any, scenario: dict[str, str]) -> dict[str, Any]:
+    label = scenario["label"]
+    filters = build_university_filters({key: value for key, value in scenario.items() if key != "label"})
+    records = await fetch_universities_postgres(pool, filters)
+    match_quality = Counter(str(record.get("match_quality") or "empty") for record in records)
+    return {
+        "label": label,
+        "records": records,
+        "valid_count": sum(1 for record in records if record.get("score_is_valid") is True),
+        "suspicious_count": sum(1 for record in records if record.get("score_is_suspicious") is True),
+        "match_quality": dict(match_quality),
+    }
+
+
 async def main_async() -> int:
     database_url = os.getenv("DATABASE_URL", "").strip()
     if not database_url:
@@ -234,6 +277,118 @@ async def main_async() -> int:
                    OR u.short_name ILIKE 'РЦТИ%'
                 ORDER BY u.id, d.id, ps.year DESC
                 LIMIT 20
+                """
+            )
+            score_quality = await connection.fetchrow(
+                f"""
+                SELECT
+                  MIN(min_score) AS min_score,
+                  MAX(min_score) AS max_score,
+                  ROUND(AVG(min_score)::NUMERIC, 2) AS avg_score,
+                  COUNT(*) FILTER (WHERE min_score IS NULL) AS null_count,
+                  COUNT(*) FILTER (WHERE min_score <= 1) AS empty_or_service_count,
+                  COUNT(*) FILTER (WHERE min_score > 1 AND min_score < {MIN_REASONABLE_SCORE}) AS suspicious_count,
+                  COUNT(*) FILTER (WHERE min_score >= {MIN_REASONABLE_SCORE} AND min_score < 100) AS low_valid_count,
+                  COUNT(*) FILTER (WHERE min_score >= 100) AS regular_valid_count
+                FROM passing_scores
+                """
+            )
+            admission_type_breakdown = await connection.fetch(
+                """
+                SELECT admission_type::TEXT AS admission_type, COUNT(*) AS count, MIN(min_score) AS min_score, MAX(min_score) AS max_score
+                FROM passing_scores
+                GROUP BY admission_type
+                ORDER BY COUNT(*) DESC, admission_type::TEXT
+                """
+            )
+            study_form_breakdown = await connection.fetch(
+                """
+                SELECT study_form::TEXT AS study_form, COUNT(*) AS count
+                FROM directions
+                GROUP BY study_form
+                ORDER BY COUNT(*) DESC, study_form::TEXT
+                """
+            )
+            year_breakdown = await connection.fetch(
+                """
+                SELECT year, COUNT(*) AS count, MIN(min_score) AS min_score, MAX(min_score) AS max_score
+                FROM passing_scores
+                GROUP BY year
+                ORDER BY year DESC
+                LIMIT 10
+                """
+            )
+            location_summary = await connection.fetchrow(
+                """
+                SELECT
+                  COUNT(DISTINCT region) AS region_count,
+                  COUNT(DISTINCT city) AS city_count,
+                  COUNT(*) FILTER (WHERE COALESCE(btrim(city), '') = '') AS empty_city_count,
+                  COUNT(*) FILTER (WHERE COALESCE(btrim(region), '') = '') AS empty_region_count,
+                  COUNT(*) FILTER (WHERE city IS NOT NULL AND region IS NOT NULL AND btrim(city) = btrim(region)) AS same_city_region_count
+                FROM universities
+                """
+            )
+            top_regions = await connection.fetch(
+                """
+                SELECT u.region, COUNT(ps.id) AS score_rows
+                FROM universities u
+                LEFT JOIN directions d ON d.university_id = u.id
+                LEFT JOIN passing_scores ps ON ps.direction_id = d.id
+                GROUP BY u.region
+                ORDER BY COUNT(ps.id) DESC, u.region
+                LIMIT 8
+                """
+            )
+            top_cities = await connection.fetch(
+                """
+                SELECT u.city, COUNT(ps.id) AS score_rows
+                FROM universities u
+                LEFT JOIN directions d ON d.university_id = u.id
+                LEFT JOIN passing_scores ps ON ps.direction_id = d.id
+                GROUP BY u.city
+                ORDER BY COUNT(ps.id) DESC, u.city
+                LIMIT 8
+                """
+            )
+            suspicious_score_sample_rows = await connection.fetch(
+                f"""
+                SELECT
+                  u.name AS university_name,
+                  d.code,
+                  d.name AS direction_name,
+                  d.study_form::TEXT AS study_form,
+                  ps.admission_type::TEXT AS admission_type,
+                  ps.min_score,
+                  ps.year,
+                  ps.note
+                FROM passing_scores ps
+                JOIN directions d ON d.id = ps.direction_id
+                JOIN universities u ON u.id = d.university_id
+                WHERE ps.min_score > 1
+                  AND ps.min_score < {MIN_REASONABLE_SCORE}
+                  AND NOT ({SYNTHETIC_SQL})
+                ORDER BY ps.year DESC NULLS LAST, ps.min_score ASC NULLS LAST, u.name
+                LIMIT 8
+                """
+            )
+            valid_score_sample_rows = await connection.fetch(
+                f"""
+                SELECT
+                  u.name AS university_name,
+                  d.code,
+                  d.name AS direction_name,
+                  d.study_form::TEXT AS study_form,
+                  ps.admission_type::TEXT AS admission_type,
+                  ps.min_score,
+                  ps.year
+                FROM passing_scores ps
+                JOIN directions d ON d.id = ps.direction_id
+                JOIN universities u ON u.id = d.university_id
+                WHERE ps.min_score >= {MIN_REASONABLE_SCORE}
+                  AND NOT ({SYNTHETIC_SQL})
+                ORDER BY ps.year DESC NULLS LAST, ps.min_score DESC NULLS LAST, u.name
+                LIMIT 5
                 """
             )
             moscow_diagnostics = await connection.fetchrow(
@@ -345,6 +500,13 @@ async def main_async() -> int:
 
         regions = await fetch_regions_postgres(pool)
         directions = await fetch_directions_postgres(pool, build_university_filters({}))
+        direction_search_audit = [
+            {
+                "query": query,
+                "items": await fetch_directions_postgres(pool, build_university_filters({"q": query})),
+            }
+            for query in DIRECTION_SEARCH_AUDIT_QUERIES
+        ]
         sample = await fetch_universities_postgres(
             pool,
             build_university_filters(
@@ -404,6 +566,10 @@ async def main_async() -> int:
                 }
             ),
         )
+        api_audit_rows = [
+            await fetch_api_audit_scenario(pool, scenario)
+            for scenario in API_AUDIT_SCENARIOS
+        ]
         achievements = await fetch_achievements_postgres(pool, limit=3)
     except Exception as exc:
         print("PostgreSQL check failed: connection or query failed. Check DATABASE_URL, schema and seed data.")
@@ -449,6 +615,54 @@ async def main_async() -> int:
     print(f"Directory directions: {len(directions)}")
     print(f"Passing scores: {scores_count}")
     print(f"Achievements: {achievements_count}")
+    print(
+        "Score quality: "
+        f"min={score_quality['min_score']}, max={score_quality['max_score']}, avg={score_quality['avg_score']}, "
+        f"null={score_quality['null_count']}, <=1={score_quality['empty_or_service_count']}, "
+        f"2-{MIN_REASONABLE_SCORE - 1}={score_quality['suspicious_count']}, "
+        f"{MIN_REASONABLE_SCORE}-99={score_quality['low_valid_count']}, >=100={score_quality['regular_valid_count']}"
+    )
+    print("Admission type breakdown:")
+    for row in admission_type_breakdown:
+        print(f"  - {row['admission_type']}: count={row['count']}, min={row['min_score']}, max={row['max_score']}")
+    print("Study form breakdown:")
+    for row in study_form_breakdown:
+        print(f"  - {row['study_form']}: {row['count']}")
+    print("Year breakdown:")
+    for row in year_breakdown:
+        print(f"  - {row['year']}: count={row['count']}, min={row['min_score']}, max={row['max_score']}")
+    print(
+        "Locations: "
+        f"regions={location_summary['region_count']}, cities={location_summary['city_count']}, "
+        f"empty_city={location_summary['empty_city_count']}, empty_region={location_summary['empty_region_count']}, "
+        f"city_equals_region={location_summary['same_city_region_count']}"
+    )
+    print("Top regions by score rows:")
+    for row in top_regions:
+        print(f"  - {row['region'] or 'empty'}: {row['score_rows']}")
+    print("Top cities by score rows:")
+    for row in top_cities:
+        print(f"  - {row['city'] or 'empty'}: {row['score_rows']}")
+    print("Suspicious score sample:")
+    for row in suspicious_score_sample_rows:
+        print(
+            "  - "
+            f"{row['university_name']} | {row['code'] or ''} {row['direction_name'] or ''} | "
+            f"{row['study_form'] or ''} | {row['admission_type'] or ''} | "
+            f"{row['min_score']} | {row['year']} | {row['note'] or ''}"
+        )
+    print("Valid score sample:")
+    for row in valid_score_sample_rows:
+        print(
+            "  - "
+            f"{row['university_name']} | {row['code'] or ''} {row['direction_name'] or ''} | "
+            f"{row['study_form'] or ''} | {row['admission_type'] or ''} | "
+            f"{row['min_score']} | {row['year']}"
+        )
+    print("Direction q-search audit:")
+    for audit in direction_search_audit:
+        preview = ", ".join(audit["items"][:5]) if audit["items"] else "empty"
+        print(f"  - q={audit['query']}: total={len(audit['items'])}, sample={preview}")
     print(f"Sample /api/universities-like rows: {len(sample)}")
     print(f"Sample achievements rows: {len(achievements)}")
     if sample:
@@ -459,6 +673,22 @@ async def main_async() -> int:
             f"contest_label={first.get('contest_label', '') or 'empty'}, "
             f"study_form_label={first.get('study_form_label', '') or 'empty'}"
         )
+    print("API-like scenario audit:")
+    for audit in api_audit_rows:
+        print(
+            "  - "
+            f"{audit['label']}: returned={len(audit['records'])}, "
+            f"valid={audit['valid_count']}, suspicious={audit['suspicious_count']}, "
+            f"match_quality={audit['match_quality']}"
+        )
+        for record in audit["records"][:3]:
+            print(
+                "      "
+                f"{record.get('university', '')} | {record.get('direction_code', '')} "
+                f"{record.get('direction', '')} | {record.get('study_form', '')} | "
+                f"{record.get('admission_type', '')} | {record.get('score_display', '')} | "
+                f"{record.get('year', '')}"
+            )
     print("Coverage audit:")
     for audit in coverage_audit_rows:
         print(

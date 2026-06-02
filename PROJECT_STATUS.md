@@ -4,7 +4,7 @@
 
 “Аиша” — расширенный демонстрационный прототип Telegram-сервиса для абитуриентов. Проект готов к показу преподавателю или команде: бот запускается, проводит пользователя через подбор вузов, показывает категории, сохраняет избранное, сравнивает варианты и открывает демонстрационный Mini App.
 
-Сейчас JSON-база `backend_stub/data/universities.json` остаётся fallback по умолчанию. На 37 этапе добавлен PostgreSQL-режим для каталога вузов, а на 38 этапе backend получил справочники, расширенные фильтры и сортировки: `USE_POSTGRES=true` переключает `/api/universities` и справочники на PostgreSQL по `DATABASE_URL`, не меняя Telegram-бот и Mini App.
+Сейчас JSON-база `backend_stub/data/universities.json` остаётся fallback по умолчанию. На 37 этапе добавлен PostgreSQL-режим для каталога вузов, а на 38 этапе backend получил справочники, расширенные фильтры и сортировки: `USE_POSTGRES=true` переключает `/api/universities` и справочники на PostgreSQL по `DATABASE_URL`, не меняя Telegram-бот и Mini App. На 45 этапе отдельно зафиксировано, какие таблицы и поля SQL-схемы реально используются, и добавлен поиск `/api/directions?q=...` по полному справочнику направлений.
 
 ## Уже реализовано
 
@@ -16,6 +16,7 @@
 - backend-заглушка на aiohttp;
 - PostgreSQL-источник данных для вузов с JSON fallback;
 - справочники `/api/regions`, `/api/cities`, `/api/directions`, `/api/study-forms`, `/api/admission-types`;
+- поиск `/api/directions?q=...` по полному PostgreSQL-справочнику направлений, кодов и профилей;
 - расширенные фильтры `/api/universities`: `city`, `study_form`, `admission_type`, `year`, `q`, `sort`, `limit`, `include_synthetic`;
 - `data_loader` для загрузки и проверки структуры базы вузов;
 - `university_repository` для сохранения API contract между JSON и PostgreSQL;
@@ -132,6 +133,8 @@
 Статус этапа 43: PostgreSQL data correctness, result coverage and Mini App UX polish. Backend ищет направление не только по названию и профилю, но и по коду формата `09.03.04`, сохраняя старый alias `IT`. `scripts/check_postgres.py` теперь диагностирует московскую связку `09.03.04 Программная инженерия + заочная + платное + 276` через тот же JOIN-путь, что и backend. Mini App запрашивает до 12 результатов, не дублирует `Москва, Москва`, показывает storage-aware текст для PostgreSQL/браузерного режима и использует фильтр `Конкурс` без дубля финансирования.
 
 Статус этапа 44: full PostgreSQL relevance, score and coverage audit. Запросы с кодом направления теперь идут в два шага: сначала точный `directions.code`, и только при пустом результате fallback по названию/профилю; alias `IT` продолжает раскрывать группу направлений. Значения `min_score < 40` помечаются как suspicious: они остаются в API, но не дают запас, safe-категорию и ранжируются ниже валидных баллов. Backend добавляет `score_is_suspicious`, `match_quality`, `match_reason`, нормализует полезные `short_name` в uppercase (`рэу` -> `РЭУ`) и скрывает технические коды. Mini App разделяет режим запуска (`Браузер`/`Telegram`) и источник данных (`PostgreSQL-база проекта`/`JSON fallback`), а статус справочников показывает `загружено N из total`, если frontend ограничил список. `scripts/check_postgres.py` получил общий coverage audit по основным категориям, регионам, финансированию, формам и квотам.
+
+Статус этапа 45: full team PostgreSQL database utilization audit. Изучены SQL-файлы из `finalproj.zip` без добавления архива или распаковки в Git, результат оформлен в `docs/DATABASE_USAGE.md`: таблицы `universities`, `faculties`, `directions`, `passing_scores` и `achievements` используются в пользовательском backend, а `users`, `user_ege_scores`, `user_achievements`, `user_favorites` и view `v_directions_with_latest_budget` оставлены вне текущего Python-потока с объяснением. `/api/directions` получил параметр `q` и теперь ищет по полному PostgreSQL-справочнику коды, названия и профили направлений; Mini App использует input+datalist и не создаёт впечатление, что доступны только первые 200 направлений. `scripts/check_postgres.py` расширен диагностикой качества баллов, форм, конкурсов, регионов, q-search и API-like сценариев.
 
 ## Текущая архитектура
 

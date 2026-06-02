@@ -456,18 +456,24 @@ def fetch_directions_json(records: list[dict[str, Any]], filters: Mapping[str, A
 
 async def fetch_directions_postgres(pool: Any, filters: Mapping[str, Any]) -> list[str]:
     where_sql, params = _build_postgres_directory_where(filters, include_direction=False)
+    has_query = bool(str(filters.get("q", "") or "").strip())
     rows = await pool.fetch(
         f"""
-        SELECT DISTINCT d.name AS direction
+        SELECT DISTINCT
+          d.name AS direction,
+          d.code,
+          d.profile
         FROM directions d
         JOIN universities u ON u.id = d.university_id
         LEFT JOIN passing_scores ps ON ps.direction_id = d.id
         LEFT JOIN faculties f ON f.id = d.faculty_id
         WHERE {where_sql}
-        ORDER BY d.name
+        ORDER BY d.name, d.code, d.profile
         """,
         *params,
     )
+    if has_query:
+        return _sorted_unique(format_direction_directory_item(row["direction"], row["code"], row["profile"]) for row in rows)
     return _sorted_unique(row["direction"] for row in rows)
 
 
@@ -931,6 +937,7 @@ def _append_postgres_common_filters(
             f"OR COALESCE(u.short_name, '') ILIKE {q_param} "
             f"OR COALESCE(u.city, '') ILIKE {q_param} "
             f"OR COALESCE(u.region, '') ILIKE {q_param} "
+            f"OR COALESCE(d.code, '') ILIKE {q_param} "
             f"OR d.name ILIKE {q_param} "
             f"OR COALESCE(d.profile, '') ILIKE {q_param} "
             f"OR COALESCE(f.name, '') ILIKE {q_param}"
@@ -1136,6 +1143,23 @@ def is_useful_short_name(value: Any, full_name: Any = "") -> bool:
         return False
     letters_count = sum(1 for char in compact if char.isalpha())
     return 2 <= letters_count <= 16 and len(normalized) <= 24
+
+
+def format_direction_directory_item(name: Any, code: Any = "", profile: Any = "") -> str:
+    name_text = _string_value(name)
+    code_text = _string_value(code)
+    profile_text = _string_value(profile)
+    if code_text and name_text:
+        if normalize(name_text).startswith(normalize(code_text)):
+            return name_text
+        return f"{code_text} {name_text}"
+    if code_text and profile_text:
+        if normalize(profile_text).startswith(normalize(code_text)):
+            return profile_text
+        return f"{code_text} {profile_text}"
+    if profile_text and name_text and normalize(profile_text) != normalize(name_text):
+        return f"{name_text} — {profile_text}"
+    return name_text or profile_text or code_text
 
 
 def get_university_display_name(full_name: Any, short_name: Any = "", fallback: Any = "") -> str:

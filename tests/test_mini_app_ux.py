@@ -96,6 +96,9 @@ def test_mini_app_uses_postgres_aware_copy_and_expanded_result_limit() -> None:
     assert "PostgreSQL-база проекта" in js
     assert "Источник данных: JSON fallback" in js
     assert "formatDirectoryCount" in js
+    assert "показано ${loadedCount} из ${totalCount}" in js
+    assert "Поиск по коду или названию работает по полной базе" in js
+    assert "Подсказки ищутся по полному справочнику PostgreSQL" in html
     assert "backend" not in html
     assert "временная демонстрационная база" not in html
     assert "будут заменены" not in html

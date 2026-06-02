@@ -52,6 +52,7 @@ const quickScenarioButtons = document.querySelectorAll("[data-quick-scenario]");
 const toastContainerNode = document.querySelector("#toast-container");
 const aboutDataSourceNode = document.querySelector("#about-data-source");
 const footerDataSourceNode = document.querySelector("#footer-data-source");
+const directionDatalistNode = document.querySelector("#direction-options");
 
 const SAFE_MARGIN = 25;
 const AMBITIOUS_MARGIN = 20;
@@ -76,6 +77,7 @@ let comparisonNotice = "";
 let favoritesSyncNotice = "";
 let feedbackTickets = [];
 let latestLocalFeedbackTicket = null;
+let directionSearchTimer = null;
 let directoryState = {
   status: "loading",
   storage: "fallback",
@@ -220,6 +222,10 @@ clearFormButton?.addEventListener("click", () => {
 
 form.elements.region?.addEventListener("change", () => {
   loadCitiesForRegion(String(form.elements.region.value || ""));
+});
+
+form.elements.direction?.addEventListener("input", () => {
+  scheduleDirectionSearch(String(form.elements.direction.value || ""));
 });
 
 feedbackForm?.addEventListener("submit", (event) => {
@@ -588,6 +594,10 @@ function replaceSelectOptions(select, items, placeholder, options = {}) {
   if (!select) {
     return;
   }
+  if (select.tagName !== "SELECT") {
+    replaceDatalistOptions(getDatalistForInput(select), items);
+    return;
+  }
   const currentValue = select.value;
   const uniqueItems = [...new Set(items)];
   const placeholderOption = document.createElement("option");
@@ -611,6 +621,24 @@ function replaceSelectOptions(select, items, placeholder, options = {}) {
   }
 }
 
+function replaceDatalistOptions(datalist, items) {
+  if (!datalist) {
+    return;
+  }
+  const uniqueItems = [...new Set(items)].filter(Boolean);
+  datalist.replaceChildren();
+  uniqueItems.forEach((item) => {
+    const option = document.createElement("option");
+    option.value = item;
+    datalist.appendChild(option);
+  });
+}
+
+function getDatalistForInput(input) {
+  const listId = input?.getAttribute?.("list");
+  return listId ? document.getElementById(listId) : null;
+}
+
 function renderDirectoryStatus() {
   if (!directoryStatusNode) {
     return;
@@ -623,8 +651,11 @@ function renderDirectoryStatus() {
   if (directoryState.status === "database") {
     const source = getDataSourceLabel();
     const regionsCount = formatDirectoryCount(directoryState.regions.length, directoryState.totals.regions);
-    const directionsCount = formatDirectoryCount(directoryState.directions.length, directoryState.totals.directions);
-    directoryStatusNode.textContent = `Источник данных: ${source}. Регионы: ${regionsCount}; направления: ${directionsCount}.`;
+    const directionsCount = formatDirectionsDirectoryCount(
+      directoryState.directions.length,
+      directoryState.totals.directions,
+    );
+    directoryStatusNode.textContent = `Источник данных: ${source}. Регионы: ${regionsCount}; ${directionsCount}`;
     directoryStatusNode.className = "directory-status directory-status--database";
     return;
   }
@@ -651,6 +682,15 @@ function formatDirectoryCount(loaded, total) {
   return String(loadedCount);
 }
 
+function formatDirectionsDirectoryCount(loaded, total) {
+  const loadedCount = Number(loaded) || 0;
+  const totalCount = Number(total) || loadedCount;
+  if (totalCount > loadedCount) {
+    return `справочник направлений: показано ${loadedCount} из ${totalCount}. Поиск по коду или названию работает по полной базе.`;
+  }
+  return `направления: ${loadedCount}.`;
+}
+
 function renderDataSourceCopy() {
   if (!aboutDataSourceNode && !footerDataSourceNode) {
     return;
@@ -670,6 +710,10 @@ function ensureSelectOption(select, value) {
   if (!select || !value) {
     return;
   }
+  if (select.tagName !== "SELECT") {
+    ensureDatalistOption(getDatalistForInput(select), value);
+    return;
+  }
   const exists = Array.from(select.options).some((option) => option.value === value);
   if (exists) {
     return;
@@ -678,6 +722,44 @@ function ensureSelectOption(select, value) {
   option.value = value;
   option.textContent = value;
   select.appendChild(option);
+}
+
+function ensureDatalistOption(datalist, value) {
+  if (!datalist || !value) {
+    return;
+  }
+  const exists = Array.from(datalist.options).some((option) => option.value === value);
+  if (exists) {
+    return;
+  }
+  const option = document.createElement("option");
+  option.value = value;
+  datalist.appendChild(option);
+}
+
+function scheduleDirectionSearch(value) {
+  if (directionSearchTimer) {
+    window.clearTimeout(directionSearchTimer);
+  }
+  directionSearchTimer = window.setTimeout(() => {
+    refreshDirectionSuggestions(value);
+  }, 250);
+}
+
+async function refreshDirectionSuggestions(value) {
+  const query = String(value || "").trim();
+  if (!query || query.length < 2 || directoryState.status !== "database") {
+    replaceDatalistOptions(directionDatalistNode, directoryState.directions);
+    return;
+  }
+  const params = new URLSearchParams({
+    q: query,
+    limit: "50",
+  });
+  const payload = await fetchDirectoryPayload(`/api/directions?${params.toString()}`);
+  if (payload.ok && payload.items.length) {
+    replaceDatalistOptions(directionDatalistNode, payload.items);
+  }
 }
 
 document.addEventListener("click", (event) => {

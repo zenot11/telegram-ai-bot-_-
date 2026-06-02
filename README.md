@@ -17,6 +17,7 @@
 - [docs/API.md](docs/API.md) - backend API;
 - [docs/DATA.md](docs/DATA.md) - формат и проверка базы вузов;
 - [docs/POSTGRES.md](docs/POSTGRES.md) - PostgreSQL-режим и JSON fallback;
+- [docs/DATABASE_USAGE.md](docs/DATABASE_USAGE.md) - аудит использования SQL-схемы команды;
 - [docs/BOTFATHER.md](docs/BOTFATHER.md) - настройка Telegram Mini App;
 - [docs/DEFENSE.md](docs/DEFENSE.md) - сценарий защиты;
 - [DEMO.md](DEMO.md) - подробная демонстрация;
@@ -28,7 +29,7 @@
 - пошаговый сценарий через FSM;
 - backend-заглушка `backend_stub` с HTTP endpoint `/api/universities`;
 - PostgreSQL-источник данных для вузов при `USE_POSTGRES=true` с JSON fallback по умолчанию;
-- справочники backend API: `/api/regions`, `/api/cities`, `/api/directions`, `/api/study-forms`, `/api/admission-types`;
+- справочники backend API: `/api/regions`, `/api/cities`, `/api/directions`, `/api/study-forms`, `/api/admission-types`; `/api/directions?q=...` ищет по полному PostgreSQL-справочнику направлений, кодов и профилей;
 - расширенные фильтры `/api/universities`: `city`, `study_form`, `admission_type`, `year`, `q`, `sort`, `limit`, `include_synthetic`;
 - JSON fallback с базовыми регионами и направлениями для локального запуска;
 - мягкая нормализация ввода: регистр, лишние пробелы, частые синонимы и некоторые опечатки в регионах, направлениях и типе обучения;
@@ -130,7 +131,7 @@ docs/                      # расширенная документация
 
 ## Данные вузов: PostgreSQL и JSON fallback
 
-Основной пользовательский сценарий рассчитан на PostgreSQL-базу из `finalproj.zip`: backend берёт оттуда вузы, города, регионы, направления, формы обучения, типы конкурса и справочник индивидуальных достижений. JSON-файл `backend_stub/data/universities.json` остаётся fallback, чтобы проект запускался и тестировался без локальной PostgreSQL.
+Основной пользовательский сценарий рассчитан на PostgreSQL-базу из `finalproj.zip`: backend берёт оттуда вузы, города, регионы, направления, формы обучения, типы конкурса и справочник индивидуальных достижений. JSON-файл `backend_stub/data/universities.json` остаётся fallback, чтобы проект запускался и тестировался без локальной PostgreSQL. Полный аудит того, какие таблицы и поля SQL-схемы реально используются в текущем Python backend, описан в [docs/DATABASE_USAGE.md](docs/DATABASE_USAGE.md).
 
 PostgreSQL включается через `USE_POSTGRES=true`. Подробный порядок применения SQL-файлов из `finalproj.zip` описан в [docs/POSTGRES.md](docs/POSTGRES.md).
 
@@ -179,7 +180,7 @@ Synthetic/demo записи из supplemental SQL seed, например `Рег
 
 - `/api/regions`;
 - `/api/cities`;
-- `/api/directions`;
+- `/api/directions` и `/api/directions?q=09.03.04` для поиска по полному справочнику направлений, кодов и профилей;
 - `/api/study-forms`;
 - `/api/admission-types`;
 - `/api/achievements`.

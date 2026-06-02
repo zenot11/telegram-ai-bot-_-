@@ -9,6 +9,7 @@ from backend_stub.university_repository import (
     _build_postgres_universities_query,
     direction_code_terms,
     direction_matches,
+    fetch_directions_postgres,
     fetch_universities_json,
     fetch_universities_postgres,
     financing_label,
@@ -79,6 +80,25 @@ def test_postgres_query_does_not_leave_unused_score_order_parameter_for_explicit
 
     assert placeholders == list(range(1, len(params) + 1))
     assert "ABS(ps.min_score" not in query
+
+
+def test_postgres_directions_q_searches_code_name_and_profile() -> None:
+    pool = SequencedFakePool(
+        [
+            [
+                {"direction": "Программная инженерия", "code": "09.03.04", "profile": ""},
+                {"direction": "09.03.04 ПИ", "code": "09.03.04", "profile": ""},
+                {"direction": "Архитектура", "code": "07.03.01", "profile": "Архитектурное проектирование"},
+            ]
+        ]
+    )
+
+    records = asyncio.run(fetch_directions_postgres(pool, {"q": "09.03.04"}))
+
+    assert "COALESCE(d.code, '') ILIKE" in pool.queries[0]
+    assert "09.03.04 Программная инженерия" in records
+    assert "09.03.04 ПИ" in records
+    assert "09.03.04 09.03.04 ПИ" not in records
 
 
 def test_postgres_direction_code_uses_exact_code_before_broad_text() -> None:
