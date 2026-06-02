@@ -3,6 +3,8 @@ from typing import Any
 
 INVALID_SCORE_DISPLAY = "не указан"
 INVALID_SCORE_NOTE = "балл требует уточнения"
+MIN_REASONABLE_SCORE = 40
+SUSPICIOUS_SCORE_NOTE = "минимальный балл требует проверки на сайте вуза"
 
 
 def parse_score(value: Any) -> int | None:
@@ -21,13 +23,20 @@ def parse_score(value: Any) -> int | None:
 
 def is_valid_score(value: Any) -> bool:
     score = parse_score(value)
-    return score is not None and score > 1
+    return score is not None and score >= MIN_REASONABLE_SCORE
+
+
+def is_suspicious_score(value: Any) -> bool:
+    score = parse_score(value)
+    return score is not None and 1 < score < MIN_REASONABLE_SCORE
 
 
 def score_display(value: Any) -> str:
     score = parse_score(value)
     if score is None or score <= 1:
         return INVALID_SCORE_DISPLAY
+    if is_suspicious_score(score):
+        return f"{score} (требует уточнения)"
     return str(score)
 
 
@@ -35,6 +44,8 @@ def score_note(value: Any) -> str:
     score = parse_score(value)
     if score is not None and score <= 1:
         return INVALID_SCORE_NOTE
+    if is_suspicious_score(score):
+        return f"минимальный балл {score} требует проверки на сайте вуза"
     return ""
 
 

@@ -62,7 +62,7 @@ def test_mini_app_has_optional_field_helpers_and_postgres_metadata_without_sourc
     assert "Год данных" in js
     assert "Факультет" in js
     assert "item.source" not in js
-    assert "Источник" not in js
+    assert "Источник данных" in js
     assert ".source" not in js
 
 

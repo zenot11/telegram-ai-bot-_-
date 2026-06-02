@@ -6,7 +6,7 @@ from telegram_bot.services.recommendation import (
     format_score_delta,
     get_recommendation_label,
 )
-from telegram_bot.services.scores import is_valid_score, score_display, score_note
+from telegram_bot.services.scores import is_suspicious_score, is_valid_score, score_display, score_note
 
 
 def format_university_card(
@@ -32,7 +32,7 @@ def format_university_card(
     if subjects:
         lines.append(f"📚 Предметы: {escape(subjects)}")
 
-    lines.append(f"📊 Проходной балл: {escape(score_display(item.get('min_score')))}")
+    lines.append(f"📊 {escape(score_line_text(item))}")
 
     if user_score is not None:
         lines.append(f"✅ Твои баллы: {user_score}")
@@ -97,7 +97,7 @@ def location_text(item: dict[str, Any]) -> str:
 
 
 def short_name_text(item: dict[str, Any]) -> str:
-    short_name = text_value(item.get("university_short_name"), "")
+    short_name = normalize_short_name_display(item.get("university_short_name"), display_university_name(item))
     if not short_name:
         return ""
     display_name = display_university_name(item)
@@ -106,6 +106,15 @@ def short_name_text(item: dict[str, Any]) -> str:
     if is_technical_university_name(short_name):
         return ""
     return short_name
+
+
+def score_line_text(item: dict[str, Any]) -> str:
+    min_score = item.get("min_score")
+    if is_valid_score(min_score):
+        return f"Проходной балл: {score_display(min_score)}"
+    if is_suspicious_score(min_score):
+        return f"Минимальный балл: {score_display(min_score)}"
+    return f"Проходной балл: {score_display(min_score)}"
 
 
 def text_value(value: Any, fallback: str = "не указано") -> str:
@@ -191,6 +200,24 @@ def contest_text(item: dict[str, Any]) -> str:
 
 def normalize_label(value: Any) -> str:
     return str(value or "").strip().lower().replace(" ", "_").replace("-", "_")
+
+
+def normalize_short_name_display(value: Any, full_name: Any = "") -> str:
+    text = text_value(value, "")
+    if not text:
+        return ""
+    normalized = text.upper().replace("Ё", "Е")
+    if normalize_label(normalized) == normalize_label(full_name):
+        return ""
+    if is_technical_university_name(text):
+        return ""
+    compact = normalized.replace(" ", "").replace(".", "")
+    if any(char.isdigit() for char in compact):
+        return ""
+    letters_count = sum(1 for char in compact if char.isalpha())
+    if 2 <= letters_count <= 16 and len(normalized) <= 24:
+        return normalized
+    return ""
 
 
 def same_location_name(left: Any, right: Any) -> bool:

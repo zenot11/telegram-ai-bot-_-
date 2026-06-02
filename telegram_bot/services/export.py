@@ -19,7 +19,7 @@ from telegram_bot.services.recommendation import (
     classify_university,
     format_score_delta,
 )
-from telegram_bot.services.scores import is_valid_score, score_display, score_note
+from telegram_bot.services.scores import is_suspicious_score, is_valid_score, score_display, score_note
 from telegram_bot.services.summary import count_categories
 from telegram_bot.services.validation import education_type_label
 
@@ -151,7 +151,7 @@ def _format_items(items: list[dict[str, Any]], score: int | None) -> list[str]:
             f"{index}. {title_short(item)}",
             f"Город: {text_value(item.get('city'))}",
             f"Категория: {category}",
-            f"Проходной балл: {score_display(item.get('min_score'))}",
+            score_export_line(item),
         ]
         subjects = subjects_text(item)
         if subjects:
@@ -184,6 +184,13 @@ def _format_items(items: list[dict[str, Any]], score: int | None) -> list[str]:
             block.append(f"Сайт: {item['url']}")
         blocks.append("\n".join(str(line) for line in block))
     return blocks
+
+
+def score_export_line(item: dict[str, Any]) -> str:
+    min_score = item.get("min_score")
+    if is_suspicious_score(min_score):
+        return f"Минимальный балл: {score_display(min_score)}"
+    return f"Проходной балл: {score_display(min_score)}"
 
 
 def _has_export_context(profile: dict[str, Any] | None, results: list[dict[str, Any]]) -> bool:

@@ -1,20 +1,24 @@
 import asyncio
 import json
+import re
 
 from backend_stub.main import achievements, create_app, universities
 from backend_stub.university_repository import (
     admission_type_label,
     contest_label,
+    _build_postgres_universities_query,
     direction_code_terms,
     direction_matches,
     fetch_universities_json,
     fetch_universities_postgres,
     financing_label,
     get_university_display_name,
+    is_useful_short_name,
     is_synthetic_university_name,
     is_synthetic_university_record,
     is_technical_university_name,
     normalize_pg_record,
+    normalize_short_name_display,
     postgres_direction_terms,
     region_search_terms,
 )
@@ -58,6 +62,72 @@ def test_direction_with_code_searches_by_code_and_name() -> None:
     assert direction_code_terms("09.03.04 Программная инженерия") == ["09.03.04"]
     assert "Программная инженерия" in terms
     assert "09.03.04 Программная инженерия" in terms
+
+
+def test_postgres_query_does_not_leave_unused_score_order_parameter_for_explicit_sort() -> None:
+    query, params = _build_postgres_universities_query(
+        {
+            "region": "Москва",
+            "score": 260,
+            "direction": "информатика",
+            "type": "budget",
+            "limit": 3,
+            "sort": "min_score_asc",
+        }
+    )
+    placeholders = sorted({int(value) for value in re.findall(r"\$(\d+)", query)})
+
+    assert placeholders == list(range(1, len(params) + 1))
+    assert "ABS(ps.min_score" not in query
+
+
+def test_postgres_direction_code_uses_exact_code_before_broad_text() -> None:
+    pool = SequencedFakePool(
+        [
+            [
+                {
+                    "university_name": "Точный вуз",
+                    "direction_name": "Прикладная математика и информатика",
+                    "direction_code": "01.03.02",
+                    "min_score": 180,
+                    "admission_type": "budget",
+                    "match_quality": "exact_code",
+                }
+            ]
+        ]
+    )
+
+    records = asyncio.run(fetch_universities_postgres(pool, {"direction": "01.03.02 ПМИ", "limit": 5}))
+
+    assert len(pool.queries) == 1
+    assert "COALESCE(d.code, '') = ANY" in pool.queries[0]
+    assert "d.name ILIKE" not in pool.queries[0]
+    assert records[0]["match_quality"] == "exact_code"
+
+
+def test_postgres_direction_code_falls_back_to_text_only_when_exact_code_empty() -> None:
+    pool = SequencedFakePool(
+        [
+            [],
+            [
+                {
+                    "university_name": "Текстовый вуз",
+                    "direction_name": "Программная инженерия",
+                    "direction_code": "09.03.04",
+                    "min_score": 180,
+                    "admission_type": "budget",
+                    "match_quality": "exact_name",
+                }
+            ],
+        ]
+    )
+
+    records = asyncio.run(fetch_universities_postgres(pool, {"direction": "09.03.04 Программная инженерия", "limit": 5}))
+
+    assert len(pool.queries) == 2
+    assert "COALESCE(d.code, '') = ANY" in pool.queries[0]
+    assert "d.name ILIKE" in pool.queries[1]
+    assert records[0]["match_quality"] == "exact_name"
 
 
 def test_multiword_direction_alias_does_not_match_single_generic_word() -> None:
@@ -111,6 +181,10 @@ def test_short_name_technical_detection_keeps_known_abbreviations() -> None:
     assert is_technical_university_name("ИБ") is True
     assert is_technical_university_name("МГУ") is False
     assert is_technical_university_name("МИРЭА") is False
+    assert normalize_short_name_display("рэу") == "РЭУ"
+    assert normalize_short_name_display("мади") == "МАДИ"
+    assert normalize_short_name_display("РЦТИ-26") == ""
+    assert not is_useful_short_name("Московский государственный университет", "Московский государственный университет")
 
 
 def test_achievements_endpoint_works_in_json_fallback(monkeypatch) -> None:
@@ -228,6 +302,17 @@ class FakePool:
     async def fetch(self, query: str, *params):
         self.query = query
         return self.rows
+
+
+class SequencedFakePool:
+    def __init__(self, rows_by_call: list[list[dict]]) -> None:
+        self.rows_by_call = rows_by_call
+        self.queries: list[str] = []
+
+    async def fetch(self, query: str, *params):
+        self.queries.append(query)
+        index = len(self.queries) - 1
+        return self.rows_by_call[index] if index < len(self.rows_by_call) else []
 
 
 def test_postgres_fetch_filters_synthetic_records_and_keeps_include_flag() -> None:

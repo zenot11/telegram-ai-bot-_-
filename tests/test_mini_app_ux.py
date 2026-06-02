@@ -93,8 +93,9 @@ def test_mini_app_uses_postgres_aware_copy_and_expanded_result_limit() -> None:
     assert "до 12 программ" in html
     assert "MINI_APP_RESULT_LIMIT = 12" in js
     assert "limit: String(MINI_APP_RESULT_LIMIT)" in js
-    assert "PostgreSQL-базы проекта" in js
-    assert "Локальный режим без PostgreSQL" in js
+    assert "PostgreSQL-база проекта" in js
+    assert "Источник данных: JSON fallback" in js
+    assert "formatDirectoryCount" in js
     assert "backend" not in html
     assert "временная демонстрационная база" not in html
     assert "будут заменены" not in html

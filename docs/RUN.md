@@ -167,7 +167,7 @@ WEBAPP_URL=https://your-ngrok-url.ngrok-free.dev/miniapp
 
 После изменения `.env` перезапустите Telegram-бота.
 
-В обычном браузере Mini App работает в локальном режиме: статус Mini App покажет `Локальный режим`, а избранное будет храниться только в `localStorage`.
+В обычном браузере Mini App показывает режим запуска `Браузер`, а избранное хранится только в этом браузере через `localStorage`. Источник данных показывается отдельно в блоке подбора: это может быть PostgreSQL-база проекта или JSON fallback.
 
 Проверенный Telegram-режим появляется только при открытии Mini App через Telegram `/webapp` и публичный HTTPS `WEBAPP_URL`, когда Telegram передаёт WebApp `initData`. Backend проверяет эту сессию через `/api/webapp/session`, и только после этого синхронизация избранного с Telegram-ботом включается.
 

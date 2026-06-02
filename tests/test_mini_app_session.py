@@ -27,7 +27,8 @@ def test_app_js_checks_webapp_session_without_exposing_secrets() -> None:
     assert "function renderSessionStatus" in js
     assert "function hasTelegramInitData" in js
     assert "function isTelegramSessionVerified" in js
-    assert "Локальный режим" in js
+    assert "Режим запуска: браузер" in js
+    assert "Браузер" in js
     assert "Telegram-сессия не прошла проверку" in js
     assert "TELEGRAM_BOT_TOKEN" not in js
     assert "OPENAI_API_KEY" not in js

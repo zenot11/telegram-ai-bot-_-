@@ -85,6 +85,13 @@ let directoryState = {
   studyForms: [],
   admissionTypes: [],
   achievements: [],
+  totals: {
+    regions: 0,
+    cities: 0,
+    directions: 0,
+    studyForms: 0,
+    admissionTypes: 0,
+  },
 };
 let sessionState = {
   status: "checking",
@@ -496,6 +503,13 @@ async function loadBackendDirectories() {
     studyForms,
     admissionTypes,
     achievements: achievementsPayload.items,
+    totals: {
+      regions: regionsPayload.totalCount || regions.length,
+      cities: 0,
+      directions: directionsPayload.totalCount || directions.length,
+      studyForms: studyFormsPayload.totalCount || studyForms.length,
+      admissionTypes: admissionTypesPayload.totalCount || admissionTypes.length,
+    },
   };
   renderDirectoryStatus();
   renderDataSourceCopy();
@@ -513,16 +527,18 @@ async function fetchDirectoryPayload(url) {
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      return { ok: false, storage: "fallback", items: [] };
+      return { ok: false, storage: "fallback", items: [], totalCount: 0 };
     }
     const payload = await response.json();
     if (!Array.isArray(payload.items)) {
-      return { ok: false, storage: "fallback", items: [] };
+      return { ok: false, storage: "fallback", items: [], totalCount: 0 };
     }
-    const items = payload.items.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 200);
-    return { ok: items.length > 0, storage: payload.storage || "backend", items };
+    const rawItems = payload.items.map((item) => String(item || "").trim()).filter(Boolean);
+    const items = rawItems.slice(0, 200);
+    const totalCount = Number(payload.total_count || payload.count || rawItems.length);
+    return { ok: items.length > 0, storage: payload.storage || "backend", items, totalCount };
   } catch (error) {
-    return { ok: false, storage: "fallback", items: [] };
+    return { ok: false, storage: "fallback", items: [], totalCount: 0 };
   }
 }
 
@@ -554,6 +570,7 @@ async function loadCitiesForRegion(region) {
   }
   const payload = await fetchDirectoryPayload(`/api/cities?region=${encodeURIComponent(region)}`);
   directoryState.cities = payload.items;
+  directoryState.totals.cities = payload.totalCount || payload.items.length;
   replaceSelectOptions(citySelect, payload.items, "Любой город", { optional: true });
   renderDirectoryStatus();
 }
@@ -604,35 +621,48 @@ function renderDirectoryStatus() {
     return;
   }
   if (directoryState.status === "database") {
-    const source = directoryState.storage === "postgresql" ? "PostgreSQL-базы проекта" : "подключённой базы проекта";
-    directoryStatusNode.textContent = `Данные из ${source}: регионов ${directoryState.regions.length}, направлений ${directoryState.directions.length}.`;
+    const source = getDataSourceLabel();
+    const regionsCount = formatDirectoryCount(directoryState.regions.length, directoryState.totals.regions);
+    const directionsCount = formatDirectoryCount(directoryState.directions.length, directoryState.totals.directions);
+    directoryStatusNode.textContent = `Источник данных: ${source}. Регионы: ${regionsCount}; направления: ${directionsCount}.`;
     directoryStatusNode.className = "directory-status directory-status--database";
     return;
   }
-  directoryStatusNode.textContent = "Локальный режим без PostgreSQL: сервис данных сейчас недоступен, показан базовый список.";
+  directoryStatusNode.textContent = "Источник данных: JSON fallback. Сервис данных сейчас недоступен, показан базовый список.";
   directoryStatusNode.className = "directory-status directory-status--fallback";
+}
+
+function getDataSourceLabel() {
+  if (directoryState.storage === "postgresql") {
+    return "PostgreSQL-база проекта";
+  }
+  if (directoryState.storage === "json") {
+    return "JSON fallback";
+  }
+  return "подключённая база проекта";
+}
+
+function formatDirectoryCount(loaded, total) {
+  const loadedCount = Number(loaded) || 0;
+  const totalCount = Number(total) || loadedCount;
+  if (totalCount > loadedCount) {
+    return `загружено ${loadedCount} из ${totalCount}`;
+  }
+  return String(loadedCount);
 }
 
 function renderDataSourceCopy() {
   if (!aboutDataSourceNode && !footerDataSourceNode) {
     return;
   }
-  const isPostgres = directoryState.storage === "postgresql";
   const isDatabase = directoryState.status === "database";
-  const text = isPostgres
-    ? "Aisha — учебный прототип сервиса для абитуриентов. В текущем режиме данные загружаются из PostgreSQL-базы проекта; результаты нужно перепроверять на сайтах вузов."
-    : isDatabase
-      ? "Aisha — учебный прототип сервиса для абитуриентов. Данные загружаются из подключённой базы проекта; результаты нужно перепроверять на сайтах вузов."
-      : "Aisha — учебный прототип сервиса для абитуриентов. Локальный режим без PostgreSQL: используется базовый JSON-набор.";
+  const sourceLabel = isDatabase ? getDataSourceLabel() : "JSON fallback";
+  const text = `Aisha — учебный прототип сервиса для абитуриентов. Источник данных — ${sourceLabel}; результаты нужно перепроверять на сайтах вузов.`;
   if (aboutDataSourceNode) {
     aboutDataSourceNode.textContent = text;
   }
   if (footerDataSourceNode) {
-    footerDataSourceNode.textContent = isPostgres
-      ? "Аиша · Telegram Mini App · PostgreSQL-база проекта"
-      : isDatabase
-        ? "Аиша · Telegram Mini App · подключённая база проекта"
-        : "Аиша · Telegram Mini App · локальный режим";
+    footerDataSourceNode.textContent = `Аиша · Telegram Mini App · ${sourceLabel}`;
   }
 }
 
@@ -1081,7 +1111,7 @@ async function checkWebAppSession() {
     user: null,
     message: hasTelegramInitData()
       ? "Проверяю Telegram-сессию."
-      : "Проверяю локальный режим Mini App.",
+      : "Проверяю режим запуска Mini App в браузере.",
   };
   renderSessionStatus();
 
@@ -1111,9 +1141,9 @@ async function checkWebAppSession() {
         mode: "local",
         authenticated: false,
         user: null,
-        message: "Локальный режим. Mini App открыт не через Telegram, поэтому избранное хранится только в этом браузере.",
+        message: "Режим запуска: браузер. Mini App открыт не через Telegram, поэтому избранное хранится только в этом браузере. Источник данных показан отдельно в блоке подбора.",
       };
-      favoritesSyncNotice = "Локальный режим: избранное хранится только в этом браузере.";
+      favoritesSyncNotice = "Браузер: избранное хранится только в этом браузере.";
       feedbackTickets = latestLocalFeedbackTicket ? [latestLocalFeedbackTicket] : [];
       renderAll();
       return;
@@ -1137,7 +1167,7 @@ async function checkWebAppSession() {
       mode: hasTelegramInitData() ? "telegram" : "local",
       authenticated: false,
       user: null,
-      message: "Сервис сейчас недоступен. Mini App работает в локальном режиме.",
+      message: "Сервис проверки сессии сейчас недоступен. Mini App работает в браузерном режиме.",
     };
     favoritesSyncNotice = "Сервис сейчас недоступен. Избранное сохранится локально.";
     feedbackTickets = latestLocalFeedbackTicket ? [latestLocalFeedbackTicket] : [];
@@ -1170,7 +1200,7 @@ function getSessionMeta(status) {
   const statuses = {
     checking: { className: "checking", badge: "Проверка…" },
     telegram_verified: { className: "success", badge: "Telegram ✓" },
-    local: { className: "local", badge: "Локальный режим" },
+    local: { className: "local", badge: "Браузер" },
     invalid: { className: "error", badge: "Сессия не проверена" },
     service_unavailable: { className: "warning", badge: "Сервис недоступен" },
   };
@@ -1215,7 +1245,7 @@ function renderFeedbackStatus() {
     return;
   }
 
-  feedbackStatusNode.textContent = "Локальный режим: обращение сохранится без привязки к Telegram.";
+  feedbackStatusNode.textContent = "Браузер: обращение сохранится без привязки к Telegram.";
   feedbackStatusNode.className = "feedback-status-card feedback-status-card--local";
 }
 
@@ -1300,7 +1330,7 @@ function renderMyFeedback() {
   if (!feedbackTickets.length) {
     feedbackHistoryStatusNode.textContent = isTelegramSessionVerified()
       ? "Пока обращений нет."
-      : "Пока обращений нет. В локальном режиме показывается только последняя заявка текущей страницы.";
+      : "Пока обращений нет. В браузерном режиме показывается только последняя заявка текущей страницы.";
     feedbackListNode.innerHTML = "";
     return;
   }
@@ -1609,6 +1639,7 @@ function renderCard(item, score, index) {
   const studyForm = getStudyFormLabel(item);
   const admissionType = getContestLabel(item);
   const scoreText = getScoreDisplay(item);
+  const scoreLabel = getScoreLabel(item);
   const delta = getScoreMargin(item, score);
   const scoreClarification = getScoreClarification(item);
   const note = textValue(item.note, scoreClarification);
@@ -1627,7 +1658,7 @@ function renderCard(item, score, index) {
       <div class="result-meta">
         ${location ? `<div><b>Локация:</b> ${escapeHtml(location)}</div>` : ""}
         ${subjects ? `<div><b>Предметы:</b> ${escapeHtml(subjects)}</div>` : ""}
-        <div><b>Проходной балл:</b> ${escapeHtml(scoreText)}</div>
+        <div><b>${escapeHtml(scoreLabel)}:</b> ${escapeHtml(scoreText)}</div>
         <div><b>Твои баллы:</b> ${score}</div>
         ${delta === null ? "" : `<div><b>${delta >= 0 ? "Запас" : "Не хватает"}:</b> ${escapeHtml(formatDelta(delta))}</div>`}
         <div><b>Финансирование:</b> ${escapeHtml(financing)}</div>
@@ -1679,7 +1710,7 @@ function renderFavoritesSyncStatus() {
   }
   favoritesSyncStatusNode.textContent = hasTelegramAuth()
     ? "Избранное синхронизируется с Telegram-ботом."
-    : "Локальный режим: избранное хранится только в этом браузере.";
+    : "Браузер: избранное хранится только в этом браузере.";
 }
 
 function renderFavoriteCard(item, index) {
@@ -1713,7 +1744,7 @@ function saveFavorites() {
 
 async function initFavoritesSync() {
   if (!hasTelegramAuth()) {
-    favoritesSyncNotice = "Локальный режим: избранное хранится только в этом браузере.";
+    favoritesSyncNotice = "Браузер: избранное хранится только в этом браузере.";
     renderFavoritesSyncStatus();
     return;
   }
@@ -2856,7 +2887,7 @@ function getMinScore(item) {
   if (item.score_is_valid === false) {
     return null;
   }
-  return Number.isFinite(value) && value > 1 ? value : null;
+  return Number.isFinite(value) && value >= 40 ? value : null;
 }
 
 function hasValidMinScore(item) {
@@ -2871,6 +2902,17 @@ function getScoreDisplay(item) {
     return String(item.score_display).trim();
   }
   return "не указан";
+}
+
+function getScoreLabel(item) {
+  if (item?.score_is_suspicious === true) {
+    return "Минимальный балл";
+  }
+  const rawScore = Number(item?.min_score);
+  if (Number.isFinite(rawScore) && rawScore > 1 && rawScore < 40) {
+    return "Минимальный балл";
+  }
+  return "Проходной балл";
 }
 
 function getScoreClarification(item) {
@@ -2950,21 +2992,42 @@ function shouldShowSearchCity(search) {
 }
 
 function getUniversityDisplayName(item) {
-  const candidates = [item.university_full_name, item.university_name, item.university, item.university_short_name];
+  const candidates = [item.university_full_name, item.university_name, item.university];
   for (const value of candidates) {
     if (hasValue(value) && !isTechnicalUniversityName(value)) {
       return String(value).trim();
     }
   }
-  return textValue(item.university || item.university_short_name, "Вуз");
+  return normalizeShortNameDisplay(item.university_short_name || item.short_name) || textValue(item.university, "Вуз");
 }
 
 function getUsefulShortName(item) {
-  const shortName = textValue(item.university_short_name, "");
+  const shortName = normalizeShortNameDisplay(item.university_short_name, getUniversityDisplayName(item));
   if (!shortName || isTechnicalUniversityName(shortName)) {
     return "";
   }
   return shortName.toLowerCase() === getUniversityDisplayName(item).toLowerCase() ? "" : shortName;
+}
+
+function normalizeShortNameDisplay(value, fullName = "") {
+  const text = textValue(value, "");
+  if (!text || isTechnicalUniversityName(text)) {
+    return "";
+  }
+  const normalized = text.toUpperCase().replaceAll("Ё", "Е").replace(/\s+/g, " ").trim();
+  if (normalizeNameForCompare(normalized) === normalizeNameForCompare(fullName)) {
+    return "";
+  }
+  const compact = normalized.replace(/[.\s]/g, "");
+  if ([...compact].some((char) => /\d/.test(char))) {
+    return "";
+  }
+  const letterCount = [...compact].filter((char) => /[A-ZА-Я]/.test(char)).length;
+  return letterCount >= 2 && letterCount <= 16 && normalized.length <= 24 ? normalized : "";
+}
+
+function normalizeNameForCompare(value) {
+  return String(value || "").trim().toLowerCase().replaceAll("ё", "е").replace(/\s+/g, " ");
 }
 
 function isSyntheticUniversityItem(item) {

@@ -3,7 +3,13 @@ import re
 from typing import Any
 
 from telegram_bot.services.recommendation import AMBITIOUS_SCORE_MARGIN
-from telegram_bot.services.scores import is_valid_score, score_display, score_note
+from telegram_bot.services.scores import (
+    MIN_REASONABLE_SCORE,
+    is_suspicious_score,
+    is_valid_score,
+    score_display,
+    score_note,
+)
 from telegram_bot.services.validation import (
     DIRECTION_SYNONYMS,
     education_type_label,
@@ -219,6 +225,12 @@ KNOWN_UNIVERSITY_ABBREVIATIONS = {
     "МАИ",
     "МЭИ",
     "МГТУ",
+    "РЭУ",
+    "МАДИ",
+    "МТУСИ",
+    "МИИТ",
+    "РАНХИГС",
+    "ФУ",
 }
 
 SORT_OPTIONS = {
@@ -345,8 +357,18 @@ def fetch_universities_json(rows: list[dict[str, Any]], filters: Mapping[str, An
 
 
 async def fetch_universities_postgres(pool: Any, filters: Mapping[str, Any]) -> list[dict[str, Any]]:
-    query, params = _build_postgres_universities_query(filters)
-    rows = await pool.fetch(query, *params)
+    direction = str(filters.get("direction", "") or "")
+    if direction_code_terms(direction):
+        exact_filters = {**filters, "_direction_match_mode": "exact_code"}
+        query, params = _build_postgres_universities_query(exact_filters)
+        rows = await pool.fetch(query, *params)
+        if not rows:
+            fallback_filters = {**filters, "_direction_match_mode": "code_text_fallback"}
+            query, params = _build_postgres_universities_query(fallback_filters)
+            rows = await pool.fetch(query, *params)
+    else:
+        query, params = _build_postgres_universities_query(filters)
+        rows = await pool.fetch(query, *params)
     records = [normalize_pg_record(row) for row in rows]
     if filters.get("include_synthetic"):
         return records
@@ -519,11 +541,12 @@ def normalize_pg_record(row: Any) -> dict[str, Any]:
 
     min_score = _int_value(_row_value(row, "min_score", _row_value(row, "passing_score", 0)))
     min_score_is_valid = is_valid_score(min_score)
+    min_score_is_suspicious = is_suspicious_score(min_score)
     study_form = normalize_study_form(_row_value(row, "study_form", ""))
     full_name = _string_value(
         _row_value(row, "university_full_name", _row_value(row, "university_name", _row_value(row, "university", "")))
     )
-    short_name = _string_value(_row_value(row, "university_short_name", ""))
+    short_name = normalize_short_name_display(_row_value(row, "university_short_name", ""), full_name)
     raw_university = _string_value(_row_value(row, "university", full_name))
     admission_type = _string_value(_row_value(row, "admission_type", _row_value(row, "type", "")))
     row_type = normalize_type(admission_type) or "бюджет"
@@ -542,6 +565,7 @@ def normalize_pg_record(row: Any) -> dict[str, Any]:
         "subjects": subjects_value,
         "min_score": min_score,
         "score_is_valid": min_score_is_valid,
+        "score_is_suspicious": min_score_is_suspicious,
         "score_display": score_display(min_score),
         "score_note": score_note(min_score),
         "type": row_type,
@@ -560,6 +584,8 @@ def normalize_pg_record(row: Any) -> dict[str, Any]:
         "university_short_name": short_name,
         "university_full_name": full_name,
         "source": _string_value(_row_value(row, "source", "postgresql")),
+        "match_quality": _string_value(_row_value(row, "match_quality", "")),
+        "match_reason": _string_value(_row_value(row, "match_reason", _row_value(row, "match_quality", ""))),
     }
 
 
@@ -572,6 +598,11 @@ def with_display_labels(item: Mapping[str, Any]) -> dict[str, Any]:
     record["financing_label"] = financing
     record["study_form_label"] = study_form
     record["contest_label"] = contest
+    min_score = _min_score(record)
+    record["score_is_valid"] = is_valid_score(min_score)
+    record["score_is_suspicious"] = is_suspicious_score(min_score)
+    record["score_display"] = score_display(min_score)
+    record["score_note"] = score_note(min_score)
     return record
 
 
@@ -694,12 +725,17 @@ def _build_postgres_universities_query(filters: Mapping[str, Any]) -> tuple[str,
 
     _append_postgres_common_filters(where_parts, params, filters)
 
+    sort = str(filters.get("sort", ""))
     score = filters.get("score")
+    score_order_param = ""
     if score is not None:
         max_score = add_param(int(score) + AMBITIOUS_SCORE_MARGIN)
         where_parts.append(f"ps.min_score <= {max_score}")
+        if _postgres_order_uses_score_closeness(sort):
+            score_order_param = add_param(int(score))
 
-    order_sql = _postgres_order_by(str(filters.get("sort", "")), score is not None)
+    match_select_sql = _postgres_match_select(filters, add_param)
+    order_sql = _postgres_order_by(sort, score is not None, score_order_param)
     limit_param = add_param(normalize_limit(filters.get("limit", DEFAULT_LIMIT)))
     where_sql = " AND ".join(where_parts)
     score_where_sql = " AND ".join(score_where)
@@ -734,13 +770,14 @@ def _build_postgres_universities_query(filters: Mapping[str, Any]) -> tuple[str,
             ps.admission_type::TEXT AS admission_type,
             ps.min_score,
             ps.note,
-            'postgresql' AS source
+            'postgresql' AS source,
+            {match_select_sql}
         FROM latest_scores ps
         JOIN directions d ON d.id = ps.direction_id
         JOIN universities u ON u.id = d.university_id
         LEFT JOIN faculties f ON f.id = d.faculty_id
         WHERE {where_sql}
-        ORDER BY {order_sql}
+        ORDER BY match_rank ASC, {order_sql}
         LIMIT {limit_param}
     """
     return query, params
@@ -760,6 +797,51 @@ def _build_postgres_directory_where(
 
     _append_postgres_common_filters(where_parts, params, filters, include_direction=include_direction)
     return " AND ".join(where_parts), params
+
+
+def _postgres_match_select(filters: Mapping[str, Any], add_param: Any) -> str:
+    direction_value = str(filters.get("direction", "") or "")
+    if not normalize(direction_value):
+        return "'' AS match_quality, 9 AS match_rank"
+
+    if filters.get("_direction_match_mode") == "exact_code" and direction_code_terms(direction_value):
+        return "'exact_code' AS match_quality, 0 AS match_rank"
+
+    if _is_direction_alias(direction_value):
+        return "'alias_category' AS match_quality, 2 AS match_rank"
+
+    exact_terms = [normalize(term) for term in postgres_direction_terms(direction_value) if normalize(term)]
+    if not exact_terms:
+        return "'broad_match' AS match_quality, 5 AS match_rank"
+
+    exact_param = add_param(exact_terms[:8])
+    return (
+        "CASE "
+        f"WHEN lower(d.name) = ANY({exact_param}::TEXT[]) THEN 'exact_name' "
+        f"WHEN lower(COALESCE(d.profile, '')) = ANY({exact_param}::TEXT[]) THEN 'exact_profile' "
+        "WHEN COALESCE(d.profile, '') <> '' THEN 'profile_match' "
+        "ELSE 'broad_match' "
+        "END AS match_quality, "
+        "CASE "
+        f"WHEN lower(d.name) = ANY({exact_param}::TEXT[]) THEN 1 "
+        f"WHEN lower(COALESCE(d.profile, '')) = ANY({exact_param}::TEXT[]) THEN 1 "
+        "WHEN COALESCE(d.profile, '') <> '' THEN 3 "
+        "ELSE 4 "
+        "END AS match_rank"
+    )
+
+
+def _is_direction_alias(value: Any) -> bool:
+    requested = normalize_direction(str(value or ""))
+    normalized_requested = normalize(requested)
+    if requested in POSTGRES_DIRECTION_PRESETS:
+        return True
+    for direction, synonyms in DIRECTION_SYNONYMS.items():
+        if normalize(direction) == normalized_requested:
+            return True
+        if any(normalize(synonym) == normalized_requested for synonym in synonyms):
+            return True
+    return False
 
 
 def _append_postgres_common_filters(
@@ -815,22 +897,30 @@ def _append_postgres_common_filters(
 
     if include_direction:
         direction_value = str(filters.get("direction", "") or "")
-        direction_terms = postgres_direction_terms(direction_value)
         code_terms = direction_code_terms(direction_value)
-        if direction_terms:
-            direction_conditions = []
-            for term in direction_terms:
-                term_param = add_param(f"%{term}%")
-                direction_conditions.append(
-                    "("
-                    f"d.name ILIKE {term_param} "
-                    f"OR COALESCE(d.profile, '') ILIKE {term_param}"
-                    ")"
-                )
-            for code in code_terms:
-                code_param = add_param(code)
-                direction_conditions.append(f"COALESCE(d.code, '') = {code_param}")
-            where_parts.append("(" + " OR ".join(direction_conditions) + ")")
+        if filters.get("_direction_match_mode") == "exact_code":
+            if code_terms:
+                code_param = add_param(code_terms)
+                where_parts.append(f"COALESCE(d.code, '') = ANY({code_param}::TEXT[])")
+            elif normalize(direction_value):
+                where_parts.append("FALSE")
+        else:
+            direction_terms = postgres_direction_terms(direction_value)
+            code_terms = direction_code_terms(direction_value)
+            if direction_terms:
+                direction_conditions = []
+                for term in direction_terms:
+                    term_param = add_param(f"%{term}%")
+                    direction_conditions.append(
+                        "("
+                        f"d.name ILIKE {term_param} "
+                        f"OR COALESCE(d.profile, '') ILIKE {term_param}"
+                        ")"
+                    )
+                for code in code_terms:
+                    code_param = add_param(code)
+                    direction_conditions.append(f"COALESCE(d.code, '') = {code_param}")
+                where_parts.append("(" + " OR ".join(direction_conditions) + ")")
 
     q = str(filters.get("q", "") or "").strip()
     if q:
@@ -848,27 +938,41 @@ def _append_postgres_common_filters(
         )
 
 
-def _postgres_order_by(sort: str, has_score: bool) -> str:
+def _postgres_order_by(sort: str, has_score: bool, score_param: str = "") -> str:
     if sort == "min_score_desc":
-        return "(ps.min_score > 1) DESC, ps.min_score DESC NULLS LAST, u.name ASC, d.name ASC"
+        return (
+            f"(ps.min_score >= {MIN_REASONABLE_SCORE}) DESC, "
+            "ps.min_score DESC NULLS LAST, ps.year DESC NULLS LAST, u.name ASC, d.name ASC"
+        )
     if sort == "university":
-        return "u.name ASC, d.name ASC, ps.min_score ASC NULLS LAST"
+        return f"(ps.min_score >= {MIN_REASONABLE_SCORE}) DESC, u.name ASC, d.name ASC, ps.year DESC NULLS LAST"
     if sort == "city":
-        return "u.city ASC NULLS LAST, u.name ASC, d.name ASC"
+        return f"(ps.min_score >= {MIN_REASONABLE_SCORE}) DESC, u.city ASC NULLS LAST, u.name ASC, d.name ASC"
     if sort == "direction":
-        return "d.name ASC, u.name ASC, ps.min_score ASC NULLS LAST"
+        return f"(ps.min_score >= {MIN_REASONABLE_SCORE}) DESC, d.name ASC, u.name ASC, ps.year DESC NULLS LAST"
     if sort == "year_desc":
-        return "ps.year DESC NULLS LAST, u.name ASC, d.name ASC"
-    if sort == "min_score_asc" or has_score:
-        return "(ps.min_score > 1) DESC, ps.min_score ASC NULLS LAST, u.name ASC, d.name ASC"
-    return "u.name ASC, d.name ASC, ps.min_score ASC NULLS LAST"
+        return f"(ps.min_score >= {MIN_REASONABLE_SCORE}) DESC, ps.year DESC NULLS LAST, u.name ASC, d.name ASC"
+    if sort == "min_score_asc":
+        return f"(ps.min_score >= {MIN_REASONABLE_SCORE}) DESC, ps.min_score ASC NULLS LAST, ps.year DESC NULLS LAST, u.name ASC, d.name ASC"
+    if has_score and score_param:
+        return (
+            f"(ps.min_score >= {MIN_REASONABLE_SCORE}) DESC, "
+            f"CASE WHEN ps.min_score <= {score_param} THEN 0 ELSE 1 END ASC, "
+            f"ABS(ps.min_score - {score_param}) ASC, "
+            "ps.year DESC NULLS LAST, u.name ASC, d.name ASC"
+        )
+    return f"(ps.min_score >= {MIN_REASONABLE_SCORE}) DESC, u.name ASC, d.name ASC, ps.year DESC NULLS LAST"
+
+
+def _postgres_order_uses_score_closeness(sort: str) -> bool:
+    return sort not in {"min_score_asc", "min_score_desc", "university", "city", "direction", "year_desc"}
 
 
 def _sort_json_universities(rows: list[dict[str, Any]], sort: str) -> list[dict[str, Any]]:
     if sort == "min_score_asc":
-        return sorted(rows, key=lambda item: (not is_valid_score(_min_score(item)), _min_score(item) or 0))
+        return sorted(rows, key=lambda item: (not is_valid_score(_min_score(item)), is_suspicious_score(_min_score(item)), _min_score(item) or 0))
     if sort == "min_score_desc":
-        return sorted(rows, key=lambda item: (not is_valid_score(_min_score(item)), -(_min_score(item) or 0)))
+        return sorted(rows, key=lambda item: (not is_valid_score(_min_score(item)), is_suspicious_score(_min_score(item)), -(_min_score(item) or 0)))
     if sort == "university":
         return sorted(rows, key=lambda item: normalize(item.get("university", "")))
     if sort == "city":
@@ -1006,9 +1110,37 @@ def has_display_text(value: Any) -> bool:
     return value is not None and str(value).strip() != ""
 
 
+def normalize_short_name_display(value: Any, full_name: Any = "") -> str:
+    text = _string_value(value)
+    if not is_useful_short_name(text, full_name):
+        return ""
+    normalized = " ".join(text.split())
+    return normalized.upper().replace("Ё", "Е")
+
+
+def is_useful_short_name(value: Any, full_name: Any = "") -> bool:
+    text = _string_value(value)
+    if not text:
+        return False
+    if is_synthetic_university_record({"university_short_name": text}):
+        return False
+    if full_name and normalize(text) == normalize(full_name):
+        return False
+    normalized = text.upper().replace("Ё", "Е")
+    if normalized in KNOWN_UNIVERSITY_ABBREVIATIONS:
+        return True
+    if is_technical_university_name(text):
+        return False
+    compact = normalized.replace(" ", "").replace(".", "")
+    if any(char.isdigit() for char in compact):
+        return False
+    letters_count = sum(1 for char in compact if char.isalpha())
+    return 2 <= letters_count <= 16 and len(normalized) <= 24
+
+
 def get_university_display_name(full_name: Any, short_name: Any = "", fallback: Any = "") -> str:
     full_text = _string_value(full_name)
-    short_text = _string_value(short_name)
+    short_text = normalize_short_name_display(short_name, full_text)
     fallback_text = _string_value(fallback)
     for candidate in (full_text, fallback_text, short_text):
         if candidate and not is_technical_university_name(candidate):

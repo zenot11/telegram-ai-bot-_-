@@ -62,6 +62,7 @@ def test_postgres_fetch_uses_ambitious_margin_and_normalizes_quality_fields() ->
             "subjects": [],
             "min_score": 250,
             "score_is_valid": True,
+            "score_is_suspicious": False,
             "score_display": "250",
             "score_note": "",
             "type": "бюджет",
@@ -80,6 +81,8 @@ def test_postgres_fetch_uses_ambitious_margin_and_normalizes_quality_fields() ->
             "university_short_name": "МГУ",
             "university_full_name": "Московский государственный университет",
             "source": "postgresql",
+            "match_quality": "",
+            "match_reason": "",
         }
     ]
 

@@ -64,8 +64,9 @@ def test_mini_app_uses_postgres_first_directories_and_alias_presets() -> None:
     js = read_mini_app_file("app.js")
 
     assert "directoryState" in js
-    assert "PostgreSQL-базы проекта" in js
-    assert "Локальный режим без PostgreSQL" in js
+    assert "PostgreSQL-база проекта" in js
+    assert "Источник данных: JSON fallback" in js
+    assert "formatDirectoryCount" in js
     assert "fetchDirectoryPayload" in js
     assert "normalizeDirectionForSearch" in js
     assert 'direction: "информационные технологии"' in js
@@ -114,7 +115,7 @@ def test_app_js_has_local_filters_and_favorites() -> None:
     assert "aisha_favorites" in js
     assert "function initFavoritesSync" in js
     assert "function requestFavoritesApi" in js
-    assert "Локальный режим" in js
+    assert "Браузер: избранное хранится только в этом браузере" in js
     assert "window.Telegram && window.Telegram.WebApp" in js
 
 

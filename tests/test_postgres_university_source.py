@@ -196,6 +196,7 @@ def test_directions_endpoint_json_mode(monkeypatch) -> None:
 
     assert payload["storage"] == "json"
     assert payload["count"] > 0
+    assert payload["total_count"] >= payload["count"]
     assert any("эконом" in item.lower() for item in payload["items"])
 
 
