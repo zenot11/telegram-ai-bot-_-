@@ -29,7 +29,7 @@ router = Router()
 
 
 @router.message(Command("export"))
-@router.message(F.text == "Экспорт результата")
+@router.message(F.text.in_({"Экспорт результата", "📤 Экспорт результата"}))
 async def show_export_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
     if not message.from_user:

@@ -45,32 +45,38 @@ def inline_callback_data(markup) -> set[str | None]:
 def test_search_save_buttons_match_results_count() -> None:
     texts = keyboard_texts(search_results_keyboard(3))
 
-    assert "Сохранить 1" in texts
-    assert "Сохранить 2" in texts
-    assert "Сохранить 3" in texts
-    assert "Сохранить 4" not in texts
-    assert "Итог подбора" in texts
-    assert "История подборов" in texts
-    assert "Советы по подбору" in texts
-    assert "Фильтры результатов" in texts
-    assert "Экспорт результата" in texts
-    assert "Экспорт результата" in texts
+    assert "⭐ Сохранить 1" in texts
+    assert "⭐ Сохранить 2" in texts
+    assert "⭐ Сохранить 3" in texts
+    assert "⭐ Сохранить 4" not in texts
+    assert "➡️ Ещё варианты" in texts
+    assert "📌 Мои результаты" in texts
+    assert "🎓 Новый подбор" in texts
+    assert "🔙 Главное меню" in texts
+    assert "Итог подбора" not in texts
+    assert "История подборов" not in texts
+    assert "Советы по подбору" not in texts
+    assert "Фильтры результатов" not in texts
+    assert "Экспорт результата" not in texts
+    assert "Сравнить вузы" not in texts
+    assert "Избранные вузы" not in texts
+    assert "Как читать категории" not in texts
 
 
 def test_search_save_buttons_include_fourth_and_fifth_results() -> None:
     texts = keyboard_texts(search_results_keyboard(5))
 
-    assert "Сохранить 4" in texts
-    assert "Сохранить 5" in texts
-    assert "Сохранить 6" not in texts
+    assert "⭐ Сохранить 4" in texts
+    assert "⭐ Сохранить 5" in texts
+    assert "⭐ Сохранить 6" not in texts
 
 
 def test_search_save_buttons_do_not_exceed_existing_results() -> None:
     texts = keyboard_texts(search_results_keyboard(2))
 
-    assert "Сохранить 1" in texts
-    assert "Сохранить 2" in texts
-    assert "Сохранить 3" not in texts
+    assert "⭐ Сохранить 1" in texts
+    assert "⭐ Сохранить 2" in texts
+    assert "⭐ Сохранить 3" not in texts
 
 
 def test_favorites_delete_buttons_include_fourth_and_fifth_items() -> None:
@@ -84,12 +90,12 @@ def test_favorites_delete_buttons_include_fourth_and_fifth_items() -> None:
 def test_main_menu_is_compact_and_contains_sections() -> None:
     texts = keyboard_texts(main_menu_keyboard())
 
-    assert "Подобрать вуз" in texts
-    assert "Mini App" in texts
-    assert "Мои результаты" in texts
-    assert "Помощник" in texts
-    assert "Сервис" in texts
-    assert "О проекте" in texts
+    assert "🎓 Подобрать вуз" in texts
+    assert "📱 Mini App" in texts
+    assert "📌 Мои результаты" in texts
+    assert "🤝 Помощник" in texts
+    assert "⚙️ Сервис" in texts
+    assert "ℹ️ О проекте" in texts
     assert len(texts) == 6
     assert "История подборов" not in texts
     assert "Фильтры результатов" not in texts
@@ -104,12 +110,12 @@ def test_main_menu_inline_keyboard_contains_card_sections() -> None:
     callbacks = inline_callback_data(markup)
 
     assert texts == [
-        "Подобрать вуз",
-        "Mini App",
-        "Мои результаты",
-        "Помощник",
-        "Сервис",
-        "О проекте",
+        "🎓 Подобрать вуз",
+        "📱 Mini App",
+        "📌 Мои результаты",
+        "🤝 Помощник",
+        "⚙️ Сервис",
+        "ℹ️ О проекте",
     ]
     assert MENU_SEARCH_CALLBACK in callbacks
     assert MENU_RESULTS_CALLBACK in callbacks
@@ -121,13 +127,14 @@ def test_main_menu_inline_keyboard_contains_card_sections() -> None:
 def test_results_submenu_contains_result_actions() -> None:
     texts = keyboard_texts(results_menu_keyboard())
 
-    assert "Итог подбора" in texts
-    assert "Избранные вузы" in texts
-    assert "История подборов" in texts
-    assert "Сравнить вузы" in texts
-    assert "Фильтры результатов" in texts
-    assert "Экспорт результата" in texts
-    assert "Назад" in texts
+    assert "⭐ Избранные вузы" in texts
+    assert "⚖️ Сравнить вузы" in texts
+    assert "📤 Экспорт результата" in texts
+    assert "🕘 История подборов" in texts
+    assert "📊 Итог подбора" in texts
+    assert "🔙 Назад" in texts
+    assert "Фильтры результатов" not in texts
+    assert "Как читать категории" not in texts
 
 
 def test_results_inline_submenu_contains_back_callback() -> None:
@@ -135,20 +142,23 @@ def test_results_inline_submenu_contains_back_callback() -> None:
     texts = inline_keyboard_texts(markup)
     callbacks = inline_callback_data(markup)
 
-    assert "Итог подбора" in texts
-    assert "Экспорт результата" in texts
+    assert "📊 Итог подбора" in texts
+    assert "📤 Экспорт результата" in texts
+    assert "🔎 Фильтры результатов" not in texts
     assert MENU_MAIN_CALLBACK in callbacks
 
 
-def test_assistant_submenu_contains_help_actions() -> None:
+def test_assistant_submenu_contains_soft_support_actions() -> None:
     texts = keyboard_texts(assistant_menu_keyboard())
 
-    assert "Советы по подбору" in texts
-    assert "Что делать дальше" in texts
-    assert "Как читать категории" in texts
-    assert "Психологическая поддержка" in texts
-    assert "Mini App" in texts
-    assert "Назад" in texts
+    assert "Мне тревожно" in texts
+    assert "Я не знаю, куда поступать" in texts
+    assert "Я боюсь не поступить" in texts
+    assert "На меня давят родители" in texts
+    assert "Составить короткий план" in texts
+    assert "🔙 Назад" in texts
+    assert "Mini App" not in texts
+    assert "Как читать категории" not in texts
 
 
 def test_assistant_inline_submenu_contains_back_callback() -> None:
@@ -156,8 +166,8 @@ def test_assistant_inline_submenu_contains_back_callback() -> None:
     texts = inline_keyboard_texts(markup)
     callbacks = inline_callback_data(markup)
 
-    assert "Советы по подбору" in texts
-    assert "Психологическая поддержка" in texts
+    assert "Мне тревожно" in texts
+    assert "Составить короткий план" in texts
     assert MENU_MAIN_CALLBACK in callbacks
 
 
@@ -166,24 +176,27 @@ def test_next_steps_inline_keyboard_contains_user_actions() -> None:
     texts = inline_keyboard_texts(markup)
     callbacks = inline_callback_data(markup)
 
-    assert "Подобрать вуз" in texts
+    assert "🎓 Подобрать вуз" in texts
     assert "Советы по подбору" in texts
-    assert "Mini App" in texts
-    assert "Вернуться в меню" in texts
+    assert "📱 Mini App" in texts
+    assert "🔙 Главное меню" in texts
     assert MENU_SEARCH_CALLBACK in callbacks
     assert MENU_ADVICE_CALLBACK in callbacks
     assert MENU_MAIN_CALLBACK in callbacks
 
 
-def test_service_submenu_contains_profile_feedback_and_privacy() -> None:
+def test_service_submenu_contains_filters_feedback_and_privacy() -> None:
     texts = keyboard_texts(service_menu_keyboard())
 
-    assert "Мой профиль" in texts
-    assert "Обратная связь" in texts
-    assert "Мои обращения" in texts
-    assert "Сбросить данные" in texts
-    assert "Приватность" in texts
-    assert "Назад" in texts
+    assert "🔎 Фильтры результатов" in texts
+    assert "📖 Как читать категории" in texts
+    assert "🔐 Приватность" in texts
+    assert "🧹 Сбросить данные" in texts
+    assert "🛠 BotFather" in texts
+    assert "📬 Обратная связь" in texts
+    assert "🔙 Назад" in texts
+    assert "Мой профиль" not in texts
+    assert "Мои обращения" not in texts
 
 
 def test_service_inline_submenu_contains_back_callback() -> None:
@@ -191,8 +204,8 @@ def test_service_inline_submenu_contains_back_callback() -> None:
     texts = inline_keyboard_texts(markup)
     callbacks = inline_callback_data(markup)
 
-    assert "Мой профиль" in texts
-    assert "Обратная связь" in texts
+    assert "🔎 Фильтры результатов" in texts
+    assert "📬 Обратная связь" in texts
     assert MENU_MAIN_CALLBACK in callbacks
 
 
@@ -201,8 +214,8 @@ def test_about_submenu_contains_project_info() -> None:
 
     assert "Описание проекта" in texts
     assert "Демо-сценарий" in texts
-    assert "BotFather" in texts
-    assert "Назад" in texts
+    assert "🛠 BotFather" in texts
+    assert "🔙 Назад" in texts
 
 
 def test_about_inline_submenu_contains_back_callback() -> None:
@@ -220,34 +233,36 @@ def test_history_keyboard_actions() -> None:
 
     assert "Повторить последний подбор" in texts
     assert "Очистить историю" in texts
-    assert "Подобрать вуз" in texts
+    assert "🎓 Подобрать вуз" in texts
 
 
 def test_empty_history_keyboard_is_compact() -> None:
     texts = keyboard_texts(empty_history_keyboard())
 
-    assert "Подобрать вуз" in texts
-    assert "Вернуться в меню" in texts
+    assert "🎓 Подобрать вуз" in texts
+    assert "🔙 Главное меню" in texts
     assert "Очистить историю" not in texts
 
 
 def test_advice_keyboard_with_results_contains_next_steps() -> None:
     texts = keyboard_texts(advice_keyboard(has_results=True))
 
-    assert "Итог подбора" in texts
-    assert "Сравнить вузы" in texts
-    assert "Избранные вузы" in texts
-    assert "История подборов" in texts
-    assert "Подобрать заново" in texts
-    assert "Фильтры результатов" in texts
-    assert "Экспорт результата" in texts
+    assert "📌 Мои результаты" in texts
+    assert "⚙️ Сервис" in texts
+    assert "🎓 Новый подбор" in texts
+    assert "🔙 Главное меню" in texts
+    assert "Итог подбора" not in texts
+    assert "Сравнить вузы" not in texts
+    assert "Избранные вузы" not in texts
+    assert "Фильтры результатов" not in texts
+    assert "Экспорт результата" not in texts
 
 
 def test_advice_keyboard_without_results_is_compact() -> None:
     texts = keyboard_texts(advice_keyboard(has_results=False))
 
-    assert "Подобрать заново" in texts
-    assert "История подборов" in texts
+    assert "🎓 Новый подбор" in texts
+    assert "📌 Мои результаты" in texts
     assert "Сравнить вузы" not in texts
 
 
@@ -275,11 +290,12 @@ def test_filters_inline_keyboard_contains_expected_callbacks() -> None:
 def test_filtered_results_keyboard_keeps_save_buttons_and_filter_actions() -> None:
     texts = keyboard_texts(filtered_results_keyboard(2))
 
-    assert "Сохранить 1" in texts
-    assert "Сохранить 2" in texts
-    assert "Сохранить 3" not in texts
+    assert "⭐ Сохранить 1" in texts
+    assert "⭐ Сохранить 2" in texts
+    assert "⭐ Сохранить 3" not in texts
     assert "Все варианты" in texts
-    assert "Фильтры результатов" in texts
+    assert "🔎 Фильтры результатов" in texts
+    assert "📌 Мои результаты" in texts
 
 
 def test_compare_buttons_do_not_promise_fourth_or_fifth_items() -> None:
@@ -303,5 +319,5 @@ def test_export_inline_keyboard_contains_text_and_file_actions() -> None:
 def test_empty_export_keyboard_points_to_search() -> None:
     texts = keyboard_texts(empty_export_keyboard())
 
-    assert "Подобрать вуз" in texts
-    assert "Вернуться в меню" in texts
+    assert "🎓 Подобрать вуз" in texts
+    assert "🔙 Главное меню" in texts

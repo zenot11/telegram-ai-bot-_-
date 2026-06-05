@@ -4,7 +4,7 @@
 
 “Аиша” — расширенный демонстрационный прототип Telegram-сервиса для абитуриентов. Проект готов к показу преподавателю или команде: бот запускается, проводит пользователя через подбор вузов, показывает категории, сохраняет избранное, сравнивает варианты и открывает демонстрационный Mini App.
 
-Сейчас JSON-база `backend_stub/data/universities.json` остаётся fallback по умолчанию. На 37 этапе добавлен PostgreSQL-режим для каталога вузов, а на 38 этапе backend получил справочники, расширенные фильтры и сортировки: `USE_POSTGRES=true` переключает `/api/universities` и справочники на PostgreSQL по `DATABASE_URL`, не меняя Telegram-бот и Mini App. На 45 этапе отдельно зафиксировано, какие таблицы и поля SQL-схемы реально используются, и добавлен поиск `/api/directions?q=...` по полному справочнику направлений. На 46 этапе Mini App получил удобный кастомный picker направления вместо системного datalist.
+Сейчас JSON-база `backend_stub/data/universities.json` остаётся fallback по умолчанию. На 37 этапе добавлен PostgreSQL-режим для каталога вузов, а на 38 этапе backend получил справочники, расширенные фильтры и сортировки: `USE_POSTGRES=true` переключает `/api/universities` и справочники на PostgreSQL по `DATABASE_URL`, не меняя Telegram-бот и Mini App. На 45 этапе отдельно зафиксировано, какие таблицы и поля SQL-схемы реально используются, и добавлен поиск `/api/directions?q=...` по полному справочнику направлений. На 46 этапе Mini App получил удобный кастомный picker направления вместо системного datalist. На 47 этапе Telegram-меню разделено на Results/Assistant/Service без удаления команд.
 
 ## Уже реализовано
 
@@ -18,6 +18,7 @@
 - справочники `/api/regions`, `/api/cities`, `/api/directions`, `/api/study-forms`, `/api/admission-types`;
 - поиск `/api/directions?q=...` по полному PostgreSQL-справочнику направлений, кодов и профилей;
 - кастомный picker направления в Mini App с dropdown-подсказками, клавиатурной навигацией и кнопкой очистки;
+- reorganized Telegram menu: `🎓 Подобрать вуз`, `📱 Mini App`, `📌 Мои результаты`, `🤝 Помощник`, `⚙️ Сервис`, `ℹ️ О проекте`;
 - расширенные фильтры `/api/universities`: `city`, `study_form`, `admission_type`, `year`, `q`, `sort`, `limit`, `include_synthetic`;
 - `data_loader` для загрузки и проверки структуры базы вузов;
 - `university_repository` для сохранения API contract между JSON и PostgreSQL;
@@ -138,6 +139,8 @@
 Статус этапа 45: full team PostgreSQL database utilization audit. Изучены SQL-файлы из `finalproj.zip` без добавления архива или распаковки в Git, результат оформлен в `docs/DATABASE_USAGE.md`: таблицы `universities`, `faculties`, `directions`, `passing_scores` и `achievements` используются в пользовательском backend, а `users`, `user_ege_scores`, `user_achievements`, `user_favorites` и view `v_directions_with_latest_budget` оставлены вне текущего Python-потока с объяснением. `/api/directions` получил параметр `q` и теперь ищет по полному PostgreSQL-справочнику коды, названия и профили направлений; Mini App показывает ограниченный стартовый набор подсказок, но поиск работает по полной базе. `scripts/check_postgres.py` расширен диагностикой качества баллов, форм, конкурсов, регионов, q-search и API-like сценариев.
 
 Статус этапа 46: improved Mini App direction picker UX. Системный datalist заменён на кастомный picker направления: input, кнопка `×` для очистки только направления, dropdown с подсказками, debounce-запросы `/api/directions?q=...&limit=20`, пустое состояние и клавиатура `Escape`/`Enter`/`ArrowDown`/`ArrowUp`. Быстрые сценарии продолжают заполнять alias-направления вроде `информационные технологии`, а обычный поиск по полной PostgreSQL-базе не меняется.
+
+Статус этапа 47: Telegram bot menu reorganization. Главное меню теперь содержит только 6 верхнеуровневых разделов: `🎓 Подобрать вуз`, `📱 Mini App`, `📌 Мои результаты`, `🤝 Помощник`, `⚙️ Сервис`, `ℹ️ О проекте`. В `📌 Мои результаты` находятся избранные вузы, сравнение, экспорт, история и итог подбора; фильтры и объяснение категорий перенесены в `⚙️ Сервис` вместе с приватностью, сбросом данных, BotFather и обратной связью. `🤝 Помощник` показывает мягкие support-сценарии и короткий план. После поисковой выдачи reply-клавиатура не дублирует export/compare/filters, а оставляет только `⭐ Сохранить N`, `➡️ Ещё варианты`, `📌 Мои результаты`, `🎓 Новый подбор`, `🔙 Главное меню`. Команды `/start`, `/menu`, `/search`, `/webapp`, `/favorites`, `/compare`, `/export`, `/plan`, `/support`, `/reset` и старые текстовые aliases сохранены.
 
 ## Текущая архитектура
 

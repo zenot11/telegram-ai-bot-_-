@@ -29,7 +29,19 @@ router = Router()
 
 
 @router.message(Command("search"))
-@router.message(F.text.in_({"Подобрать вуз", "Подобрать 3 варианта", "Подобрать ещё", "Новый подбор", "Подобрать заново"}))
+@router.message(
+    F.text.in_(
+        {
+            "Подобрать вуз",
+            "🎓 Подобрать вуз",
+            "Подобрать 3 варианта",
+            "Подобрать ещё",
+            "Новый подбор",
+            "🎓 Новый подбор",
+            "Подобрать заново",
+        }
+    )
+)
 async def start_search(message: Message, state: FSMContext) -> None:
     await state.set_state(SearchStates.region)
     await message.answer(
@@ -179,7 +191,7 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
         await message.answer(explanation, reply_markup=search_results_keyboard(len(display_results)))
 
 
-@router.message(F.text.regexp(r"^Сохранить\s+\d+$"))
+@router.message(F.text.regexp(r"^(?:⭐\s*)?Сохранить\s+\d+$"))
 async def save_result_to_favorites(message: Message) -> None:
     if not message.from_user:
         await message.answer("Не удалось определить пользователя.", reply_markup=main_menu_keyboard())
@@ -210,6 +222,66 @@ async def save_result_to_favorites(message: Message) -> None:
     )
 
 
+@router.message(F.text == "➡️ Ещё варианты")
+async def show_more_results(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    if not message.from_user:
+        await message.answer("Не удалось определить пользователя.", reply_markup=main_menu_keyboard())
+        return
+
+    profile = user_storage.get_profile(message.from_user.id)
+    if not _is_complete_profile(profile):
+        await message.answer(
+            "Чтобы показать ещё варианты, сначала сделай подбор вузов.",
+            reply_markup=main_menu_keyboard(),
+        )
+        return
+
+    await message.answer("Ищу ещё варианты по последнему запросу...")
+    try:
+        results = await fetch_universities(
+            base_url=settings.backend_base_url,
+            region=str(profile["region"]),
+            score=int(profile["score"]),
+            direction=str(profile["direction"]),
+            education_type=str(profile["education_type"]),
+            limit=10,
+        )
+    except UniversityAPIError:
+        await message.answer(
+            "Сейчас не получилось получить дополнительные варианты. Попробуй позже.",
+            reply_markup=search_results_keyboard(len(user_storage.get_last_results(message.from_user.id))),
+        )
+        return
+
+    groups = group_universities_by_recommendation(int(profile["score"]), results)
+    previous_results = user_storage.get_last_results(message.from_user.id)
+    previous_keys = {_result_key(item) for item in previous_results}
+    display_results = [
+        item for item in visible_recommendations(groups)
+        if _result_key(item) not in previous_keys
+    ][:5]
+    if not display_results:
+        await message.answer(
+            "Дополнительных вариантов по последнему запросу пока нет.",
+            reply_markup=search_results_keyboard(len(user_storage.get_last_results(message.from_user.id))),
+        )
+        return
+
+    user_storage.set_active_results(message.from_user.id, display_results)
+    cards = "\n\n".join(
+        _format_university_card(i, item, int(profile["score"]))
+        for i, item in enumerate(display_results, start=1)
+    )
+    summary = format_search_brief_summary(display_results, int(profile["score"]))
+    await message.answer(
+        f"Показала расширенную выдачу по последнему запросу:\n\n"
+        f"{cards}\n\n"
+        f"{summary}",
+        reply_markup=search_results_keyboard(len(display_results)),
+    )
+
+
 def _format_university_card(index: int, item: dict, user_score: int) -> str:
     return format_university_card(index, item, user_score)
 
@@ -223,6 +295,26 @@ def _get_result_by_number(results: list[dict], result_number: int) -> dict | Non
     if index < 0 or index >= len(results):
         return None
     return results[index]
+
+
+def _is_complete_profile(profile: dict | None) -> bool:
+    if not isinstance(profile, dict):
+        return False
+    required_fields = ("region", "score", "direction", "education_type")
+    if any(profile.get(field) in (None, "") for field in required_fields):
+        return False
+    try:
+        int(profile["score"])
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
+def _result_key(item: dict) -> tuple[str, ...]:
+    return tuple(
+        str(item.get(field, "")).strip().lower()
+        for field in ("university", "program", "city", "min_score", "type")
+    )
 
 
 def _active_or_last_results(telegram_id: int) -> list[dict]:

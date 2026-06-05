@@ -19,7 +19,7 @@ def export_menu_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="Итог подбора", callback_data=EXPORT_SUMMARY_CALLBACK),
                 InlineKeyboardButton(text="Советы по подбору", callback_data=EXPORT_ADVICE_CALLBACK),
             ],
-            [InlineKeyboardButton(text="Вернуться в меню", callback_data=EXPORT_BACK_CALLBACK)],
+            [InlineKeyboardButton(text="🔙 Главное меню", callback_data=EXPORT_BACK_CALLBACK)],
         ]
     )
 
@@ -27,8 +27,8 @@ def export_menu_keyboard() -> InlineKeyboardMarkup:
 def empty_export_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Подобрать вуз")],
-            [KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="🎓 Подобрать вуз")],
+            [KeyboardButton(text="🔙 Главное меню")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Сначала сделай подбор",

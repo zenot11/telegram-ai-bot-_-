@@ -47,6 +47,7 @@ async def cmd_privacy(message: Message) -> None:
 
 
 @router.message(Command("next"))
+@router.message(Command("plan"))
 async def cmd_next(message: Message) -> None:
     user_id = message.from_user.id if message.from_user else 0
     profile = user_storage.get_profile(user_id) if user_id else None
@@ -63,7 +64,7 @@ async def cmd_botfather(message: Message) -> None:
 
 
 @router.message(Command("webapp"))
-@router.message(F.text.in_({"Mini App", "Открыть Mini App"}))
+@router.message(F.text.in_({"Mini App", "📱 Mini App", "Открыть Mini App"}))
 async def cmd_webapp(message: Message) -> None:
     if not settings.webapp_url:
         await message.answer(

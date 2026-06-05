@@ -36,4 +36,4 @@ def test_feedback_reply_keyboards_are_compact() -> None:
     assert "Отмена" in cancel_texts
     assert "Мои обращения" in created_texts
     assert "Создать ещё обращение" in created_texts
-    assert "Вернуться в меню" in created_texts
+    assert "🔙 Главное меню" in created_texts

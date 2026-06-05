@@ -29,7 +29,7 @@ def feedback_created_keyboard() -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text="Мои обращения")],
             [KeyboardButton(text="Создать ещё обращение")],
-            [KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="🔙 Главное меню")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Что сделать дальше",
@@ -40,7 +40,7 @@ def empty_feedback_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="Создать обращение")],
-            [KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="🔙 Главное меню")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Выбери действие",

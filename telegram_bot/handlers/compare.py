@@ -20,7 +20,7 @@ router = Router()
 
 
 @router.message(Command("compare"))
-@router.message(F.text == "Сравнить вузы")
+@router.message(F.text.in_({"Сравнить вузы", "⚖️ Сравнить вузы"}))
 async def start_compare(message: Message, state: FSMContext) -> None:
     await state.clear()
     if not message.from_user:

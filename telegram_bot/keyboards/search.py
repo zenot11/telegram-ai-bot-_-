@@ -13,7 +13,7 @@ def education_type_keyboard() -> ReplyKeyboardMarkup:
 
 def search_results_keyboard(results_count: int) -> ReplyKeyboardMarkup:
     save_buttons = [
-        KeyboardButton(text=f"Сохранить {index}")
+        KeyboardButton(text=f"⭐ Сохранить {index}")
         for index in range(1, min(results_count, MAX_SAVE_BUTTONS) + 1)
     ]
     rows = []
@@ -21,12 +21,10 @@ def search_results_keyboard(results_count: int) -> ReplyKeyboardMarkup:
         rows.extend(_chunk_buttons(save_buttons, 3))
     rows.extend(
         [
-            [KeyboardButton(text="Итог подбора"), KeyboardButton(text="Советы по подбору")],
-            [KeyboardButton(text="Фильтры результатов"), KeyboardButton(text="Экспорт результата")],
-            [KeyboardButton(text="Сравнить вузы"), KeyboardButton(text="Избранные вузы")],
-            [KeyboardButton(text="История подборов")],
-            [KeyboardButton(text="Как читать категории")],
-            [KeyboardButton(text="Новый подбор"), KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="➡️ Ещё варианты")],
+            [KeyboardButton(text="📌 Мои результаты")],
+            [KeyboardButton(text="🎓 Новый подбор")],
+            [KeyboardButton(text="🔙 Главное меню")],
         ]
     )
 
@@ -44,9 +42,9 @@ def _chunk_buttons(buttons: list[KeyboardButton], size: int) -> list[list[Keyboa
 def no_results_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Новый подбор")],
+            [KeyboardButton(text="🎓 Новый подбор")],
             [KeyboardButton(text="Регионы"), KeyboardButton(text="Направления")],
-            [KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="🔙 Главное меню")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Попробуй изменить запрос",
@@ -61,7 +59,7 @@ def support_keyboard() -> ReplyKeyboardMarkup:
             [KeyboardButton(text="Я боюсь не поступить")],
             [KeyboardButton(text="На меня давят родители")],
             [KeyboardButton(text="Составить короткий план")],
-            [KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="🔙 Назад")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Выбери следующий шаг",

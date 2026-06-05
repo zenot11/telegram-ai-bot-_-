@@ -36,9 +36,9 @@ MENU_BOTFATHER_CALLBACK = "menu:botfather"
 
 def main_menu_keyboard() -> ReplyKeyboardMarkup:
     keyboard = [
-        [KeyboardButton(text="Подобрать вуз"), _mini_app_button("Mini App")],
-        [KeyboardButton(text="Мои результаты"), KeyboardButton(text="Помощник")],
-        [KeyboardButton(text="Сервис"), KeyboardButton(text="О проекте")],
+        [KeyboardButton(text="🎓 Подобрать вуз"), _mini_app_button("📱 Mini App")],
+        [KeyboardButton(text="📌 Мои результаты"), KeyboardButton(text="🤝 Помощник")],
+        [KeyboardButton(text="⚙️ Сервис"), KeyboardButton(text="ℹ️ О проекте")],
     ]
 
     return ReplyKeyboardMarkup(
@@ -52,16 +52,16 @@ def main_menu_inline_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="Подобрать вуз", callback_data=MENU_SEARCH_CALLBACK),
-                _mini_app_inline_button("Mini App"),
+                InlineKeyboardButton(text="🎓 Подобрать вуз", callback_data=MENU_SEARCH_CALLBACK),
+                _mini_app_inline_button("📱 Mini App"),
             ],
             [
-                InlineKeyboardButton(text="Мои результаты", callback_data=MENU_RESULTS_CALLBACK),
-                InlineKeyboardButton(text="Помощник", callback_data=MENU_ASSISTANT_CALLBACK),
+                InlineKeyboardButton(text="📌 Мои результаты", callback_data=MENU_RESULTS_CALLBACK),
+                InlineKeyboardButton(text="🤝 Помощник", callback_data=MENU_ASSISTANT_CALLBACK),
             ],
             [
-                InlineKeyboardButton(text="Сервис", callback_data=MENU_SERVICE_CALLBACK),
-                InlineKeyboardButton(text="О проекте", callback_data=MENU_ABOUT_CALLBACK),
+                InlineKeyboardButton(text="⚙️ Сервис", callback_data=MENU_SERVICE_CALLBACK),
+                InlineKeyboardButton(text="ℹ️ О проекте", callback_data=MENU_ABOUT_CALLBACK),
             ],
         ]
     )
@@ -70,19 +70,12 @@ def main_menu_inline_keyboard() -> InlineKeyboardMarkup:
 def results_menu_inline_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(text="Итог подбора", callback_data=MENU_SUMMARY_CALLBACK),
-                InlineKeyboardButton(text="Избранные вузы", callback_data=MENU_FAVORITES_CALLBACK),
-            ],
-            [
-                InlineKeyboardButton(text="История подборов", callback_data=MENU_HISTORY_CALLBACK),
-                InlineKeyboardButton(text="Сравнить вузы", callback_data=MENU_COMPARE_CALLBACK),
-            ],
-            [
-                InlineKeyboardButton(text="Фильтры результатов", callback_data=MENU_FILTERS_CALLBACK),
-                InlineKeyboardButton(text="Экспорт результата", callback_data=MENU_EXPORT_CALLBACK),
-            ],
-            [InlineKeyboardButton(text="Назад", callback_data=MENU_MAIN_CALLBACK)],
+            [InlineKeyboardButton(text="⭐ Избранные вузы", callback_data=MENU_FAVORITES_CALLBACK)],
+            [InlineKeyboardButton(text="⚖️ Сравнить вузы", callback_data=MENU_COMPARE_CALLBACK)],
+            [InlineKeyboardButton(text="📤 Экспорт результата", callback_data=MENU_EXPORT_CALLBACK)],
+            [InlineKeyboardButton(text="🕘 История подборов", callback_data=MENU_HISTORY_CALLBACK)],
+            [InlineKeyboardButton(text="📊 Итог подбора", callback_data=MENU_SUMMARY_CALLBACK)],
+            [InlineKeyboardButton(text="🔙 Назад", callback_data=MENU_MAIN_CALLBACK)],
         ]
     )
 
@@ -90,19 +83,12 @@ def results_menu_inline_keyboard() -> InlineKeyboardMarkup:
 def assistant_menu_inline_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(text="Советы по подбору", callback_data=MENU_ADVICE_CALLBACK),
-                InlineKeyboardButton(text="Что делать дальше", callback_data=MENU_NEXT_CALLBACK),
-            ],
-            [InlineKeyboardButton(text="Как читать категории", callback_data=MENU_CATEGORIES_CALLBACK)],
-            [
-                InlineKeyboardButton(text="Направления", callback_data=MENU_DIRECTIONS_CALLBACK),
-                InlineKeyboardButton(text="Регионы", callback_data=MENU_REGIONS_CALLBACK),
-            ],
-            [InlineKeyboardButton(text="Индивидуальные достижения", callback_data=MENU_ACHIEVEMENTS_CALLBACK)],
-            [InlineKeyboardButton(text="Психологическая поддержка", callback_data=MENU_SUPPORT_CALLBACK)],
-            [_mini_app_inline_button("Mini App")],
-            [InlineKeyboardButton(text="Назад", callback_data=MENU_MAIN_CALLBACK)],
+            [InlineKeyboardButton(text="Мне тревожно", callback_data=MENU_SUPPORT_CALLBACK)],
+            [InlineKeyboardButton(text="Я не знаю, куда поступать", callback_data=MENU_SUPPORT_CALLBACK)],
+            [InlineKeyboardButton(text="Я боюсь не поступить", callback_data=MENU_SUPPORT_CALLBACK)],
+            [InlineKeyboardButton(text="На меня давят родители", callback_data=MENU_SUPPORT_CALLBACK)],
+            [InlineKeyboardButton(text="Составить короткий план", callback_data=MENU_NEXT_CALLBACK)],
+            [InlineKeyboardButton(text="🔙 Назад", callback_data=MENU_MAIN_CALLBACK)],
         ]
     )
 
@@ -111,11 +97,11 @@ def next_steps_inline_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="Подобрать вуз", callback_data=MENU_SEARCH_CALLBACK),
+                InlineKeyboardButton(text="🎓 Подобрать вуз", callback_data=MENU_SEARCH_CALLBACK),
                 InlineKeyboardButton(text="Советы по подбору", callback_data=MENU_ADVICE_CALLBACK),
             ],
-            [_mini_app_inline_button("Mini App")],
-            [InlineKeyboardButton(text="Вернуться в меню", callback_data=MENU_MAIN_CALLBACK)],
+            [_mini_app_inline_button("📱 Mini App")],
+            [InlineKeyboardButton(text="🔙 Главное меню", callback_data=MENU_MAIN_CALLBACK)],
         ]
     )
 
@@ -123,16 +109,13 @@ def next_steps_inline_keyboard() -> InlineKeyboardMarkup:
 def service_menu_inline_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Мой профиль", callback_data=MENU_PROFILE_CALLBACK)],
-            [
-                InlineKeyboardButton(text="Обратная связь", callback_data=MENU_FEEDBACK_CALLBACK),
-                InlineKeyboardButton(text="Мои обращения", callback_data=MENU_MY_FEEDBACK_CALLBACK),
-            ],
-            [
-                InlineKeyboardButton(text="Приватность", callback_data=MENU_PRIVACY_CALLBACK),
-                InlineKeyboardButton(text="Сбросить данные", callback_data=MENU_RESET_CALLBACK),
-            ],
-            [InlineKeyboardButton(text="Назад", callback_data=MENU_MAIN_CALLBACK)],
+            [InlineKeyboardButton(text="🔎 Фильтры результатов", callback_data=MENU_FILTERS_CALLBACK)],
+            [InlineKeyboardButton(text="📖 Как читать категории", callback_data=MENU_CATEGORIES_CALLBACK)],
+            [InlineKeyboardButton(text="🔐 Приватность", callback_data=MENU_PRIVACY_CALLBACK)],
+            [InlineKeyboardButton(text="🧹 Сбросить данные", callback_data=MENU_RESET_CALLBACK)],
+            [InlineKeyboardButton(text="🛠 BotFather", callback_data=MENU_BOTFATHER_CALLBACK)],
+            [InlineKeyboardButton(text="📬 Обратная связь", callback_data=MENU_FEEDBACK_CALLBACK)],
+            [InlineKeyboardButton(text="🔙 Назад", callback_data=MENU_MAIN_CALLBACK)],
         ]
     )
 
@@ -144,8 +127,8 @@ def about_menu_inline_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="О проекте", callback_data=MENU_ABOUT_TEXT_CALLBACK),
                 InlineKeyboardButton(text="Демо-сценарий", callback_data=MENU_DEMO_CALLBACK),
             ],
-            [InlineKeyboardButton(text="BotFather", callback_data=MENU_BOTFATHER_CALLBACK)],
-            [InlineKeyboardButton(text="Назад", callback_data=MENU_MAIN_CALLBACK)],
+            [InlineKeyboardButton(text="🛠 BotFather", callback_data=MENU_BOTFATHER_CALLBACK)],
+            [InlineKeyboardButton(text="🔙 Назад", callback_data=MENU_MAIN_CALLBACK)],
         ]
     )
 
@@ -153,42 +136,46 @@ def about_menu_inline_keyboard() -> InlineKeyboardMarkup:
 def results_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Итог подбора"), KeyboardButton(text="Избранные вузы")],
-            [KeyboardButton(text="История подборов"), KeyboardButton(text="Сравнить вузы")],
-            [KeyboardButton(text="Фильтры результатов"), KeyboardButton(text="Экспорт результата")],
-            [KeyboardButton(text="Назад")],
+            [KeyboardButton(text="⭐ Избранные вузы")],
+            [KeyboardButton(text="⚖️ Сравнить вузы")],
+            [KeyboardButton(text="📤 Экспорт результата")],
+            [KeyboardButton(text="🕘 История подборов")],
+            [KeyboardButton(text="📊 Итог подбора")],
+            [KeyboardButton(text="🔙 Назад")],
         ],
         resize_keyboard=True,
-        input_field_placeholder="Действия с результатами",
+        input_field_placeholder="Мои результаты",
     )
 
 
 def assistant_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Советы по подбору"), KeyboardButton(text="Что делать дальше")],
-            [KeyboardButton(text="Как читать категории")],
-            [KeyboardButton(text="Направления"), KeyboardButton(text="Регионы")],
-            [KeyboardButton(text="Индивидуальные достижения")],
-            [KeyboardButton(text="Психологическая поддержка")],
-            [_mini_app_button("Mini App")],
-            [KeyboardButton(text="Назад")],
+            [KeyboardButton(text="Мне тревожно")],
+            [KeyboardButton(text="Я не знаю, куда поступать")],
+            [KeyboardButton(text="Я боюсь не поступить")],
+            [KeyboardButton(text="На меня давят родители")],
+            [KeyboardButton(text="Составить короткий план")],
+            [KeyboardButton(text="🔙 Назад")],
         ],
         resize_keyboard=True,
-        input_field_placeholder="Советы и поддержка",
+        input_field_placeholder="Мягкая поддержка",
     )
 
 
 def service_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Мой профиль")],
-            [KeyboardButton(text="Обратная связь"), KeyboardButton(text="Мои обращения")],
-            [KeyboardButton(text="Приватность"), KeyboardButton(text="Сбросить данные")],
-            [KeyboardButton(text="Назад")],
+            [KeyboardButton(text="🔎 Фильтры результатов")],
+            [KeyboardButton(text="📖 Как читать категории")],
+            [KeyboardButton(text="🔐 Приватность")],
+            [KeyboardButton(text="🧹 Сбросить данные")],
+            [KeyboardButton(text="🛠 BotFather")],
+            [KeyboardButton(text="📬 Обратная связь")],
+            [KeyboardButton(text="🔙 Назад")],
         ],
         resize_keyboard=True,
-        input_field_placeholder="Сервисные действия",
+        input_field_placeholder="Сервис",
     )
 
 
@@ -196,8 +183,8 @@ def about_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="Описание проекта"), KeyboardButton(text="Демо-сценарий")],
-            [KeyboardButton(text="BotFather")],
-            [KeyboardButton(text="Назад")],
+            [KeyboardButton(text="🛠 BotFather")],
+            [KeyboardButton(text="🔙 Назад")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Информация о проекте",
@@ -206,7 +193,7 @@ def about_menu_keyboard() -> ReplyKeyboardMarkup:
 
 def back_to_main_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="Назад")]],
+        keyboard=[[KeyboardButton(text="🔙 Назад")]],
         resize_keyboard=True,
         input_field_placeholder="Вернуться в меню",
     )
@@ -215,10 +202,10 @@ def back_to_main_keyboard() -> ReplyKeyboardMarkup:
 def profile_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Избранные вузы")],
-            [KeyboardButton(text="Сравнить вузы")],
-            [KeyboardButton(text="Сбросить профиль")],
-            [KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="🎓 Подобрать вуз"), KeyboardButton(text="⭐ Избранные вузы")],
+            [KeyboardButton(text="⚖️ Сравнить вузы")],
+            [KeyboardButton(text="🧹 Сбросить данные")],
+            [KeyboardButton(text="🔙 Главное меню")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Выбери действие",
@@ -227,15 +214,15 @@ def profile_keyboard() -> ReplyKeyboardMarkup:
 
 def summary_keyboard() -> ReplyKeyboardMarkup:
     keyboard = [
-        [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Сравнить вузы")],
-        [KeyboardButton(text="Советы по подбору"), KeyboardButton(text="Фильтры результатов")],
-        [KeyboardButton(text="Экспорт результата"), KeyboardButton(text="История подборов")],
+        [KeyboardButton(text="📌 Мои результаты")],
+        [KeyboardButton(text="🤝 Помощник"), KeyboardButton(text="⚙️ Сервис")],
     ]
     if settings.webapp_url:
-        keyboard.append([KeyboardButton(text="Открыть Mini App", web_app=WebAppInfo(url=settings.webapp_url))])
+        keyboard.append([KeyboardButton(text="📱 Mini App", web_app=WebAppInfo(url=settings.webapp_url))])
     keyboard.extend(
         [
-            [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="🎓 Новый подбор")],
+            [KeyboardButton(text="🔙 Главное меню")],
         ]
     )
 
@@ -262,8 +249,8 @@ def favorites_keyboard_for_count(items_count: int) -> ReplyKeyboardMarkup:
     keyboard.extend(
         [
             [KeyboardButton(text="Очистить избранное")],
-            [KeyboardButton(text="Сравнить вузы")],
-            [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="⚖️ Сравнить вузы")],
+            [KeyboardButton(text="🎓 Подобрать вуз"), KeyboardButton(text="🔙 Главное меню")],
         ]
     )
 
@@ -281,8 +268,8 @@ def _chunk_buttons(buttons: list[KeyboardButton], size: int) -> list[list[Keyboa
 def empty_favorites_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Подобрать вуз")],
-            [KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="🎓 Подобрать вуз")],
+            [KeyboardButton(text="🔙 Главное меню")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Выбери действие",
@@ -294,7 +281,7 @@ def history_keyboard() -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text="Повторить последний подбор")],
             [KeyboardButton(text="Очистить историю")],
-            [KeyboardButton(text="Подобрать вуз"), KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="🎓 Подобрать вуз"), KeyboardButton(text="🔙 Главное меню")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Выбери действие",
@@ -304,8 +291,8 @@ def history_keyboard() -> ReplyKeyboardMarkup:
 def empty_history_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Подобрать вуз")],
-            [KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="🎓 Подобрать вуз")],
+            [KeyboardButton(text="🔙 Главное меню")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Выбери действие",
@@ -317,18 +304,17 @@ def advice_keyboard(has_results: bool) -> ReplyKeyboardMarkup:
     if has_results:
         keyboard.extend(
             [
-                [KeyboardButton(text="Итог подбора"), KeyboardButton(text="Сравнить вузы")],
-                [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Фильтры результатов")],
-                [KeyboardButton(text="Экспорт результата"), KeyboardButton(text="История подборов")],
+                [KeyboardButton(text="📌 Мои результаты")],
+                [KeyboardButton(text="⚙️ Сервис")],
             ]
         )
     else:
-        keyboard.append([KeyboardButton(text="История подборов")])
+        keyboard.append([KeyboardButton(text="📌 Мои результаты")])
 
-    keyboard.append([KeyboardButton(text="Подобрать заново")])
+    keyboard.append([KeyboardButton(text="🎓 Новый подбор")])
     if settings.webapp_url:
-        keyboard.append([KeyboardButton(text="Открыть Mini App", web_app=WebAppInfo(url=settings.webapp_url))])
-    keyboard.append([KeyboardButton(text="Вернуться в меню")])
+        keyboard.append([KeyboardButton(text="📱 Mini App", web_app=WebAppInfo(url=settings.webapp_url))])
+    keyboard.append([KeyboardButton(text="🔙 Главное меню")])
 
     return ReplyKeyboardMarkup(
         keyboard=keyboard,
@@ -340,8 +326,8 @@ def advice_keyboard(has_results: bool) -> ReplyKeyboardMarkup:
 def empty_advice_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Подобрать вуз")],
-            [KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="🎓 Подобрать вуз")],
+            [KeyboardButton(text="🔙 Главное меню")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Выбери действие",

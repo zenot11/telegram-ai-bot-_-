@@ -27,7 +27,7 @@ router = Router()
 
 
 @router.message(Command("filters"))
-@router.message(F.text == "Фильтры результатов")
+@router.message(F.text.in_({"Фильтры результатов", "🔎 Фильтры результатов"}))
 async def show_filters(message: Message, state: FSMContext) -> None:
     await state.clear()
     if not message.from_user:

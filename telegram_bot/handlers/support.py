@@ -12,7 +12,7 @@ router = Router()
 
 
 @router.message(Command("support"))
-@router.message(F.text == "Психологическая поддержка")
+@router.message(F.text.in_({"Психологическая поддержка", "🤝 Помощник"}))
 async def support_entry(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(
@@ -72,7 +72,7 @@ async def short_plan(message: Message) -> None:
     )
 
 
-@router.message(StateFilter(None), F.text.in_({"Вернуться в меню", "Вернуться позже"}))
+@router.message(StateFilter(None), F.text.in_({"Вернуться в меню", "Вернуться позже", "🔙 Главное меню", "🔙 Назад"}))
 async def back_to_menu(message: Message) -> None:
     await message.answer("Главное меню. Выбери, с чего начнём:", reply_markup=main_menu_keyboard())
 

@@ -29,7 +29,17 @@ router = Router()
 
 
 @router.message(Command("feedback"))
-@router.message(F.text.in_({"Обратная связь", "Поддержка проекта", "Создать обращение", "Создать ещё обращение"}))
+@router.message(
+    F.text.in_(
+        {
+            "Обратная связь",
+            "📬 Обратная связь",
+            "Поддержка проекта",
+            "Создать обращение",
+            "Создать ещё обращение",
+        }
+    )
+)
 async def feedback_entry(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(

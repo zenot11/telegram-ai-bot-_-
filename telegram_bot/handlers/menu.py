@@ -102,31 +102,31 @@ async def cmd_menu(message: Message, state: FSMContext) -> None:
     await send_menu_card(message, "main", main_menu_inline_keyboard())
 
 
-@router.message(F.text.in_({"Вернуться в меню", "Главное меню", "Назад"}))
+@router.message(F.text.in_({"Вернуться в меню", "Главное меню", "Назад", "🔙 Главное меню", "🔙 Назад"}))
 async def back_to_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
     await send_menu_card(message, "main", main_menu_inline_keyboard())
 
 
-@router.message(F.text == "Мои результаты")
+@router.message(F.text.in_({"Мои результаты", "📌 Мои результаты"}))
 async def results_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
     await send_menu_card(message, "results", results_menu_inline_keyboard())
 
 
-@router.message(F.text == "Помощник")
+@router.message(F.text.in_({"Помощник", "🤝 Помощник"}))
 async def assistant_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
     await send_menu_card(message, "assistant", assistant_menu_inline_keyboard())
 
 
-@router.message(F.text == "Сервис")
+@router.message(F.text.in_({"Сервис", "⚙️ Сервис"}))
 async def service_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
     await send_menu_card(message, "service", service_menu_inline_keyboard())
 
 
-@router.message(F.text == "О проекте")
+@router.message(F.text.in_({"О проекте", "ℹ️ О проекте"}))
 async def about_project_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
     await send_menu_card(message, "about", about_menu_inline_keyboard())
@@ -144,13 +144,13 @@ async def demo_text(message: Message, state: FSMContext) -> None:
     await message.answer(DEMO_TEXT, reply_markup=about_menu_inline_keyboard())
 
 
-@router.message(F.text == "BotFather")
+@router.message(F.text.in_({"BotFather", "🛠 BotFather"}))
 async def botfather_text(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(BOTFATHER_TEXT, reply_markup=about_menu_inline_keyboard())
+    await message.answer(BOTFATHER_TEXT, reply_markup=service_menu_inline_keyboard())
 
 
-@router.message(F.text == "Приватность")
+@router.message(F.text.in_({"Приватность", "🔐 Приватность"}))
 async def privacy_text(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(PRIVACY_TEXT, reply_markup=service_menu_inline_keyboard())
@@ -363,7 +363,7 @@ async def categories_menu_callback(callback: CallbackQuery, state: FSMContext) -
     await state.clear()
     await callback.answer()
     if callback.message:
-        await callback.message.answer(format_categories_explanation(), reply_markup=assistant_menu_inline_keyboard())
+        await callback.message.answer(format_categories_explanation(), reply_markup=service_menu_inline_keyboard())
 
 
 @router.callback_query(F.data == MENU_ACHIEVEMENTS_CALLBACK)
@@ -411,7 +411,7 @@ async def botfather_menu_callback(callback: CallbackQuery, state: FSMContext) ->
     await state.clear()
     await callback.answer()
     if callback.message:
-        await callback.message.answer(BOTFATHER_TEXT, reply_markup=about_menu_inline_keyboard())
+        await callback.message.answer(BOTFATHER_TEXT, reply_markup=service_menu_inline_keyboard())
 
 
 @router.message(F.text == "Мои баллы")
@@ -426,7 +426,7 @@ async def my_profile(message: Message, state: FSMContext) -> None:
 
 
 @router.message(Command("summary"))
-@router.message(F.text == "Итог подбора")
+@router.message(F.text.in_({"Итог подбора", "📊 Итог подбора"}))
 async def search_summary(message: Message, state: FSMContext) -> None:
     await state.clear()
     if not message.from_user:
@@ -448,7 +448,7 @@ async def search_advice(message: Message, state: FSMContext) -> None:
 
 
 @router.message(Command("history"))
-@router.message(F.text == "История подборов")
+@router.message(F.text.in_({"История подборов", "🕘 История подборов"}))
 async def search_history(message: Message, state: FSMContext) -> None:
     await state.clear()
     if not message.from_user:
@@ -542,7 +542,7 @@ async def repeat_last_search(message: Message, state: FSMContext) -> None:
     )
 
 
-@router.message(F.text.in_({"Сбросить профиль", "Сбросить данные"}))
+@router.message(F.text.in_({"Сбросить профиль", "Сбросить данные", "🧹 Сбросить данные"}))
 async def reset_profile_button(message: Message, state: FSMContext) -> None:
     await state.clear()
     if message.from_user:
@@ -550,7 +550,8 @@ async def reset_profile_button(message: Message, state: FSMContext) -> None:
     await message.answer("Профиль, последний подбор, история и избранное очищены.", reply_markup=main_menu_keyboard())
 
 
-@router.message(F.text == "Избранные вузы")
+@router.message(Command("favorites"))
+@router.message(F.text.in_({"Избранные вузы", "⭐ Избранные вузы"}))
 async def favorites(message: Message, state: FSMContext) -> None:
     await state.clear()
     if not message.from_user:
@@ -564,7 +565,7 @@ async def _send_profile(message: Message, telegram_id: int) -> None:
     summary = user_storage.get_profile_summary(telegram_id)
     if summary["is_empty"]:
         await message.answer(
-            "Пока профиль пустой. Нажми «Подобрать вуз», и я сохраню данные во время подбора.",
+            "Пока профиль пустой. Нажми «🎓 Подобрать вуз», и я сохраню данные во время подбора.",
             reply_markup=profile_keyboard(),
         )
         return
@@ -611,7 +612,7 @@ async def _send_favorites(message: Message, telegram_id: int) -> None:
     if not items:
         await message.answer(
             "Избранное пока пустое.\n"
-            "Сначала пройди подбор и нажми «Сохранить 1», «Сохранить 2» и т.д.",
+            "Сначала пройди подбор и нажми «⭐ Сохранить 1», «⭐ Сохранить 2» и т.д.",
             reply_markup=empty_favorites_keyboard(),
         )
         return
@@ -746,7 +747,7 @@ async def remove_favorite(message: Message, state: FSMContext) -> None:
     remaining_count = len(user_storage.get_favorites(message.from_user.id))
     reply_markup = _favorites_reply_keyboard(remaining_count)
     suffix = "" if remaining_count else (
-        "\n\nИзбранное пока пустое. Сначала пройди подбор и нажми «Сохранить 1», «Сохранить 2» и т.д."
+        "\n\nИзбранное пока пустое. Сначала пройди подбор и нажми «⭐ Сохранить 1», «⭐ Сохранить 2» и т.д."
     )
 
     await message.answer(
@@ -858,10 +859,10 @@ async def help_button(message: Message, state: FSMContext) -> None:
 
 
 @router.message(Command("categories"))
-@router.message(F.text == "Как читать категории")
+@router.message(F.text.in_({"Как читать категории", "📖 Как читать категории"}))
 async def categories_explanation(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(format_categories_explanation(), reply_markup=main_menu_keyboard())
+    await message.answer(format_categories_explanation(), reply_markup=service_menu_keyboard())
 
 
 def _format_favorite_card(index: int, item: dict) -> str:
@@ -870,13 +871,7 @@ def _format_favorite_card(index: int, item: dict) -> str:
 
 def _main_menu_text() -> str:
     return (
-        "Главное меню Аиши. Выбери раздел:\n\n"
-        "Подобрать вуз — начать новый подбор.\n"
-        "Mini App — открыть расширенное приложение.\n"
-        "Мои результаты — итог, избранное, история, сравнение и экспорт.\n"
-        "Помощник — советы, категории и поддержка.\n"
-        "Сервис — профиль, обратная связь и приватность.\n"
-        "О проекте — описание, демо и BotFather."
+        "Выбери раздел. Можно начать подбор, открыть Mini App или посмотреть сохранённые результаты."
     )
 
 

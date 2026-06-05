@@ -30,12 +30,12 @@ def test_main_menu_keeps_only_primary_sections() -> None:
     texts = keyboard_texts(main_menu_keyboard())
 
     assert texts == [
-        "Подобрать вуз",
-        "Mini App",
-        "Мои результаты",
-        "Помощник",
-        "Сервис",
-        "О проекте",
+        "🎓 Подобрать вуз",
+        "📱 Mini App",
+        "📌 Мои результаты",
+        "🤝 Помощник",
+        "⚙️ Сервис",
+        "ℹ️ О проекте",
     ]
 
 
@@ -46,17 +46,17 @@ def test_submenus_have_back_navigation() -> None:
         service_menu_keyboard(),
         about_menu_keyboard(),
     ):
-        assert "Назад" in keyboard_texts(markup)
+        assert "🔙 Назад" in keyboard_texts(markup)
 
 
 def test_card_inline_menus_keep_same_sections() -> None:
     assert inline_keyboard_texts(main_menu_inline_keyboard()) == [
-        "Подобрать вуз",
-        "Mini App",
-        "Мои результаты",
-        "Помощник",
-        "Сервис",
-        "О проекте",
+        "🎓 Подобрать вуз",
+        "📱 Mini App",
+        "📌 Мои результаты",
+        "🤝 Помощник",
+        "⚙️ Сервис",
+        "ℹ️ О проекте",
     ]
 
     for markup in (
@@ -65,7 +65,7 @@ def test_card_inline_menus_keep_same_sections() -> None:
         service_menu_inline_keyboard(),
         about_menu_inline_keyboard(),
     ):
-        assert "Назад" in inline_keyboard_texts(markup)
+        assert "🔙 Назад" in inline_keyboard_texts(markup)
 
 
 def test_menu_card_captions_match_sections() -> None:

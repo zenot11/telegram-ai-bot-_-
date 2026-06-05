@@ -57,7 +57,7 @@ def filters_keyboard(counts: dict[str, int]) -> InlineKeyboardMarkup:
 
 def filtered_results_keyboard(results_count: int) -> ReplyKeyboardMarkup:
     save_buttons = [
-        KeyboardButton(text=f"Сохранить {index}")
+        KeyboardButton(text=f"⭐ Сохранить {index}")
         for index in range(1, min(results_count, MAX_SAVE_BUTTONS) + 1)
     ]
     rows = []
@@ -65,9 +65,9 @@ def filtered_results_keyboard(results_count: int) -> ReplyKeyboardMarkup:
         rows.extend(_chunk_buttons(save_buttons, 3))
     rows.extend(
         [
-            [KeyboardButton(text="Все варианты"), KeyboardButton(text="Фильтры результатов")],
-            [KeyboardButton(text="Итог подбора"), KeyboardButton(text="Советы по подбору")],
-            [KeyboardButton(text="Избранные вузы"), KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="Все варианты"), KeyboardButton(text="🔎 Фильтры результатов")],
+            [KeyboardButton(text="📌 Мои результаты")],
+            [KeyboardButton(text="🔙 Главное меню")],
         ]
     )
 
@@ -81,8 +81,8 @@ def filtered_results_keyboard(results_count: int) -> ReplyKeyboardMarkup:
 def empty_filters_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Подобрать вуз")],
-            [KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="🎓 Подобрать вуз")],
+            [KeyboardButton(text="🔙 Главное меню")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Сначала сделай подбор",
@@ -92,9 +92,9 @@ def empty_filters_keyboard() -> ReplyKeyboardMarkup:
 def empty_filtered_results_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Все варианты"), KeyboardButton(text="Фильтры результатов")],
-            [KeyboardButton(text="Подобрать заново"), KeyboardButton(text="Советы по подбору")],
-            [KeyboardButton(text="Вернуться в меню")],
+            [KeyboardButton(text="Все варианты"), KeyboardButton(text="🔎 Фильтры результатов")],
+            [KeyboardButton(text="🎓 Новый подбор")],
+            [KeyboardButton(text="🔙 Главное меню")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Выбери действие",
