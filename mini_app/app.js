@@ -52,11 +52,15 @@ const quickScenarioButtons = document.querySelectorAll("[data-quick-scenario]");
 const toastContainerNode = document.querySelector("#toast-container");
 const aboutDataSourceNode = document.querySelector("#about-data-source");
 const footerDataSourceNode = document.querySelector("#footer-data-source");
-const directionDatalistNode = document.querySelector("#direction-options");
+const directionPickerNode = document.querySelector("[data-direction-picker]");
+const directionInputNode = form?.elements.direction || document.querySelector("#direction");
+const directionDropdownNode = document.querySelector("#direction-options");
+const directionClearButton = document.querySelector("#direction-clear");
 
 const SAFE_MARGIN = 25;
 const AMBITIOUS_MARGIN = 20;
 const MINI_APP_RESULT_LIMIT = 12;
+const DIRECTION_PICKER_LIMIT = 20;
 const FAVORITES_KEY = "aisha_favorites";
 const LEGACY_FAVORITES_KEY = "aishaMiniAppFavorites";
 const THEME_KEY = "aisha_theme";
@@ -78,6 +82,15 @@ let favoritesSyncNotice = "";
 let feedbackTickets = [];
 let latestLocalFeedbackTicket = null;
 let directionSearchTimer = null;
+let directionPickerState = {
+  isOpen: false,
+  isLoading: false,
+  selectedValue: "",
+  lastQuery: "",
+  activeIndex: -1,
+  defaultSuggestions: [],
+  suggestions: [],
+};
 let directoryState = {
   status: "loading",
   storage: "fallback",
@@ -189,6 +202,19 @@ const directionPresetGroups = {
   педагогика: ["Педагогическое образование", "Психолого-педагогическое образование"],
 };
 
+const fallbackDirectionSuggestions = [
+  "информационные технологии",
+  "09.03.04 Программная инженерия",
+  "Прикладная информатика",
+  "Информационная безопасность",
+  "экономика",
+  "медицина",
+  "архитектура",
+  "юриспруденция",
+  "педагогика",
+  "строительство",
+];
+
 const telegramWebApp = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 const telegramInitData = getTelegramInitData();
 
@@ -224,8 +250,42 @@ form.elements.region?.addEventListener("change", () => {
   loadCitiesForRegion(String(form.elements.region.value || ""));
 });
 
-form.elements.direction?.addEventListener("input", () => {
-  scheduleDirectionSearch(String(form.elements.direction.value || ""));
+directionInputNode?.addEventListener("focus", () => {
+  openDirectionPicker();
+  refreshDirectionSuggestions(directionInputNode.value);
+});
+
+directionInputNode?.addEventListener("click", () => {
+  openDirectionPicker();
+  refreshDirectionSuggestions(directionInputNode.value);
+});
+
+directionInputNode?.addEventListener("input", () => {
+  directionPickerState.selectedValue = "";
+  updateDirectionClearButton();
+  openDirectionPicker();
+  scheduleDirectionSearch(directionInputNode.value);
+});
+
+directionInputNode?.addEventListener("keydown", (event) => {
+  handleDirectionPickerKeydown(event);
+});
+
+directionClearButton?.addEventListener("click", () => {
+  clearDirectionSelection({ keepOpen: true });
+  directionInputNode?.focus();
+});
+
+directionDropdownNode?.addEventListener("mousemove", (event) => {
+  const option = event.target.closest("[data-direction-suggestion]");
+  if (!option) {
+    return;
+  }
+  const index = Number(option.dataset.directionIndex);
+  if (!Number.isNaN(index) && index !== directionPickerState.activeIndex) {
+    directionPickerState.activeIndex = index;
+    renderDirectionDropdown();
+  }
 });
 
 feedbackForm?.addEventListener("submit", (event) => {
@@ -413,8 +473,7 @@ function setFormValues({ region, score, direction, type, city = "", studyForm = 
     cityInput.value = city;
   }
   if (directionInput) {
-    ensureSelectOption(directionInput, direction);
-    directionInput.value = direction;
+    setDirectionValue(direction, { selected: true });
   }
   if (studyFormInput) {
     if (studyForm) {
@@ -441,9 +500,7 @@ function clearSearchForm() {
   if (form.elements.city) {
     form.elements.city.value = "";
   }
-  if (form.elements.direction) {
-    form.elements.direction.value = "";
-  }
+  clearDirectionSelection();
   if (form.elements["study-form"]) {
     form.elements["study-form"].value = "";
   }
@@ -595,7 +652,8 @@ function replaceSelectOptions(select, items, placeholder, options = {}) {
     return;
   }
   if (select.tagName !== "SELECT") {
-    replaceDatalistOptions(getDatalistForInput(select), items);
+    setDirectionDefaultSuggestions(items);
+    renderDirectionDropdown();
     return;
   }
   const currentValue = select.value;
@@ -619,24 +677,6 @@ function replaceSelectOptions(select, items, placeholder, options = {}) {
   } else {
     placeholderOption.selected = true;
   }
-}
-
-function replaceDatalistOptions(datalist, items) {
-  if (!datalist) {
-    return;
-  }
-  const uniqueItems = [...new Set(items)].filter(Boolean);
-  datalist.replaceChildren();
-  uniqueItems.forEach((item) => {
-    const option = document.createElement("option");
-    option.value = item;
-    datalist.appendChild(option);
-  });
-}
-
-function getDatalistForInput(input) {
-  const listId = input?.getAttribute?.("list");
-  return listId ? document.getElementById(listId) : null;
 }
 
 function renderDirectoryStatus() {
@@ -711,7 +751,7 @@ function ensureSelectOption(select, value) {
     return;
   }
   if (select.tagName !== "SELECT") {
-    ensureDatalistOption(getDatalistForInput(select), value);
+    ensureDirectionSuggestion(value);
     return;
   }
   const exists = Array.from(select.options).some((option) => option.value === value);
@@ -722,19 +762,6 @@ function ensureSelectOption(select, value) {
   option.value = value;
   option.textContent = value;
   select.appendChild(option);
-}
-
-function ensureDatalistOption(datalist, value) {
-  if (!datalist || !value) {
-    return;
-  }
-  const exists = Array.from(datalist.options).some((option) => option.value === value);
-  if (exists) {
-    return;
-  }
-  const option = document.createElement("option");
-  option.value = value;
-  datalist.appendChild(option);
 }
 
 function scheduleDirectionSearch(value) {
@@ -748,21 +775,288 @@ function scheduleDirectionSearch(value) {
 
 async function refreshDirectionSuggestions(value) {
   const query = String(value || "").trim();
-  if (!query || query.length < 2 || directoryState.status !== "database") {
-    replaceDatalistOptions(directionDatalistNode, directoryState.directions);
+  directionPickerState.lastQuery = query;
+  directionPickerState.activeIndex = -1;
+  if (!query || query.length < 2) {
+    directionPickerState.isLoading = false;
+    directionPickerState.suggestions = getDefaultDirectionSuggestions();
+    renderDirectionDropdown();
     return;
   }
+  if (directoryState.status !== "database") {
+    const normalizedQuery = query.toLowerCase();
+    directionPickerState.isLoading = false;
+    directionPickerState.suggestions = getDefaultDirectionSuggestions()
+      .filter((item) => item.toLowerCase().includes(normalizedQuery))
+      .slice(0, DIRECTION_PICKER_LIMIT);
+    renderDirectionDropdown();
+    return;
+  }
+  directionPickerState.isLoading = true;
+  renderDirectionDropdown();
   const params = new URLSearchParams({
     q: query,
-    limit: "50",
+    limit: String(DIRECTION_PICKER_LIMIT),
   });
   const payload = await fetchDirectoryPayload(`/api/directions?${params.toString()}`);
-  if (payload.ok && payload.items.length) {
-    replaceDatalistOptions(directionDatalistNode, payload.items);
+  if (directionPickerState.lastQuery !== query) {
+    return;
+  }
+  directionPickerState.isLoading = false;
+  directionPickerState.suggestions = payload.ok ? payload.items.slice(0, DIRECTION_PICKER_LIMIT) : [];
+  renderDirectionDropdown();
+}
+
+function setDirectionDefaultSuggestions(items) {
+  directionPickerState.defaultSuggestions = normalizeDirectionSuggestionItems([
+    ...fallbackDirectionSuggestions,
+    ...(Array.isArray(items) ? items : []),
+  ]);
+  if (!directionPickerState.lastQuery) {
+    directionPickerState.suggestions = getDefaultDirectionSuggestions();
   }
 }
 
+function normalizeDirectionSuggestionItems(items) {
+  return [...new Set((Array.isArray(items) ? items : [])
+    .map((item) => String(item || "").trim())
+    .filter(Boolean))];
+}
+
+function getDefaultDirectionSuggestions() {
+  const source = directionPickerState.defaultSuggestions.length
+    ? directionPickerState.defaultSuggestions
+    : fallbackDirectionSuggestions;
+  return source.slice(0, DIRECTION_PICKER_LIMIT);
+}
+
+function setDirectionValue(value, options = {}) {
+  const cleanValue = String(value || "").trim();
+  if (!directionInputNode) {
+    return;
+  }
+  directionInputNode.value = cleanValue;
+  directionPickerState.selectedValue = options.selected ? cleanValue : "";
+  if (cleanValue) {
+    ensureDirectionSuggestion(cleanValue);
+  }
+  updateDirectionClearButton();
+  if (options.keepOpen) {
+    openDirectionPicker();
+    refreshDirectionSuggestions(cleanValue);
+  }
+}
+
+function clearDirectionSelection(options = {}) {
+  if (!directionInputNode) {
+    return;
+  }
+  directionInputNode.value = "";
+  directionPickerState.selectedValue = "";
+  directionPickerState.lastQuery = "";
+  directionPickerState.activeIndex = -1;
+  directionPickerState.suggestions = getDefaultDirectionSuggestions();
+  updateDirectionClearButton();
+  if (options.keepOpen) {
+    openDirectionPicker();
+    renderDirectionDropdown();
+    return;
+  }
+  closeDirectionPicker();
+}
+
+function ensureDirectionSuggestion(value) {
+  const cleanValue = String(value || "").trim();
+  if (!cleanValue) {
+    return;
+  }
+  if (!directionPickerState.defaultSuggestions.includes(cleanValue)) {
+    directionPickerState.defaultSuggestions = [cleanValue, ...directionPickerState.defaultSuggestions];
+  }
+}
+
+function updateDirectionClearButton() {
+  if (!directionClearButton || !directionInputNode) {
+    return;
+  }
+  directionClearButton.classList.toggle("is-hidden", !String(directionInputNode.value || "").trim());
+}
+
+function openDirectionPicker() {
+  if (!directionDropdownNode || !directionInputNode) {
+    return;
+  }
+  directionPickerState.isOpen = true;
+  directionInputNode.setAttribute("aria-expanded", "true");
+  renderDirectionDropdown();
+}
+
+function closeDirectionPicker() {
+  if (!directionDropdownNode || !directionInputNode) {
+    return;
+  }
+  directionPickerState.isOpen = false;
+  directionPickerState.activeIndex = -1;
+  directionInputNode.setAttribute("aria-expanded", "false");
+  directionInputNode.removeAttribute("aria-activedescendant");
+  directionDropdownNode.classList.add("is-hidden");
+}
+
+function renderDirectionDropdown() {
+  if (!directionDropdownNode || !directionInputNode) {
+    return;
+  }
+  directionDropdownNode.replaceChildren();
+
+  if (directionPickerState.isLoading) {
+    directionDropdownNode.appendChild(createDirectionPickerMessage("Ищу направления…"));
+  } else {
+    const query = directionPickerState.lastQuery;
+    if (!query) {
+      directionDropdownNode.appendChild(createDirectionPickerMessage("Начни вводить код или название"));
+    }
+    if (directionPickerState.suggestions.length) {
+      directionPickerState.suggestions.forEach((item, index) => {
+        directionDropdownNode.appendChild(createDirectionOption(item, index));
+      });
+    } else if (query) {
+      directionDropdownNode.appendChild(createDirectionPickerMessage("Ничего не найдено. Попробуй код, например 09.03.04, или другое название."));
+    } else {
+      directionDropdownNode.appendChild(createDirectionPickerMessage("Справочник направлений пока загружается."));
+    }
+  }
+
+  directionDropdownNode.classList.toggle("is-hidden", !directionPickerState.isOpen);
+  directionInputNode.setAttribute("aria-expanded", directionPickerState.isOpen ? "true" : "false");
+  const activeId = directionPickerState.activeIndex >= 0 ? `direction-option-${directionPickerState.activeIndex}` : "";
+  if (activeId) {
+    directionInputNode.setAttribute("aria-activedescendant", activeId);
+  } else {
+    directionInputNode.removeAttribute("aria-activedescendant");
+  }
+}
+
+function createDirectionPickerMessage(text) {
+  const node = document.createElement("div");
+  node.className = "direction-picker__message";
+  node.textContent = text;
+  return node;
+}
+
+function createDirectionOption(value, index) {
+  const button = document.createElement("button");
+  const isActive = index === directionPickerState.activeIndex;
+  button.id = `direction-option-${index}`;
+  button.className = `direction-picker__option${isActive ? " is-active" : ""}`;
+  button.type = "button";
+  button.role = "option";
+  button.dataset.directionSuggestion = value;
+  button.dataset.directionIndex = String(index);
+  button.setAttribute("aria-selected", isActive ? "true" : "false");
+
+  const { code, label } = splitDirectionSuggestion(value);
+  if (code) {
+    const codeNode = document.createElement("span");
+    codeNode.className = "direction-picker__code";
+    codeNode.textContent = code;
+    button.appendChild(codeNode);
+  }
+  const labelNode = document.createElement("span");
+  labelNode.className = "direction-picker__label";
+  labelNode.textContent = label || value;
+  button.appendChild(labelNode);
+  return button;
+}
+
+function splitDirectionSuggestion(value) {
+  const text = String(value || "").trim();
+  const match = text.match(/^(\d{2}\.\d{2}\.\d{2})(?:\s+|$)(.*)$/);
+  if (!match) {
+    return { code: "", label: text };
+  }
+  return { code: match[1], label: match[2] || match[1] };
+}
+
+function handleDirectionPickerKeydown(event) {
+  if (!directionInputNode) {
+    return;
+  }
+  if (event.key === "Escape") {
+    if (directionPickerState.isOpen) {
+      event.preventDefault();
+      closeDirectionPicker();
+    }
+    return;
+  }
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    openDirectionPicker();
+    moveDirectionActive(1);
+    return;
+  }
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    openDirectionPicker();
+    moveDirectionActive(-1);
+    return;
+  }
+  if (event.key === "Enter") {
+    if (directionPickerState.isOpen && directionPickerState.activeIndex >= 0) {
+      event.preventDefault();
+      selectDirectionSuggestion(directionPickerState.suggestions[directionPickerState.activeIndex]);
+    } else {
+      closeDirectionPicker();
+    }
+    return;
+  }
+  if (
+    directionPickerState.selectedValue
+    && directionInputNode.value === directionPickerState.selectedValue
+    && event.key.length === 1
+    && !event.metaKey
+    && !event.ctrlKey
+    && !event.altKey
+  ) {
+    event.preventDefault();
+    setDirectionValue(event.key);
+    openDirectionPicker();
+    scheduleDirectionSearch(event.key);
+  }
+}
+
+function moveDirectionActive(delta) {
+  const count = directionPickerState.suggestions.length;
+  if (!count) {
+    directionPickerState.activeIndex = -1;
+    renderDirectionDropdown();
+    return;
+  }
+  const currentIndex = directionPickerState.activeIndex;
+  directionPickerState.activeIndex = currentIndex < 0
+    ? (delta > 0 ? 0 : count - 1)
+    : (currentIndex + delta + count) % count;
+  renderDirectionDropdown();
+}
+
+function selectDirectionSuggestion(value) {
+  if (!value) {
+    return;
+  }
+  setDirectionValue(value, { selected: true });
+  closeDirectionPicker();
+}
+
 document.addEventListener("click", (event) => {
+  const directionSuggestionButton = event.target.closest("[data-direction-suggestion]");
+  if (directionSuggestionButton) {
+    selectDirectionSuggestion(directionSuggestionButton.dataset.directionSuggestion);
+    return;
+  }
+
+  if (directionPickerNode && !directionPickerNode.contains(event.target)) {
+    closeDirectionPicker();
+  }
+
   const tabTargetButton = event.target.closest("[data-tab-target]");
   if (tabTargetButton && !Array.from(tabButtons).includes(tabTargetButton)) {
     activateTab(tabTargetButton.dataset.tabTarget);

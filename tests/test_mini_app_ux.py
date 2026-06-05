@@ -33,6 +33,8 @@ def test_app_js_contains_quick_scenarios_and_clear_form_logic() -> None:
     assert "function applyQuickScenario" in js
     assert "function setFormValues" in js
     assert "function clearSearchForm" in js
+    assert "setDirectionValue(direction, { selected: true })" in js
+    assert "clearDirectionSelection()" in js
     assert "Сценарий применён" in js
     assert "Форма очищена" in js
     assert "Адыгея" in js
@@ -99,9 +101,33 @@ def test_mini_app_uses_postgres_aware_copy_and_expanded_result_limit() -> None:
     assert "показано ${loadedCount} из ${totalCount}" in js
     assert "Поиск по коду или названию работает по полной базе" in js
     assert "Подсказки ищутся по полному справочнику PostgreSQL" in html
+    assert "Начни вводить код или название" in js
+    assert "Ничего не найдено. Попробуй код" in js
     assert "backend" not in html
     assert "временная демонстрационная база" not in html
     assert "будут заменены" not in html
+
+
+def test_mini_app_has_custom_direction_picker_keyboard_and_clear_button() -> None:
+    html = read_mini_app_file("index.html")
+    js = read_mini_app_file("app.js")
+    css = read_mini_app_file("styles.css")
+
+    assert "direction-picker" in html
+    assert "direction-clear" in html
+    assert "Очистить направление" in html
+    assert "aria-autocomplete=\"list\"" in html
+    assert "aria-expanded=\"false\"" in html
+    assert "handleDirectionPickerKeydown" in js
+    assert "ArrowDown" in js
+    assert "ArrowUp" in js
+    assert "Escape" in js
+    assert "Enter" in js
+    assert "data-direction-suggestion" in js
+    assert "direction-picker__dropdown" in css
+    assert "direction-picker__clear" in css
+    assert "direction-picker__code" in css
+    assert "max-height: min(340px, 46vh)" in css
 
 
 def test_styles_include_ux_blocks_toasts_and_dark_support() -> None:
