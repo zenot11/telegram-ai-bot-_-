@@ -9,7 +9,7 @@
 ## Основные части
 
 - Telegram Bot - основной интерфейс в Telegram.
-- Backend Stub - временный HTTP backend на aiohttp.
+- Backend API - HTTP-слой на aiohttp.
 - Mini App - веб-интерфейс внутри Telegram или браузера.
 - JSON-база вузов - локальный fallback с программами.
 - PostgreSQL source - основной источник пользовательских данных при `USE_POSTGRES=true`.
@@ -119,7 +119,7 @@ Mini App
 
 ## `backend_stub/`
 
-`backend_stub/` - временный backend API.
+`backend_stub/` - backend API проекта. Название каталога осталось от ранних этапов, но текущий слой обслуживает реальные сценарии Telegram-бота, Mini App, PostgreSQL и JSON fallback.
 
 - `main.py` - aiohttp-приложение, выбор JSON/PostgreSQL storage, static routes Mini App.
 - `db.py` - чтение `USE_POSTGRES`/`DATABASE_URL`, создание и закрытие asyncpg pool.
@@ -206,10 +206,10 @@ Feedback API:
 
 ## Почему такая архитектура удобна
 
-- JSON можно заменить на финальную базу вузов, если сохранить структуру полей.
 - PostgreSQL можно включить через `USE_POSTGRES=true`, не меняя Telegram-бот и Mini App.
+- JSON fallback можно обновить или оставить резервным режимом, если сохранить структуру полей.
 - Справочники строятся из текущего источника данных: PostgreSQL или JSON fallback.
-- `backend_stub` можно заменить на полноценный backend без переписывания Telegram-бота.
+- `backend_stub` можно реорганизовать или вынести в отдельный production backend без переписывания Telegram-бота.
 - Mini App использует тот же API, что и бот.
 - Фильтры Mini App работают локально по уже полученным результатам и не требуют изменения backend API.
 - Mini App не требует сборки и дополнительных frontend-зависимостей.

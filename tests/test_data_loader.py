@@ -26,7 +26,7 @@ def valid_record() -> dict:
         "url": " https://example.ru ",
         "study_form": " очная ",
         "duration": "4 года",
-        "note": " демонстрационные данные ",
+        "note": " контекст источника ",
     }
 
 

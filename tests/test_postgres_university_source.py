@@ -41,7 +41,7 @@ def test_env_example_contains_postgres_settings() -> None:
     content = Path(".env.example").read_text(encoding="utf-8")
 
     assert "USE_POSTGRES=false" in content
-    assert "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/tgbot" in content
+    assert "DATABASE_URL=postgresql://<user>@localhost:5432/tgbot" in content
     assert "USE_POSTGRES_TESTS=false" in content
 
 

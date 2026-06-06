@@ -2,9 +2,9 @@
 
 ## Текущий статус
 
-“Аиша” — расширенный демонстрационный прототип Telegram-сервиса для абитуриентов. Проект готов к показу преподавателю или команде: бот запускается, проводит пользователя через подбор вузов, показывает категории, сохраняет избранное, сравнивает варианты и открывает демонстрационный Mini App.
+“Аиша” — учебный Telegram-сервис для абитуриентов с готовым pre-defense сценарием. Проект готов к показу преподавателю или команде: бот запускается, проводит пользователя через подбор вузов, показывает категории, сохраняет избранное, сравнивает варианты и открывает Mini App.
 
-Сейчас JSON-база `backend_stub/data/universities.json` остаётся fallback по умолчанию. На 37 этапе добавлен PostgreSQL-режим для каталога вузов, а на 38 этапе backend получил справочники, расширенные фильтры и сортировки: `USE_POSTGRES=true` переключает `/api/universities` и справочники на PostgreSQL по `DATABASE_URL`, не меняя Telegram-бот и Mini App. На 45 этапе отдельно зафиксировано, какие таблицы и поля SQL-схемы реально используются, и добавлен поиск `/api/directions?q=...` по полному справочнику направлений. На 46 этапе Mini App получил удобный кастомный picker направления вместо системного datalist. На 47 этапе Telegram-меню разделено на Results/Assistant/Service без удаления команд.
+Сейчас основной сценарий защиты рассчитан на PostgreSQL при `USE_POSTGRES=true`, а JSON-база `backend_stub/data/universities.json` остаётся fallback для локального запуска без live-базы. На 37 этапе добавлен PostgreSQL-режим для каталога вузов, а на 38 этапе backend получил справочники, расширенные фильтры и сортировки: `USE_POSTGRES=true` переключает `/api/universities` и справочники на PostgreSQL по `DATABASE_URL`, не меняя Telegram-бот и Mini App. На 45 этапе отдельно зафиксировано, какие таблицы и поля SQL-схемы реально используются, и добавлен поиск `/api/directions?q=...` по полному справочнику направлений. На 46 этапе Mini App получил удобный кастомный picker направления вместо системного datalist. На 47 этапе Telegram-меню разделено на Results/Assistant/Service без удаления команд. На 48 этапе восстановлены кнопки финансирования и выдача Telegram-результатов страницами по 5, на 49 этапе frontend-ссылки подключены к Telegram-боту Aisha, на 50 этапе выполнен финальный pre-defense аудит документации, проверок и ограничений.
 
 ## Уже реализовано
 
@@ -13,7 +13,7 @@
 - информационные команды `/about`, `/demo`, `/privacy`, `/next`, `/botfather`;
 - компактное карточное меню Telegram-бота с локальными SVG-баннерами, inline-разделами и fallback на текст;
 - FSM-подбор вузов;
-- backend-заглушка на aiohttp;
+- backend API на aiohttp;
 - PostgreSQL-источник данных для вузов с JSON fallback;
 - справочники `/api/regions`, `/api/cities`, `/api/directions`, `/api/study-forms`, `/api/admission-types`;
 - поиск `/api/directions?q=...` по полному PostgreSQL-справочнику направлений, кодов и профилей;
@@ -89,17 +89,17 @@
 - `scripts/check_project.sh`;
 - архив старого C++ Telegram-модуля.
 
-## Что является демонстрационным
+## Ограничения локального стенда
 
-- `backend_stub`;
-- `mini_app`;
-- `universities.json`;
-- локальный запуск Mini App через `backend_stub`;
-- отсутствие настоящего HTTPS URL в репозитории;
-- отсутствие продакшен-деплоя в текущем этапе;
+- backend и bot runner запускаются локально, без VPS и 24/7 окружения;
+- телефон не видит `localhost`, поэтому для Telegram Mini App нужен публичный HTTPS URL через ngrok или постоянный домен;
+- `mini_app` можно открыть локально в браузере, но Telegram-сессия и синхронизация избранного включаются только через проверенный `initData`;
+- `universities.json` остаётся резервным JSON fallback для запуска без PostgreSQL;
+- постоянный HTTPS URL не хранится в репозитории;
+- продакшен-деплой не входит в текущий этап;
 - локальный fallback избранного Mini App в обычном браузере без Telegram `initData`;
 - локальное сравнение Mini App, которое не синхронизируется с Telegram-ботом;
-- проходные баллы;
+- проходные баллы и условия приёма нужно сверять на официальных сайтах вузов;
 - стоимость, форма обучения, срок и ссылки;
 - категории подбора;
 - список направлений и регионов;
@@ -147,6 +147,8 @@
 
 Статус этапа 49: Connect frontend links to Telegram bot. В Mini App добавлена единая ссылка `TELEGRAM_BOT_URL = "https://t.me/seren_dipity_bott_bot"` и helper открытия Telegram-бота: внутри Telegram используется `Telegram.WebApp.openTelegramLink`, в обычном браузере — `window.open` с `noopener,noreferrer`, затем fallback на `location.href`. Кнопки `Открыть бота`, `Начать подбор в Telegram`, `Связаться в Telegram` и `Открыть Telegram-бота` ведут в Aisha bot; логика подбора Mini App, Telegram flow и PostgreSQL mapping не менялись.
 
+Статус этапа 50: Final full pre-defense project audit. Документация приведена к финальному сценарию защиты: PostgreSQL является основным источником при `USE_POSTGRES=true`, JSON fallback описан как резервный режим, Mini App и Telegram-бот используют backend API, frontend-ссылки ведут на `https://t.me/seren_dipity_bott_bot`, Telegram-выдача показывается страницами по 5 вариантов, а ограничения локального запуска через ngrok и необходимость проверки баллов на официальных сайтах зафиксированы в README, DEMO, PROJECT_STATUS и docs.
+
 ## Текущая архитектура
 
 Основной поток:
@@ -184,6 +186,7 @@ Safety-фильтр стоит до OpenAI: сообщения про самоп
 - обращения хранятся локально в `telegram_bot/storage/feedback.json`, файл не попадает в Git;
 - JSON fallback при обновлении нужно проверить через `python scripts/check_data.py`;
 - PostgreSQL-режим требует настроенной БД и `DATABASE_URL`;
+- основной smoke для PostgreSQL: `source .venv/bin/activate`, `export USE_POSTGRES=true`, `export DATABASE_URL="postgresql://$(whoami)@localhost:5432/tgbot"`, `python3 scripts/check_postgres.py`;
 - продакшен-деплой не входит в текущий этап.
 
 ## Что можно улучшить дальше

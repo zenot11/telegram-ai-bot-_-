@@ -1,6 +1,6 @@
 # Запуск проекта
 
-Этот документ описывает запуск проекта “Аиша” с нуля: backend-заглушки, Telegram-бота, Mini App и проверок.
+Этот документ описывает запуск проекта “Аиша” с нуля: backend API, Telegram-бота, Mini App и проверок.
 
 ## 1. Клонирование проекта
 
@@ -40,7 +40,7 @@ OPENAI_API_KEY=
 BACKEND_BASE_URL=http://localhost:8000
 WEBAPP_URL=
 USE_POSTGRES=false
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/tgbot
+DATABASE_URL=postgresql://<user>@localhost:5432/tgbot
 USE_POSTGRES_TESTS=false
 ```
 
@@ -90,7 +90,15 @@ http://localhost:8000
 http://localhost:8000/health
 ```
 
-PostgreSQL-режим включается отдельно через `USE_POSTGRES=true`; порядок подготовки базы описан в [POSTGRES.md](POSTGRES.md).
+PostgreSQL-режим для защиты включается так; порядок подготовки базы описан в [POSTGRES.md](POSTGRES.md).
+
+```bash
+source .venv/bin/activate
+export USE_POSTGRES=true
+export DATABASE_URL="postgresql://$(whoami)@localhost:5432/tgbot"
+export BACKEND_BASE_URL="http://localhost:8000"
+bash scripts/run_backend.sh
+```
 
 Быстрые проверки API:
 
@@ -103,10 +111,13 @@ curl "http://localhost:8000/api/universities?score=230&limit=5&sort=min_score_de
 
 ## 6. Запуск Telegram-бота
 
-Во втором терминале:
+Во втором терминале для PostgreSQL-сценария защиты:
 
 ```bash
 source .venv/bin/activate
+export USE_POSTGRES=true
+export DATABASE_URL="postgresql://$(whoami)@localhost:5432/tgbot"
+export BACKEND_BASE_URL="http://localhost:8000"
 python -m telegram_bot.main
 ```
 
@@ -146,7 +157,7 @@ bash scripts/run_backend.sh
 http://localhost:8000/miniapp
 ```
 
-Локальный адрес подходит для проверки в браузере.
+Локальный адрес подходит для проверки на ноутбуке в браузере. Телефон внутри Telegram не увидит `localhost`, поэтому для Mini App нужен публичный HTTPS URL.
 
 Frontend-ссылки на Telegram-бота должны открывать Aisha bot: `https://t.me/seren_dipity_bott_bot`. В локальном браузере проверьте кнопки `Открыть бота`, `Начать подбор в Telegram`, `Связаться в Telegram` и `Открыть Telegram-бота`: они должны открывать эту ссылку в новой вкладке.
 
@@ -165,10 +176,10 @@ ngrok http 8000
 После запуска ngrok укажите HTTPS-адрес в `.env`:
 
 ```env
-WEBAPP_URL=https://your-ngrok-url.ngrok-free.dev/miniapp
+WEBAPP_URL=https://<actual-ngrok-domain>/miniapp
 ```
 
-После изменения `.env` перезапустите Telegram-бота.
+После изменения `.env` перезапустите Telegram-бота. Если ngrok перезапущен и домен изменился, обновите `WEBAPP_URL` и BotFather Menu Button/Main App на актуальный адрес.
 
 В обычном браузере Mini App показывает режим запуска `Браузер`, а избранное хранится только в этом браузере через `localStorage`. Источник данных показывается отдельно в блоке подбора: это может быть PostgreSQL-база проекта или JSON fallback.
 

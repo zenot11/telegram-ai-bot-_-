@@ -15,7 +15,7 @@ def test_search_card_hides_missing_price_and_renders_available_metadata() -> Non
             "url": "https://www.adygnet.ru",
             "study_form": "очная",
             "duration": "4 года",
-            "note": "демонстрационные данные",
+            "note": "контекст источника",
             "year": 2025,
             "faculty": "Факультет цифровых технологий",
             "admission_type": "target",
@@ -30,7 +30,7 @@ def test_search_card_hides_missing_price_and_renders_available_metadata() -> Non
     assert "Факультет: Факультет цифровых технологий" in text
     assert "Год данных: 2025" in text
     assert "Конкурс: целевая квота" in text
-    assert "Пометка: демонстрационные данные" in text
+    assert "Пометка: контекст источника" in text
     assert "source" not in text
     assert "postgresql" not in text
     assert "🎓 <b>1. АГУ — Прикладная информатика</b>" in text

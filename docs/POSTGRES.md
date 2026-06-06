@@ -87,8 +87,9 @@ psql -d tgbot -f /tmp/finalproj-sql/06_seed_supplement_universities.sql
 ## Запуск backend в PostgreSQL mode
 
 ```bash
+source .venv/bin/activate
 export USE_POSTGRES=true
-export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/tgbot
+export DATABASE_URL="postgresql://$(whoami)@localhost:5432/tgbot"
 bash scripts/run_backend.sh
 ```
 
@@ -110,7 +111,7 @@ curl http://localhost:8000/health
 }
 ```
 
-Если применён `06_seed_supplement_universities.sql`, количество будет больше базовых 94 вузов.
+Если применён `06_seed_supplement_universities.sql`, количество будет больше базовых 94 вузов; на локальном pre-defense стенде может быть, например, 262.
 
 Проверить выдачу:
 
@@ -132,8 +133,10 @@ curl "http://localhost:8000/api/achievements"
 Опциональная ручная проверка:
 
 ```bash
-export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/tgbot
-python scripts/check_postgres.py
+source .venv/bin/activate
+export USE_POSTGRES=true
+export DATABASE_URL="postgresql://$(whoami)@localhost:5432/tgbot"
+python3 scripts/check_postgres.py
 ```
 
 Скрипт проверяет таблицы, количество вузов, число synthetic/demo записей, score quality, admission type breakdown, study form breakdown, регионы и города, sample suspicious rows, число направлений, справочник достижений, display labels, q-search по направлениям и sample-запросы, похожие на `/api/universities`. Отдельно выводится диагностика для `Москва + 09.03.04 Программная инженерия + заочная + paid + score 276`: сколько строк есть на каждом шаге фильтра и сколько вернёт API-like запрос при обычном лимите и `limit=20`. Coverage audit проходит по основным категориям, регионам, финансированию, формам и квотам; нулевые сценарии выводятся как диагностические строки и не валят проверку.

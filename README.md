@@ -20,6 +20,7 @@
 - [docs/DATABASE_USAGE.md](docs/DATABASE_USAGE.md) - аудит использования SQL-схемы команды;
 - [docs/BOTFATHER.md](docs/BOTFATHER.md) - настройка Telegram Mini App;
 - [docs/DEFENSE.md](docs/DEFENSE.md) - сценарий защиты;
+- [docs/FINAL_CHECKLIST.md](docs/FINAL_CHECKLIST.md) - финальный pre-defense чеклист;
 - [DEMO.md](DEMO.md) - подробная демонстрация;
 - [PROJECT_STATUS.md](PROJECT_STATUS.md) - текущее состояние проекта.
 
@@ -27,7 +28,7 @@
 
 - подбор вузов по региону, баллам, направлению и типу обучения;
 - пошаговый сценарий через FSM;
-- backend-заглушка `backend_stub` с HTTP endpoint `/api/universities`;
+- backend API `backend_stub` с HTTP endpoint `/api/universities`;
 - PostgreSQL-источник данных для вузов при `USE_POSTGRES=true` с JSON fallback по умолчанию;
 - справочники backend API: `/api/regions`, `/api/cities`, `/api/directions`, `/api/study-forms`, `/api/admission-types`; `/api/directions?q=...` ищет по полному PostgreSQL-справочнику направлений, кодов и профилей;
 - расширенные фильтры `/api/universities`: `city`, `study_form`, `admission_type`, `year`, `q`, `sort`, `limit`, `include_synthetic`;
@@ -113,7 +114,7 @@ backend_stub/
   main.py                  # backend API и раздача Mini App
   db.py                    # опциональное подключение PostgreSQL
   university_repository.py # JSON/PostgreSQL source layer для вузов
-  data/universities.json   # демонстрационные данные вузов
+  data/universities.json   # JSON fallback данные вузов
 
 mini_app/
   index.html               # Telegram Mini App страница
@@ -142,7 +143,7 @@ JSON fallback содержит несколько регионов и напра
 - регионы: Адыгея, Москва, Краснодарский край, Санкт-Петербург, Татарстан, Крым, Ростовская область, Свердловская область;
 - направления: IT, психология, медицина, экономика, юриспруденция, педагогика, дизайн, строительство, туризм.
 
-Проходные баллы, стоимость и ссылки являются демонстрационными. Это не официальные данные и не гарантия поступления.
+Проходные баллы, стоимость, ссылки и условия приёма нужно сверять на официальных сайтах вузов. Категории подбора помогают ориентироваться, но не гарантируют поступление.
 
 Формальный контракт базы описан в [docs/DATA.md](docs/DATA.md). Перед обновлением JSON fallback нужно выполнить:
 
@@ -166,7 +167,7 @@ python scripts/check_data.py
   "url": "https://example.ru",
   "study_form": "очная",
   "duration": "4 года",
-  "note": "демонстрационные данные"
+  "note": "контекст источника"
 }
 ```
 
@@ -235,7 +236,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 BACKEND_BASE_URL=http://localhost:8000
 WEBAPP_URL=
 USE_POSTGRES=false
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/tgbot
+DATABASE_URL=postgresql://<user>@localhost:5432/tgbot
 USE_POSTGRES_TESTS=false
 ```
 
@@ -261,6 +262,16 @@ python -m backend_stub.main
 Или через скрипт:
 
 ```bash
+bash scripts/run_backend.sh
+```
+
+Для финального pre-defense запуска с PostgreSQL:
+
+```bash
+source .venv/bin/activate
+export USE_POSTGRES=true
+export DATABASE_URL="postgresql://$(whoami)@localhost:5432/tgbot"
+export BACKEND_BASE_URL="http://localhost:8000"
 bash scripts/run_backend.sh
 ```
 
@@ -292,6 +303,16 @@ python -m telegram_bot.main
 bash scripts/run_bot.sh
 ```
 
+Для запуска Telegram-бота на том же PostgreSQL-источнике:
+
+```bash
+source .venv/bin/activate
+export USE_POSTGRES=true
+export DATABASE_URL="postgresql://$(whoami)@localhost:5432/tgbot"
+export BACKEND_BASE_URL="http://localhost:8000"
+python -m telegram_bot.main
+```
+
 ## Telegram Mini App
 
 Mini App находится в папке `mini_app/` и остаётся простым: HTML + CSS + JS без React, Vite, Next.js и других frontend-фреймворков.
@@ -308,7 +329,7 @@ Mini App находится в папке `mini_app/` и остаётся про
 - `План` — персональный план действий по последнему подбору;
 - `Экспорт` — отчёт по подбору, избранному, сравнению и плану;
 - `Поддержка` — форма обратной связи;
-- `О проекте` — объяснение демонстрационных данных и категорий.
+- `О проекте` — объяснение источников данных и категорий.
 
 На главной и во вкладке `Подбор` есть быстрые сценарии, которые заполняют форму и сразу запускают поиск. Форма содержит короткие подсказки под полями, кнопку очистки и toast-уведомления для действий пользователя: поиск, избранное, сравнение, переключение темы и ошибки backend.
 
@@ -361,7 +382,17 @@ OpenAI и токены в Mini App не используются.
 WEBAPP_URL=https://your-public-url/miniapp
 ```
 
-После изменения `WEBAPP_URL` нужно перезапустить Telegram-бота. Ngrok/cloudflared не являются зависимостями проекта и не настраиваются автоматически.
+С ngrok это обычно:
+
+```bash
+ngrok http 8000
+```
+
+```env
+WEBAPP_URL=https://<actual-ngrok-domain>/miniapp
+```
+
+После изменения `WEBAPP_URL` нужно перезапустить Telegram-бота и обновить Menu Button/Main App в BotFather. Ngrok/cloudflared не являются зависимостями проекта и не настраиваются автоматически.
 
 ## BotFather: Menu Button, Main App, Direct Link
 

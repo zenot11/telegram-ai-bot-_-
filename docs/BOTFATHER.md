@@ -2,6 +2,8 @@
 
 Этот документ описывает команды Telegram-бота и настройки Mini App через BotFather.
 
+Публичная ссылка на Telegram-бота Aisha: `https://t.me/seren_dipity_bott_bot`.
+
 ## Команды бота
 
 Готовый список для `/setcommands`:
@@ -56,10 +58,11 @@ ngrok http 8000
 После запуска ngrok нужно указать URL в локальном `.env`:
 
 ```env
-WEBAPP_URL=https://your-ngrok-url.ngrok-free.dev/miniapp
+WEBAPP_URL=https://<actual-ngrok-domain>/miniapp
 ```
 
 После изменения `.env` нужно перезапустить Telegram-бота.
+`localhost` подходит только для браузера на ноутбуке; для телефона и Telegram Mini App нужен публичный HTTPS URL, например `https://<actual-ngrok-domain>/miniapp`.
 
 ## Menu Button
 
