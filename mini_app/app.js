@@ -49,6 +49,7 @@ const clearFormButton = document.querySelector("#clear-form");
 const clearFeedbackButton = document.querySelector("#feedback-clear");
 const refreshFeedbackButton = document.querySelector("#feedback-refresh");
 const quickScenarioButtons = document.querySelectorAll("[data-quick-scenario]");
+const telegramBotLinks = document.querySelectorAll("[data-telegram-bot-link]");
 const toastContainerNode = document.querySelector("#toast-container");
 const aboutDataSourceNode = document.querySelector("#about-data-source");
 const footerDataSourceNode = document.querySelector("#footer-data-source");
@@ -61,6 +62,7 @@ const SAFE_MARGIN = 25;
 const AMBITIOUS_MARGIN = 20;
 const MINI_APP_RESULT_LIMIT = 12;
 const DIRECTION_PICKER_LIMIT = 20;
+const TELEGRAM_BOT_URL = "https://t.me/seren_dipity_bott_bot";
 const FAVORITES_KEY = "aisha_favorites";
 const LEGACY_FAVORITES_KEY = "aishaMiniAppFavorites";
 const THEME_KEY = "aisha_theme";
@@ -239,6 +241,18 @@ form.addEventListener("submit", (event) => {
 quickScenarioButtons.forEach((button) => {
   button.addEventListener("click", () => {
     applyQuickScenario(button.dataset.quickScenario);
+  });
+});
+
+telegramBotLinks.forEach((element) => {
+  if (element.tagName === "A") {
+    element.setAttribute("href", TELEGRAM_BOT_URL);
+    element.setAttribute("target", "_blank");
+    element.setAttribute("rel", "noopener noreferrer");
+  }
+  element.addEventListener("click", (event) => {
+    event.preventDefault();
+    openTelegramBot();
   });
 });
 
@@ -1469,6 +1483,24 @@ function saveAishaHintsHidden(value) {
 
 function getTelegramInitData() {
   return telegramWebApp?.initData || "";
+}
+
+function openTelegramBot() {
+  if (telegramWebApp && typeof telegramWebApp.openTelegramLink === "function") {
+    try {
+      telegramWebApp.openTelegramLink(TELEGRAM_BOT_URL);
+      return;
+    } catch (error) {
+      // Browser fallback below covers unsupported or blocked Telegram API calls.
+    }
+  }
+
+  if (typeof window.open === "function") {
+    window.open(TELEGRAM_BOT_URL, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  window.location.href = TELEGRAM_BOT_URL;
 }
 
 function hasTelegramInitData() {

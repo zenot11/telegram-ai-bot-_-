@@ -323,6 +323,10 @@ main,
   font-weight: 800;
 }
 
+.session-card__link {
+  justify-self: start;
+}
+
 .theme-toggle:hover {
   border-color: var(--blue);
   background: var(--card-soft);
@@ -594,6 +598,14 @@ h3 {
 
 .secondary-button:hover {
   color: var(--card);
+}
+
+.hero-actions,
+.assistant-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
 }
 
 .danger-button {
@@ -2256,6 +2268,12 @@ select:focus {
   .assistant-link,
   .secondary-button {
     width: 100%;
+  }
+
+  .hero-actions,
+  .assistant-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .summary-actions,

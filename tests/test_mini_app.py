@@ -53,6 +53,29 @@ def test_index_contains_aisha_and_search_form() -> None:
     assert "/miniapp/app.js" in html
 
 
+def test_frontend_telegram_bot_links_are_wired() -> None:
+    html = read_mini_app_file("index.html")
+    js = read_mini_app_file("app.js")
+
+    bot_url = "https://t.me/seren_dipity_bott_bot"
+    assert html.count(f'href="{bot_url}"') >= 4
+    assert html.count("data-telegram-bot-link") >= 4
+    assert "Открыть бота" in html
+    assert "Начать подбор в Telegram" in html
+    assert "Связаться в Telegram" in html
+    assert "Открыть Telegram-бота" in html
+    assert f'TELEGRAM_BOT_URL = "{bot_url}"' in js
+    assert "function openTelegramBot" in js
+    assert "telegramWebApp.openTelegramLink(TELEGRAM_BOT_URL)" in js
+    assert 'window.open(TELEGRAM_BOT_URL, "_blank", "noopener,noreferrer")' in js
+    assert "window.location.href = TELEGRAM_BOT_URL" in js
+    assert 'href="#"' not in html
+    assert "href='#'" not in html
+    assert 'href=""' not in html
+    assert "ngrok" not in html
+    assert "localhost" not in html
+
+
 def test_app_js_uses_backend_api_without_openai_key() -> None:
     js = read_mini_app_file("app.js")
 
