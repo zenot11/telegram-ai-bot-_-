@@ -27,7 +27,7 @@ from telegram_bot.keyboards.menu import (
 from telegram_bot.keyboards.compare import compare_options_keyboard
 from telegram_bot.keyboards.export import empty_export_keyboard, export_menu_keyboard
 from telegram_bot.keyboards.filters import filtered_results_keyboard, filters_keyboard
-from telegram_bot.keyboards.search import search_results_keyboard
+from telegram_bot.keyboards.search import education_type_keyboard, search_results_keyboard
 
 
 def keyboard_texts(markup: ReplyKeyboardMarkup) -> list[str]:
@@ -49,7 +49,7 @@ def test_search_save_buttons_match_results_count() -> None:
     assert "⭐ Сохранить 2" in texts
     assert "⭐ Сохранить 3" in texts
     assert "⭐ Сохранить 4" not in texts
-    assert "➡️ Ещё варианты" in texts
+    assert "➡️ Ещё варианты" not in texts
     assert "📌 Мои результаты" in texts
     assert "🎓 Новый подбор" in texts
     assert "🔙 Главное меню" in texts
@@ -63,12 +63,43 @@ def test_search_save_buttons_match_results_count() -> None:
     assert "Как читать категории" not in texts
 
 
+def test_after_results_keyboard_stays_compact() -> None:
+    texts = keyboard_texts(search_results_keyboard(5, has_more=True))
+
+    assert texts == [
+        "⭐ Сохранить 1",
+        "⭐ Сохранить 2",
+        "⭐ Сохранить 3",
+        "⭐ Сохранить 4",
+        "⭐ Сохранить 5",
+        "➡️ Ещё варианты",
+        "📌 Мои результаты",
+        "🎓 Новый подбор",
+        "🔙 Главное меню",
+    ]
+
+
+def test_education_type_keyboard_contains_fixed_financing_choices() -> None:
+    texts = keyboard_texts(education_type_keyboard())
+
+    assert texts == ["Бюджет", "Платное", "Любое", "Назад"]
+    assert "Москва" not in texts
+    assert "Крым" not in texts
+    assert "Адыгея" not in texts
+    assert "Татарстан" not in texts
+    assert "IT" not in texts
+    assert "Экономика" not in texts
+    assert "Медицина" not in texts
+    assert "Архитектура" not in texts
+
+
 def test_search_save_buttons_include_fourth_and_fifth_results() -> None:
-    texts = keyboard_texts(search_results_keyboard(5))
+    texts = keyboard_texts(search_results_keyboard(5, has_more=True))
 
     assert "⭐ Сохранить 4" in texts
     assert "⭐ Сохранить 5" in texts
     assert "⭐ Сохранить 6" not in texts
+    assert "➡️ Ещё варианты" in texts
 
 
 def test_search_save_buttons_do_not_exceed_existing_results() -> None:
@@ -77,6 +108,26 @@ def test_search_save_buttons_do_not_exceed_existing_results() -> None:
     assert "⭐ Сохранить 1" in texts
     assert "⭐ Сохранить 2" in texts
     assert "⭐ Сохранить 3" not in texts
+
+
+def test_search_save_buttons_use_page_numbers() -> None:
+    texts = keyboard_texts(search_results_keyboard(5, start_index=6, has_more=True))
+
+    assert "⭐ Сохранить 1" not in texts
+    assert "⭐ Сохранить 5" not in texts
+    assert "⭐ Сохранить 6" in texts
+    assert "⭐ Сохранить 10" in texts
+    assert "⭐ Сохранить 11" not in texts
+    assert "➡️ Ещё варианты" in texts
+
+
+def test_search_save_buttons_last_page_can_be_short() -> None:
+    texts = keyboard_texts(search_results_keyboard(2, start_index=11, has_more=False))
+
+    assert "⭐ Сохранить 11" in texts
+    assert "⭐ Сохранить 12" in texts
+    assert "⭐ Сохранить 13" not in texts
+    assert "➡️ Ещё варианты" not in texts
 
 
 def test_favorites_delete_buttons_include_fourth_and_fifth_items() -> None:

@@ -5,23 +5,34 @@ MAX_SAVE_BUTTONS = 5
 
 def education_type_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="Бюджет"), KeyboardButton(text="Платное")]],
+        keyboard=[
+            [KeyboardButton(text="Бюджет"), KeyboardButton(text="Платное")],
+            [KeyboardButton(text="Любое"), KeyboardButton(text="Назад")],
+        ],
         resize_keyboard=True,
-        input_field_placeholder="Бюджет или платное",
+        input_field_placeholder="Бюджет, платное или любое",
     )
 
 
-def search_results_keyboard(results_count: int) -> ReplyKeyboardMarkup:
+def search_results_keyboard(
+    results_count: int,
+    *,
+    start_index: int = 1,
+    has_more: bool = False,
+) -> ReplyKeyboardMarkup:
+    start_index = max(1, start_index)
+    save_count = min(results_count, MAX_SAVE_BUTTONS)
     save_buttons = [
         KeyboardButton(text=f"⭐ Сохранить {index}")
-        for index in range(1, min(results_count, MAX_SAVE_BUTTONS) + 1)
+        for index in range(start_index, start_index + save_count)
     ]
     rows = []
     if save_buttons:
         rows.extend(_chunk_buttons(save_buttons, 3))
+    if has_more:
+        rows.append([KeyboardButton(text="➡️ Ещё варианты")])
     rows.extend(
         [
-            [KeyboardButton(text="➡️ Ещё варианты")],
             [KeyboardButton(text="📌 Мои результаты")],
             [KeyboardButton(text="🎓 Новый подбор")],
             [KeyboardButton(text="🔙 Главное меню")],

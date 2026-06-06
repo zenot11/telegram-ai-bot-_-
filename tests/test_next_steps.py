@@ -55,3 +55,18 @@ def test_next_steps_escapes_profile_values() -> None:
     assert "&lt;Адыгея&gt;" in text
     assert "IT &amp; дизайн" in text
     assert "Платное" in text
+
+
+def test_next_steps_formats_any_financing_label() -> None:
+    text = build_next_steps_text(
+        {
+            "region": "Москва",
+            "score": 290,
+            "direction": "IT",
+            "education_type": "any",
+        },
+        [{"university": "Тестовый вуз"}],
+    )
+
+    assert "Любое" in text
+    assert "any" not in text

@@ -82,6 +82,7 @@ def test_save_search_sets_active_results(tmp_path) -> None:
 
     assert storage.get_last_results(123) == [item]
     assert storage.get_active_results(123) == [item]
+    assert storage.get_active_results_start(123) == 1
     assert storage.has_active_results(123) is True
 
 
@@ -89,13 +90,15 @@ def test_active_results_can_be_changed_and_cleared(tmp_path) -> None:
     storage = UserDataStorage(str(tmp_path / "user_data.json"))
 
     storage.save_search(123, sample_profile(), [sample_university()])
-    storage.set_active_results(123, [second_university()])
+    storage.set_active_results(123, [second_university()], start_index=6)
 
     assert storage.get_active_results(123) == [second_university()]
+    assert storage.get_active_results_start(123) == 6
 
     storage.clear_active_results(123)
 
     assert storage.get_active_results(123) == []
+    assert storage.get_active_results_start(123) == 1
     assert storage.has_active_results(123) is False
 
 

@@ -57,9 +57,13 @@ def test_unknown_direction_returns_cleaned_value() -> None:
 def test_study_type_normalization_handles_budget_and_paid_aliases() -> None:
     budget_cases = ["Бюджет", "бюджетное", "бюджетный", "бесплатно", "гос", "budget"]
     paid_cases = ["платное", "платный", "контракт", "договор", "коммерция", "paid"]
+    any_cases = ["любое", "Любое", "не важно", "без разницы", "any", "all"]
 
     for value in budget_cases:
         assert normalize_study_type(value) == "budget"
 
     for value in paid_cases:
         assert normalize_study_type(value) == "paid"
+
+    for value in any_cases:
+        assert normalize_study_type(value) == "any"

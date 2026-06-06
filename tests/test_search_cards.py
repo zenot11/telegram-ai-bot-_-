@@ -146,6 +146,14 @@ def test_can_select_fourth_and_fifth_search_result() -> None:
     assert _get_result_by_number(results, 5) == {"university": "Вуз 5"}
 
 
+def test_can_select_second_page_search_result_by_global_number() -> None:
+    page_results = [{"university": f"Вуз {index}"} for index in range(6, 11)]
+
+    assert _get_result_by_number(page_results, 6, start_index=6) == {"university": "Вуз 6"}
+    assert _get_result_by_number(page_results, 10, start_index=6) == {"university": "Вуз 10"}
+    assert _get_result_by_number(page_results, 5, start_index=6) is None
+
+
 def test_missing_search_result_number_returns_none() -> None:
     results = [{"university": "Вуз 1"}]
 

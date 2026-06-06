@@ -13,17 +13,11 @@ async def fetch_universities(
     region: str,
     score: int,
     direction: str,
-    education_type: str,
+    education_type: str | None,
     limit: int = 5,
 ) -> list[dict[str, Any]]:
     url = f"{base_url.rstrip('/')}/api/universities"
-    params = {
-        "region": region,
-        "score": str(score),
-        "direction": direction,
-        "type": education_type,
-        "limit": str(limit),
-    }
+    params = _university_query_params(region, score, direction, education_type, limit)
 
     timeout = aiohttp.ClientTimeout(total=10)
     try:
@@ -39,6 +33,48 @@ async def fetch_universities(
         raise UniversityAPIError("Backend response must be a JSON list")
 
     return [item for item in payload if not _is_synthetic_university_item(item)][:limit]
+
+
+def _university_query_params(
+    region: str,
+    score: int,
+    direction: str,
+    education_type: str | None,
+    limit: int,
+) -> dict[str, str]:
+    params = {
+        "region": region,
+        "score": str(score),
+        "direction": direction,
+        "limit": str(limit),
+    }
+    education_type_param = _education_type_query_value(education_type)
+    if education_type_param:
+        params["type"] = education_type_param
+    return params
+
+
+def _education_type_query_value(education_type: str | None) -> str | None:
+    value = str(education_type or "").strip()
+    if not value:
+        return None
+    normalized = " ".join(value.lower().replace("ё", "е").split())
+    if normalized in {
+        "any",
+        "all",
+        "любое",
+        "любой",
+        "любая",
+        "любые",
+        "все",
+        "все варианты",
+        "не важно",
+        "неважно",
+        "без разницы",
+        "не имеет значения",
+    }:
+        return None
+    return value
 
 
 async def fetch_directory_items(base_url: str, endpoint: str, limit: int = 30) -> list[str]:

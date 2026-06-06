@@ -3,7 +3,7 @@ from html import escape
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import Message, ReplyKeyboardRemove
 
 from telegram_bot.config import settings
 from telegram_bot.keyboards.menu import main_menu_keyboard
@@ -12,7 +12,19 @@ from telegram_bot.services.ai import explain_recommendation_groups, explain_resu
 from telegram_bot.services.api import UniversityAPIError, fetch_universities
 from telegram_bot.services.formatters import format_price, format_university_card
 from telegram_bot.services.recommendation import group_universities_by_recommendation, visible_recommendations
+from telegram_bot.services.result_pagination import (
+    RESULT_PAGE_SIZE,
+    SEARCH_FETCH_LIMIT,
+    format_page_notice,
+    result_page,
+)
 from telegram_bot.services.safety import CRISIS_RESPONSE, is_crisis_message
+from telegram_bot.services.search_prompts import (
+    DIRECTION_PROMPT,
+    FINANCING_PROMPT,
+    FINANCING_RETRY_PROMPT,
+    REGION_PROMPT,
+)
 from telegram_bot.services.summary import format_search_brief_summary
 from telegram_bot.services.validation import (
     education_type_label,
@@ -44,10 +56,7 @@ router = Router()
 )
 async def start_search(message: Message, state: FSMContext) -> None:
     await state.set_state(SearchStates.region)
-    await message.answer(
-        "С какого региона начнём?\n"
-        "Напиши регион, например: Адыгея, Москва или Краснодарский край."
-    )
+    await message.answer(REGION_PROMPT, reply_markup=ReplyKeyboardRemove())
 
 
 @router.message(SearchStates.region)
@@ -59,7 +68,7 @@ async def search_region(message: Message, state: FSMContext) -> None:
         return
 
     if len(text) < 2:
-        await message.answer("Напиши регион текстом, например: Адыгея.")
+        await message.answer("Напиши регион текстом, например: Москва.")
         return
 
     region = normalize_region(text)
@@ -83,7 +92,7 @@ async def search_score(message: Message, state: FSMContext) -> None:
 
     await state.update_data(score=score)
     await state.set_state(SearchStates.direction)
-    await message.answer("Какое направление интересно? Например: IT, психология, медицина, экономика.")
+    await message.answer(DIRECTION_PROMPT, reply_markup=ReplyKeyboardRemove())
 
 
 @router.message(SearchStates.direction)
@@ -101,7 +110,7 @@ async def search_direction(message: Message, state: FSMContext) -> None:
     direction = normalize_direction(text)
     await state.update_data(direction=direction)
     await state.set_state(SearchStates.education_type)
-    await message.answer("Какое финансирование рассматриваешь?", reply_markup=education_type_keyboard())
+    await message.answer(FINANCING_PROMPT, reply_markup=education_type_keyboard())
 
 
 @router.message(SearchStates.education_type)
@@ -112,9 +121,14 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
         await message.answer(CRISIS_RESPONSE, reply_markup=main_menu_keyboard())
         return
 
+    if text.casefold() in {"назад", "🔙 назад"}:
+        await state.set_state(SearchStates.direction)
+        await message.answer(DIRECTION_PROMPT, reply_markup=ReplyKeyboardRemove())
+        return
+
     education_type = normalize_education_type(text)
     if not education_type:
-        await message.answer("Выбери финансирование: бюджет или платное.", reply_markup=education_type_keyboard())
+        await message.answer(FINANCING_RETRY_PROMPT, reply_markup=education_type_keyboard())
         return
 
     data = await state.get_data()
@@ -135,7 +149,7 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
             score=profile["score"],
             direction=profile["direction"],
             education_type=profile["education_type"],
-            limit=5,
+            limit=SEARCH_FETCH_LIMIT,
         )
     except UniversityAPIError:
         await state.clear()
@@ -147,9 +161,11 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
 
     groups = group_universities_by_recommendation(profile["score"], results)
     display_results = visible_recommendations(groups)
+    page_results, page_start, page_end, has_more = result_page(display_results)
 
     if message.from_user:
         user_storage.save_search(message.from_user.id, profile, display_results)
+        user_storage.set_active_results(message.from_user.id, page_results, page_start)
         user_storage.add_search_history(message.from_user.id, profile, display_results)
 
     await state.clear()
@@ -169,7 +185,7 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
 
     cards = "\n\n".join(
         _format_university_card(i, item, profile["score"])
-        for i, item in enumerate(display_results, start=1)
+        for i, item in enumerate(page_results, start=page_start)
     )
     summary = format_search_brief_summary(display_results, profile["score"])
     await message.answer(
@@ -178,17 +194,21 @@ async def search_education_type(message: Message, state: FSMContext) -> None:
         f"Баллы: {profile['score']}\n"
         f"Направление: {escape(profile['direction'])}\n"
         f"Финансирование: {education_type_label(profile['education_type'])}\n\n"
+        f"{format_page_notice(page_start, page_end, len(display_results))}\n\n"
         f"{cards}\n\n"
         f"{summary}\n\n"
         "Источник данных определяется подключённой базой. Проверь условия на официальных сайтах вузов.",
-        reply_markup=search_results_keyboard(len(display_results)),
+        reply_markup=search_results_keyboard(len(page_results), start_index=page_start, has_more=has_more),
     )
 
     explanation = await explain_recommendation_groups(profile, groups)
     if not explanation:
         explanation = await explain_results(profile, display_results)
     if explanation:
-        await message.answer(explanation, reply_markup=search_results_keyboard(len(display_results)))
+        await message.answer(
+            explanation,
+            reply_markup=search_results_keyboard(len(page_results), start_index=page_start, has_more=has_more),
+        )
 
 
 @router.message(F.text.regexp(r"^(?:⭐\s*)?Сохранить\s+\d+$"))
@@ -205,20 +225,21 @@ async def save_result_to_favorites(message: Message) -> None:
         return
 
     results = _active_or_last_results(message.from_user.id)
-    item = _get_result_by_number(results, result_number)
+    start_index = _active_results_start(message.from_user.id)
+    item = _get_result_by_number(results, result_number, start_index)
     if item is None:
         await message.answer("Такого варианта сейчас нет. Попробуй выбрать другой номер.")
         return
 
     added = user_storage.add_favorite(message.from_user.id, item)
     if not added:
-        await message.answer("Этот вариант уже есть в избранном.", reply_markup=search_results_keyboard(len(results)))
+        await message.answer("Этот вариант уже есть в избранном.", reply_markup=_current_results_keyboard(message.from_user.id))
         return
 
     await message.answer(
         f"Добавила в избранное: {escape(str(item.get('university', 'Вуз')))} — "
         f"{escape(str(item.get('program', 'программа')))}.",
-        reply_markup=search_results_keyboard(len(results)),
+        reply_markup=_current_results_keyboard(message.from_user.id),
     )
 
 
@@ -237,48 +258,35 @@ async def show_more_results(message: Message, state: FSMContext) -> None:
         )
         return
 
-    await message.answer("Ищу ещё варианты по последнему запросу...")
-    try:
-        results = await fetch_universities(
-            base_url=settings.backend_base_url,
-            region=str(profile["region"]),
-            score=int(profile["score"]),
-            direction=str(profile["direction"]),
-            education_type=str(profile["education_type"]),
-            limit=10,
-        )
-    except UniversityAPIError:
+    all_results = user_storage.get_last_results(message.from_user.id)
+    if not all_results:
         await message.answer(
-            "Сейчас не получилось получить дополнительные варианты. Попробуй позже.",
-            reply_markup=search_results_keyboard(len(user_storage.get_last_results(message.from_user.id))),
+            "Чтобы показать ещё варианты, сначала сделай подбор вузов.",
+            reply_markup=main_menu_keyboard(),
         )
         return
 
-    groups = group_universities_by_recommendation(int(profile["score"]), results)
-    previous_results = user_storage.get_last_results(message.from_user.id)
-    previous_keys = {_result_key(item) for item in previous_results}
-    display_results = [
-        item for item in visible_recommendations(groups)
-        if _result_key(item) not in previous_keys
-    ][:5]
-    if not display_results:
+    current_start = user_storage.get_active_results_start(message.from_user.id)
+    current_count = len(user_storage.get_active_results(message.from_user.id))
+    next_start = current_start + max(current_count, RESULT_PAGE_SIZE)
+    page_results, page_start, page_end, has_more = result_page(all_results, next_start)
+    if not page_results:
         await message.answer(
-            "Дополнительных вариантов по последнему запросу пока нет.",
-            reply_markup=search_results_keyboard(len(user_storage.get_last_results(message.from_user.id))),
+            "Больше вариантов нет.",
+            reply_markup=_current_results_keyboard(message.from_user.id),
         )
         return
 
-    user_storage.set_active_results(message.from_user.id, display_results)
+    user_storage.set_active_results(message.from_user.id, page_results, page_start)
     cards = "\n\n".join(
         _format_university_card(i, item, int(profile["score"]))
-        for i, item in enumerate(display_results, start=1)
+        for i, item in enumerate(page_results, start=page_start)
     )
-    summary = format_search_brief_summary(display_results, int(profile["score"]))
     await message.answer(
-        f"Показала расширенную выдачу по последнему запросу:\n\n"
+        f"{format_page_notice(page_start, page_end, len(all_results))}\n\n"
         f"{cards}\n\n"
-        f"{summary}",
-        reply_markup=search_results_keyboard(len(display_results)),
+        "Источник данных определяется подключённой базой. Проверь условия на официальных сайтах вузов.",
+        reply_markup=search_results_keyboard(len(page_results), start_index=page_start, has_more=has_more),
     )
 
 
@@ -290,8 +298,8 @@ def _format_price(price: object) -> str:
     return format_price(price)
 
 
-def _get_result_by_number(results: list[dict], result_number: int) -> dict | None:
-    index = result_number - 1
+def _get_result_by_number(results: list[dict], result_number: int, start_index: int = 1) -> dict | None:
+    index = result_number - start_index
     if index < 0 or index >= len(results):
         return None
     return results[index]
@@ -310,14 +318,25 @@ def _is_complete_profile(profile: dict | None) -> bool:
     return True
 
 
-def _result_key(item: dict) -> tuple[str, ...]:
-    return tuple(
-        str(item.get(field, "")).strip().lower()
-        for field in ("university", "program", "city", "min_score", "type")
-    )
-
-
 def _active_or_last_results(telegram_id: int) -> list[dict]:
     if user_storage.has_active_results(telegram_id):
         return user_storage.get_active_results(telegram_id)
     return user_storage.get_last_results(telegram_id)
+
+
+def _active_results_start(telegram_id: int) -> int:
+    if user_storage.has_active_results(telegram_id):
+        return user_storage.get_active_results_start(telegram_id)
+    return 1
+
+
+def _current_results_keyboard(telegram_id: int):
+    active_results = user_storage.get_active_results(telegram_id)
+    start_index = _active_results_start(telegram_id)
+    total_count = len(user_storage.get_last_results(telegram_id))
+    end_index = start_index + len(active_results) - 1
+    return search_results_keyboard(
+        len(active_results),
+        start_index=start_index,
+        has_more=bool(active_results) and end_index < total_count,
+    )

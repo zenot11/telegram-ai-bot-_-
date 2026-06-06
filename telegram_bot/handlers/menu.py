@@ -1,9 +1,16 @@
 from html import escape
 
 from aiogram import F, Router
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+    ReplyKeyboardRemove,
+    WebAppInfo,
+)
 
 from telegram_bot.config import settings
 from telegram_bot.keyboards.compare import (
@@ -79,6 +86,8 @@ from telegram_bot.services.recommendation import (
     group_universities_by_recommendation,
     visible_recommendations,
 )
+from telegram_bot.services.result_pagination import SEARCH_FETCH_LIMIT, format_page_notice, result_page
+from telegram_bot.services.search_prompts import DIRECTION_PROMPT, REGION_PROMPT
 from telegram_bot.services.summary import EMPTY_SUMMARY_TEXT, format_last_search_summary, format_search_brief_summary
 from telegram_bot.services.texts import ABOUT_TEXT, BOTFATHER_TEXT, DEMO_TEXT, HELP_TEXT, PRIVACY_TEXT
 from telegram_bot.services.validation import (
@@ -100,6 +109,12 @@ router = Router()
 async def cmd_menu(message: Message, state: FSMContext) -> None:
     await state.clear()
     await send_menu_card(message, "main", main_menu_inline_keyboard())
+
+
+@router.message(StateFilter(SearchStates.education_type), F.text.in_({"Назад", "назад", "🔙 Назад"}))
+async def back_to_search_direction(message: Message, state: FSMContext) -> None:
+    await state.set_state(SearchStates.direction)
+    await message.answer(DIRECTION_PROMPT, reply_markup=ReplyKeyboardRemove())
 
 
 @router.message(F.text.in_({"Вернуться в меню", "Главное меню", "Назад", "🔙 Главное меню", "🔙 Назад"}))
@@ -200,10 +215,7 @@ async def search_menu_callback(callback: CallbackQuery, state: FSMContext) -> No
     await state.set_state(SearchStates.region)
     await callback.answer()
     if callback.message:
-        await callback.message.answer(
-            "С какого региона начнём?\n"
-            "Напиши регион, например: Адыгея, Москва или Краснодарский край."
-        )
+        await callback.message.answer(REGION_PROMPT, reply_markup=ReplyKeyboardRemove())
 
 
 @router.callback_query(F.data == MENU_WEBAPP_CALLBACK)
@@ -497,7 +509,7 @@ async def repeat_last_search(message: Message, state: FSMContext) -> None:
             score=profile["score"],
             direction=profile["direction"],
             education_type=profile["education_type"],
-            limit=5,
+            limit=SEARCH_FETCH_LIMIT,
         )
     except UniversityAPIError:
         await message.answer(
@@ -508,7 +520,9 @@ async def repeat_last_search(message: Message, state: FSMContext) -> None:
 
     groups = group_universities_by_recommendation(profile["score"], results)
     display_results = visible_recommendations(groups)
+    page_results, page_start, page_end, has_more = result_page(display_results)
     user_storage.save_search(message.from_user.id, profile, display_results)
+    user_storage.set_active_results(message.from_user.id, page_results, page_start)
     user_storage.add_search_history(message.from_user.id, profile, display_results)
 
     if not display_results:
@@ -526,7 +540,7 @@ async def repeat_last_search(message: Message, state: FSMContext) -> None:
 
     cards = "\n\n".join(
         format_university_card(index, item, profile["score"])
-        for index, item in enumerate(display_results, start=1)
+        for index, item in enumerate(page_results, start=page_start)
     )
     summary = format_search_brief_summary(display_results, profile["score"])
     await message.answer(
@@ -535,10 +549,11 @@ async def repeat_last_search(message: Message, state: FSMContext) -> None:
         f"Баллы: {profile['score']}\n"
         f"Направление: {escape(profile['direction'])}\n"
         f"Финансирование: {education_type_label(profile['education_type'])}\n\n"
+        f"{format_page_notice(page_start, page_end, len(display_results))}\n\n"
         f"{cards}\n\n"
         f"{summary}\n\n"
         "Источник данных определяется подключённой базой. Проверь условия на официальных сайтах вузов.",
-        reply_markup=search_results_keyboard(len(display_results)),
+        reply_markup=search_results_keyboard(len(page_results), start_index=page_start, has_more=has_more),
     )
 
 

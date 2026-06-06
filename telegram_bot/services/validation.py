@@ -87,6 +87,7 @@ DIRECTION_SYNONYMS = {
 EDUCATION_TYPE_LABELS = {
     "budget": "бюджет",
     "paid": "платное",
+    "any": "любое",
 }
 
 
@@ -142,6 +143,21 @@ def normalize_direction(text: str) -> str:
 
 def normalize_education_type(text: str) -> str | None:
     value = normalize_text(text)
+    if value in {
+        "any",
+        "all",
+        "любое",
+        "любой",
+        "любая",
+        "любые",
+        "все",
+        "все варианты",
+        "не важно",
+        "неважно",
+        "без разницы",
+        "не имеет значения",
+    }:
+        return "any"
     if value in {
         "budget",
         "бюджет",

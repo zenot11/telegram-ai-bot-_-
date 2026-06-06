@@ -61,7 +61,12 @@ class UserDataStorage:
         results = profile.get("last_results", [])
         return results if isinstance(results, list) else []
 
-    def set_active_results(self, telegram_id: int, results: list[dict[str, Any]]) -> None:
+    def set_active_results(
+        self,
+        telegram_id: int,
+        results: list[dict[str, Any]],
+        start_index: int = 1,
+    ) -> None:
         with self._lock:
             data = self._read_all_unlocked()
             current = data.get(str(telegram_id), {})
@@ -69,6 +74,7 @@ class UserDataStorage:
                 current = {}
             current["telegram_id"] = telegram_id
             current["active_results"] = results
+            current["active_results_start"] = max(1, start_index)
             data[str(telegram_id)] = current
             self._write_all_unlocked(data)
 
@@ -79,6 +85,18 @@ class UserDataStorage:
 
         results = profile.get("active_results", [])
         return results if isinstance(results, list) else []
+
+    def get_active_results_start(self, telegram_id: int) -> int:
+        profile = self.get_profile(telegram_id)
+        if not profile:
+            return 1
+
+        value = profile.get("active_results_start", 1)
+        if isinstance(value, int):
+            return max(1, value)
+        if isinstance(value, str) and value.strip().isdigit():
+            return max(1, int(value.strip()))
+        return 1
 
     def has_active_results(self, telegram_id: int) -> bool:
         profile = self.get_profile(telegram_id)
@@ -91,6 +109,7 @@ class UserDataStorage:
             if not isinstance(current, dict):
                 return
             current.pop("active_results", None)
+            current.pop("active_results_start", None)
             data[str(telegram_id)] = current
             self._write_all_unlocked(data)
 
